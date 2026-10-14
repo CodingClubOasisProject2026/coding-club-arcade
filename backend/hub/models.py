@@ -33,6 +33,8 @@ class Session(models.Model):
     score = models.PositiveIntegerField(default=None, null=True, blank=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="sessions")
     game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name="sessions")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return str(f'Session: {self.id}')
