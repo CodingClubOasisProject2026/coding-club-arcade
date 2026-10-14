@@ -1,0 +1,28 @@
+from secrets import randbits
+
+from django.conf import settings
+from django.contrib.auth.models import AbstractUser
+from django.db import models
+from uuid6 import uuid7
+
+# Create your models here.
+
+class CustomUser(AbstractUser):
+    tickets = models.PositiveSmallIntegerField(default=0)
+
+    def __str__(self):
+        return self.username
+
+
+def generate_seed():
+    return randbits(63)
+
+
+class Session(models.Model):
+    id = models.UUIDField(default=uuid7, primary_key=True, editable=False)
+    seed = models.PositiveBigIntegerField(default=generate_seed, editable=False)
+    score = models.PositiveIntegerField(null=True, blank=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="sessions")
+
+    def __str__(self):
+        return str(f'Session: {self.id}')
