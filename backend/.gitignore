@@ -27,3 +27,6 @@ Desktop.ini
 .vscode/
 *.swp
 *~
+backend/hub/__pycache__/
+backend/minesweeper/__pycache__/
+backend/tetris/__pycache__/

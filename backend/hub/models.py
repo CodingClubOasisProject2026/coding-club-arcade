@@ -1,3 +1,4 @@
+from decimal import Decimal
 from secrets import randbits
 
 from django.conf import settings
@@ -14,6 +15,14 @@ class CustomUser(AbstractUser):
         return self.username
 
 
+class Game(models.Model):
+    name = models.CharField(max_length=30)
+    ratio = models.DecimalField(default=Decimal("1.0"))
+
+    def __str__(self) -> str:
+        return self.name
+
+
 def generate_seed():
     return randbits(63)
 
@@ -23,6 +32,7 @@ class Session(models.Model):
     seed = models.PositiveBigIntegerField(default=generate_seed, editable=False)
     score = models.PositiveIntegerField(default=None, null=True, blank=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="sessions")
+    game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name="sessions")
 
     def __str__(self):
         return str(f'Session: {self.id}')
