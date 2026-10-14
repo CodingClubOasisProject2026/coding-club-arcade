@@ -10,7 +10,10 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+from os import getenv
 from pathlib import Path
+
+from kombu import Queue
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,15 +23,35 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-et)!msrct_432zm#f0-0a$rm&e&4fe%pc04szbx(x_kr=-ex(^'
+SECRET_KEY = getenv('DJANGO_SECRET_KEY', 'django-insecure-et)!msrct_432zm#f0-0a$rm&e&4fe%pc04szbx(x_kr=-ex(^')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = getenv('DEBUG', 'true') == 'true'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [ host for host in getenv('ALLOWED_HOSTS', '*').split(',') if host ]
 
 AUTH_USER_MODEL = 'hub.CustomUser'
 
+# CELERY
+CELERY_BROKER_URL = getenv('CELERY_BROKER_URL', 'amqp://guest:guest@localhost:5672//')
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TASK_QUEUES = (
+    Queue('minesweeper'),
+    Queue('snake'),
+    Queue('tetris'),
+    Queue('wordle'),
+)
+CELERY_TASK_ROUTES = {
+    'minesweeper.tasks.*': {'queue': 'minesweeper'},
+    'snake.tasks.*': {'queue': 'snake'},
+    'tetris.tasks.*': {'queue': 'tetris'},
+    'wordle.tasks.*': {'queue': 'wordle'},
+}
+CELERY_TASK_ACKS_LATE = True
+CELERY_TASK_REJECT_ON_WORKER_LOST = True
+CELERY_TASK_DEFAULT_DELIVERY_MODE = 'persistent'
 
 # Application definition
 
@@ -117,7 +140,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Kolkata'
 
 USE_I18N = True
 
