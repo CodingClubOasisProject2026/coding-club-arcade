@@ -42,7 +42,8 @@ INSTALLED_APPS = [
     'hub',
     'minesweeper',
     'snake',
-    'terraria',
+    'tetris',
+    'rest_framework',
 ]
 
 MIDDLEWARE = [

@@ -21,7 +21,7 @@ def generate_seed():
 class Session(models.Model):
     id = models.UUIDField(default=uuid7, primary_key=True, editable=False)
     seed = models.PositiveBigIntegerField(default=generate_seed, editable=False)
-    score = models.PositiveIntegerField(null=True, blank=True)
+    score = models.PositiveIntegerField(default=None, null=True, blank=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="sessions")
 
     def __str__(self):
