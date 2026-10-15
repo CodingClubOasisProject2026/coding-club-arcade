@@ -15,8 +15,15 @@ class CustomUser(AbstractUser):
         return self.username
 
 
+class GameChoices(models.TextChoices):
+    MINESWEEPER = "MINESWEEEPER"
+    SNAKE = "SNAKE"
+    TETRIS = "TETRIS"
+    WORDLE = "WORDLE"
+
+
 class Game(models.Model):
-    name = models.CharField(max_length=30)
+    name = models.CharField(choices=GameChoices.choices,  max_length=30, unique=True)
     ratio = models.DecimalField(default=Decimal("1.0"))
 
     def __str__(self) -> str:
