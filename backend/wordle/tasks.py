@@ -17,8 +17,6 @@ from .services import RULES_VERSION, _close, _enqueue_scoring
 logger = logging.getLogger(__name__)
 
 IDLE_TIMEOUT = timedelta(minutes=getattr(settings, "WORDLE_IDLE_TIMEOUT_MINUTES", 30))
-# Don't re-enqueue a game that finished moments ago: its own on-commit enqueue
-# is probably still in flight. (Double scoring is harmless anyway: idempotent.)
 UNSCORED_GRACE = timedelta(minutes=2)
 SWEEP_BATCH = 500
 _MAX_SEQ_LIST = 20
@@ -83,10 +81,6 @@ def _verify(session: WordleSession) -> tuple[Optional[bool], str]:
     max_retries=3,
 )
 def score_session(session_id: str) -> dict:
-    """Replay a finished session from scratch and record whether it matches.
-
-    Idempotent: scoring an already-scored session is a no-op.
-    """
     with transaction.atomic():
         session = WordleSession.objects.select_for_update().filter(pk=session_id).first()
         if session is None:

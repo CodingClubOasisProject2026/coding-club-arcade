@@ -1,12 +1,11 @@
-"""Thin DRF views. All game logic and locking live in services.py."""
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.generic import TemplateView
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
-from django.utils.decorators import method_decorator
-from django.views.decorators.csrf import ensure_csrf_cookie
-from django.views.generic import TemplateView
 
 from . import services
 from .serializers import FinishRequestSerializer, GuessRequestSerializer
@@ -74,8 +73,6 @@ class GuessView(WordleAPIView):
 
 
 class FinishView(WordleAPIView):
-    """End a game early. Idempotent."""
-
     throttle_scope = "wordle_finish"
 
     def post(self, request):
@@ -87,7 +84,7 @@ class FinishView(WordleAPIView):
 
 
 class StateView(WordleAPIView):
-    """Snapshot of the user's active game, for page reloads."""
+    """Snapshot for page reloads."""
 
     throttle_scope = "wordle_state"
 

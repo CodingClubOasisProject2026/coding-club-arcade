@@ -1,12 +1,3 @@
-"""Wordle game services. All DB logic and locking lives here; views stay thin.
-
-Concurrency: every state-changing call takes a row lock on the session
-(select_for_update inside transaction.atomic), so concurrent /guess requests
-are serialized and each sees the previous one's result.
-
-The live state is maintained incrementally via engine.apply_guess. The Celery
-replayer recomputes it independently from the event log and cross-checks.
-"""
 import logging
 from dataclasses import dataclass
 from typing import Optional
