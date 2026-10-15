@@ -17,7 +17,7 @@ class LeaderboardView(ListAPIView):
     serializer_class = LeaderboardSerializer
     queryset = User.objects.annotate(score=Sum("sessions__score")).order_by("-score", "username")
 
-    @method_decorator(cache_page(5))
+    @method_decorator(cache_page(10))
     def dispatch(self, request, *args, **kwargs):
         return super().dispatch(request, *args, **kwargs)
 
