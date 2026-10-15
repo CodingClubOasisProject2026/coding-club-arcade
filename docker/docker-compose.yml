@@ -9,7 +9,7 @@ services:
       sh -c "python manage.py migrate &&
         python manage.py collectstatic --noinput &&
         python manage.py seed_games &&
-        granian --interface wsgi --host 0.0.0.0 --port 8000 --workers 4 --respawn-failed-workers --workers-lifetime 3600 --workers-kill-timeout 30 config.wsgi:application"
+        granian --interface wsgi --host 0.0.0.0 --port 8000 --workers 4 --blocking-threads 4 --respawn-failed-workers --workers-lifetime 3600 --workers-kill-timeout 30 config.wsgi:application"
     expose:
       - "8000"
     restart: unless-stopped
@@ -34,7 +34,12 @@ services:
       dockerfile: docker/Dockerfile.backend
     env_file:
       - .env
-    command: celery -A config worker --loglevel=info
+    command: >
+      celery -A config worker
+        --loglevel=INFO
+        --concurrency=4
+        --max-tasks-per-child=200
+        --max-memory-per-child=250000
     restart: unless-stopped
     depends_on:
       db:
@@ -42,7 +47,7 @@ services:
       rabbitmq:
         condition: service_healthy
   rabbitmq:
-    image: rabbitmq:3.12-management-alpine
+    image: rabbitmq:3.12-alpine
     env_file:
       - .env
     volumes:

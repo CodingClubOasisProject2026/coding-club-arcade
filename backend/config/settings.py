@@ -33,6 +33,8 @@ ALLOWED_HOSTS = [ host for host in getenv('ALLOWED_HOSTS', '*').split(',') if ho
 AUTH_USER_MODEL = 'hub.CustomUser'
 
 # CELERY
+CELERY_WORKER_MINGLE = False
+CELERY_WORKER_GOSSIP = False
 CELERY_BROKER_URL = getenv('CELERY_BROKER_URL', 'amqp://guest:guest@localhost:5672//')
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
