@@ -53,6 +53,15 @@ CELERY_TASK_ACKS_LATE = True
 CELERY_TASK_REJECT_ON_WORKER_LOST = True
 CELERY_TASK_DEFAULT_DELIVERY_MODE = 'persistent'
 
+# Caching
+# https://docs.djangoproject.com/en/6.1/topics/cache/
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'arcade-cache-table',
+    }
+}
+
 # Application definition
 
 INSTALLED_APPS = [

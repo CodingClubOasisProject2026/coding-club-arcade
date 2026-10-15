@@ -15,8 +15,15 @@ class CustomUser(AbstractUser):
         return self.username
 
 
+class GameChoices(models.TextChoices):
+    MINESWEEPER = "MINESWEEPER"
+    SNAKE = "SNAKE"
+    TETRIS = "TETRIS"
+    WORDLE = "WORDLE"
+
+
 class Game(models.Model):
-    name = models.CharField(max_length=30)
+    name = models.CharField(choices=GameChoices.choices,  max_length=30, unique=True)
     ratio = models.DecimalField(default=Decimal("1.0"))
 
     def __str__(self) -> str:
@@ -35,6 +42,9 @@ class Session(models.Model):
     game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name="sessions")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def update_score(self, session_id, user_id, score):
+        self.__class__.objects.filter(id=session_id, user_id=user_id).update(score=score)
 
     def __str__(self):
         return str(f'Session: {self.id}')
