@@ -43,5 +43,8 @@ class Session(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def update_score(self, session_id, user_id, score):
+        self.__class__.objects.filter(id=session_id, user_id=user_id).update(score=score)
+
     def __str__(self):
         return str(f'Session: {self.id}')
