@@ -1,0 +1,75 @@
+services:
+  web:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend
+    env_file:
+      - .env
+    command: >
+      sh -c "python manage.py migrate &&
+        python manage.py collectstatic --noinput &&
+        python manage.py seed_games &&
+        granian --interface wsgi --host 0.0.0.0 --port 8000 --workers 4 --respawn-failed-workers --workers-lifetime 3600 --workers-kill-timeout 30 config.wsgi:application"
+    expose:
+      - "8000"
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+  db:
+    image: postgres:17-alpine
+    env_file:
+      - .env
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+  celery:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend
+    env_file:
+      - .env
+    command: celery -A config worker --loglevel=info
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    env_file:
+      - .env
+    volumes:
+      - rabbitmq_prod_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+  caddy:
+    image: caddy:2-alpine
+    env_file:
+      - .env
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+    restart: unless-stopped
+
+volumes:
+  postgres_prod_data:
+  caddy_data:
+  caddy_config:
+  rabbitmq_prod_data:
