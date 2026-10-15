@@ -53,15 +53,6 @@ CELERY_TASK_ACKS_LATE = True
 CELERY_TASK_REJECT_ON_WORKER_LOST = True
 CELERY_TASK_DEFAULT_DELIVERY_MODE = 'persistent'
 
-# Caching
-# https://docs.djangoproject.com/en/6.1/topics/cache/
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
-        'LOCATION': 'arcade-cache-table',
-    }
-}
-
 # Application definition
 
 INSTALLED_APPS = [
@@ -119,8 +110,22 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': getenv("POSTGRES_DB", 'myprojectdb'),
+        'USER': getenv("POSTRGRES_USER", 'myuser'),
+        'PASSWORD': getenv("POSTGRES_PASSWORD", 'mypassword'),
+        'HOST': 'db',
+        'PORT': '5432',
+    }
+}
+
+# Caching
+# https://docs.djangoproject.com/en/6.1/topics/cache/
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": getenv("VALKEY_URL", "redis://127.0.0.1:6379/1"),
     }
 }
 
