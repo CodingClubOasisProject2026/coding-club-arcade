@@ -6,5 +6,5 @@ urlpatterns = [
     path('leaderboard/', LeaderboardView.as_view(), name='leaderboard'),
     path('games/', GameListView.as_view(), name='games'),
     path('sessions/start/<int:game_id>/', SessionStartView.as_view(), name='session-start'),
-    path('sessions/submit/<uuid:id>/', SessionSubmitView.as_view(), name='session-submit')
+    path('sessions/submit/<uuid:id>/', SessionSubmitView.as_view(), name='session-submit'),
 ]
