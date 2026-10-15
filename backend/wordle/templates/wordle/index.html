@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content</head>
+  <title>Wordle API smoke test</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #101413; color: #eef4ef; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 28px 16px; }
+    main { width: min(100%, 620px); }
+    h1 { margin: 0 0 6px; font-size: 2rem; letter-spacing: .08em; }
+    .subtle { color: #a5b5aa; line-height: 1.5; }
+    section { background: #1b2420; border: 1px solid #34443a; border-radius: 14px; padding: 18px; margin: 16px 0; }
+    label { display: block; color: #b7c6bc; font-size: .9rem; margin: 0 0 6px; }
+    input, button { font: inherit; border-radius: 8px; padding: 10px 12px; }
+    input { width: 100%; color: #eef4ef; background: #111815; border: 1px solid #43564a; margin-bottom: 12px; }
+    button { color: #101413; background: #b4e4a1; border: 0; font-weight: 700; cursor: pointer; }
+    button.secondary { color: #eef4ef; background: #34443a; }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    #message { min-height: 1.5em; color: #d6e8d8; }
+    #message.error { color: #ffaaa2; }
+    #board { display: grid; grid-template-columns: repeat(5, 52px); gap: 7px; justify-content: center; margin: 20px 0; }
+    .tile { height: 52px; display: grid; place-items: center; border: 2px solid #526157; border-radius: 6px; font-size: 1.4rem; font-weight: 800; text-transform: uppercase; }
+    .tile[data-mark="2"] { background: #538d4e; border-color: #538d4e; }
+    .tile[data-mark="1"] { background: #b59f3b; border-color: #b59f3b; }
+    .tile[data-mark="0"] { background: #3a423d; border-color: #3a423d; }
+    .stats { display: flex; flex-wrap: wrap; gap: 16px; color: #c6d3c9; }
+    code { color: #d8ebc9; }
+    @media (max-width: 430px) { #board { grid-template-columns: repeat(5, 44px); gap: 5px; } .tile { height: 44px; } }
+  </style>
+</head>
+<body>
+<main>
+  <h1>WORDLE</h1>
+  <div class="subtle">Temporary API smoke-test page. Sign in with an existing Django account; credentials stay in this tab and are sent over same-origin HTTPS/HTTP Basic Auth.</div>
+
+  <section>
+    <label for="username">Username</label>
+    <input id="username" autocomplete="username" placeholder="Django username">
+    <label for="password">Password</label>
+    <input id="password" type="password" autocomplete="current-password" placeholder="Password">
+    <div class="actions">
+      <button id="start">Start / resume</button>
+      <button id="restore" class="secondary">Restore active game</button>
+    </div>
+  </section>
+
+  <section>
+    <div class="stats"><span>Session: <code id="session">none</code></span><span>Status: <code id="status">not started</code></span></div>
+    <div class="stats" style="margin-top:8px"><span>Word <code id="word-number">-</code></span><span>Attempts left <code id="attempts-left">-</code></span><span>Score <code id="score">-</code></span></div>
+    <div id="board" aria-label="Wordle board"></div>
+    <label for="guess">Guess (5 letters)</label>
+    <input id="guess" maxlength="5" autocomplete="off" autocapitalize="characters" placeholder="Enter a guess" disabled>
+    <div class="actions">
+      <button id="submit" disabled>Submit guess</button>
+      <button id="finish" class="secondary" disabled>Finish early</button>
+    </div>
+    <p id="message" role="status" aria-live="polite">Log in, then start or restore a game.</p>
+  </section>
+  <p class="subtle">When a game ends, Wordle queues its score for Celery. For background scoring, start RabbitMQ plus a Celery worker listening to the <code>wordle</code> queue. Celery Beat runs stale-session cleanup every five minutes.</p>
+</main>
+<script>
+(() => {
+  let sessionId = null;
+  let authHeader = null;
+  const $ = (id) => document.getElementById(id);
+  const setMessage = (text, error = false) => {
+    $('message').textContent = text;
+    $('message').classList.toggle('error', error);
+  };
+  const csrfToken = () => document.cookie.split('; ').find((cookie) => cookie.startsWith('csrftoken='))?.split('=')[1];
+  const request = async (path, options = {}) => {
+    if (!authHeader) throw new Error('Enter your username and password first.');
+    const response = await fetch(`/wordle/${path}`, {
+      ...options,
+      headers: {
+        'Authorization': authHeader,
+        ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+        ...(csrfToken() ? { 'X-CSRFToken': decodeURIComponent(csrfToken()) } : {}),
+        ...options.headers,
+      },
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error?.message || data.detail || `Request failed (${response.status})`);
+    return data;
+  };
+  const update = (data) => {
+    if (data.session_id) sessionId = data.session_id;
+    $('session').textContent = sessionId || 'none';
+    $('status').textContent = data.game_status || data.status || 'unknown';
+    $('word-number').textContent = data.word_number ?? '-';
+    $('attempts-left').textContent = data.attempts_left ?? '-';
+    $('score').textContent = data.score ?? '-';
+    const board = $('board');
+    board.replaceChildren();
+    for (const row of (data.board || [])) {
+      for (let i = 0; i < 5; i++) {
+        const tile = document.createElement('div');
+        tile.className = 'tile';
+        tile.textContent = row.word[i] || '';
+        tile.dataset.mark = row.mask[i];
+        board.append(tile);
+      }
+    }
+    const active = data.status === 'active' && data.game_status === 'in_progress';
+    $('guess').disabled = !active;
+    $('submit').disabled = !active;
+    $('finish').disabled = !active;
+  };
+  const run = async (fn) => {
+    try { await fn(); }
+    catch (error) { setMessage(error.message, true); }
+  };
+  const authenticate = () => {
+    const user = $('username').value;
+    const password = $('password').value;
+    if (!user || !password) throw new Error('Enter your username and password.');
+    authHeader = `Basic ${btoa(`${user}:${password}`)}`;
+  };
+  $('start').addEventListener('click', () => run(async () => {
+    authenticate();
+    const data = await request('start', { method: 'POST' });
+    update(data);
+    setMessage(data.resumed ? 'Resumed your active game.' : 'Game started. Make your first guess.');
+  }));
+  $('restore').addEventListener('click', () => run(async () => {
+    authenticate();
+    const data = await request('state');
+    update(data);
+    setMessage('Active game restored.');
+  }));
+  $('submit').addEventListener('click', () => run(async () => {
+    const guess = $('guess').value.trim().toLowerCase();
+    const data = await request('guess', { method: 'POST', body: JSON.stringify({ session_id: sessionId, guess }) });
+    update(data);
+    $('guess').value = '';
+    if (data.game_status === 'lost') setMessage(`Game over. Answer: ${data.answer}`);
+    else if (data.game_status === 'cleared') setMessage(`All words cleared! Final score: ${data.score}. Scoring queued for Celery.`);
+    else if (data.solved) setMessage('Correct! Next word.');
+    else setMessage('Guess recorded.');
+  }));
+  $('guess').addEventListener('keydown', (event) => { if (event.key === 'Enter' && !$('submit').disabled) $('submit').click(); });
+  $('finish').addEventListener('click', () => run(async () => {
+    const data = await request('finish', { method: 'POST', body: JSON.stringify({ session_id: sessionId }) });
+    update(data);
+    setMessage('Game finished early. Score verification queued for Celery.');
+  }));
+})();
+</script>
+</body>
+</html>

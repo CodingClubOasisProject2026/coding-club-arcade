@@ -73,6 +73,12 @@ INSTALLED_APPS = [
 REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
+    "DEFAULT_THROTTLE_RATES": {
+            "wordle_start": "20/min",
+            "wordle_guess": "60/min",
+            "wordle_finish": "20/min",
+            "wordle_state": "60/min",
+        },
 }
 
 MIDDLEWARE = [
