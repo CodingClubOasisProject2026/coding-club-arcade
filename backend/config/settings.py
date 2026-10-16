@@ -40,13 +40,11 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TASK_QUEUES = (
-    Queue('minesweeper'),
     Queue('snake'),
     Queue('tetris'),
     Queue('wordle'),
 )
 CELERY_TASK_ROUTES = {
-    'minesweeper.tasks.*': {'queue': 'minesweeper'},
     'snake.tasks.*': {'queue': 'snake'},
     'tetris.tasks.*': {'queue': 'tetris'},
     'wordle.tasks.*': {'queue': 'wordle'},
