@@ -1,4 +1,8 @@
 #game size
+from random import random
+from backend.tetris.engine import PIECE_TYPES
+
+
 COLUMNS = 10
 ROWS = 20
 CELL_SIZE= 40
@@ -43,3 +47,15 @@ shapes = [
 # Tetromino colors
 shape_colors = [CYAN, YELLOW, MAGENTA, RED, GREEN, BLUE, ORANGE]
 
+PIECE_TYPES = ["I", "O", "T", "S", "Z", "J", "L"]
+
+class PieceGenerator:
+    def __init__(self):
+        self.bag = []
+
+    def next_piece(self):
+        if not self.bag:
+            self.bag = PIECE_TYPES.copy()
+            random.shuffle(self.bag)
+
+        return self.bag.pop()
