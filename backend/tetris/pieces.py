@@ -49,6 +49,13 @@ shape_colors = [CYAN, YELLOW, MAGENTA, RED, GREEN, BLUE, ORANGE]
 
 PIECE_TYPES = ["I", "O", "T", "S", "Z", "J", "L"]
 
+class Tetromino:
+    def __init__(self, shape, color, x, y):
+        self.shape = shape
+        self.color = color
+        self.x = x
+        self.y = y
+
 class PieceGenerator:
     def __init__(self):
         self.bag = []
@@ -59,3 +66,4 @@ class PieceGenerator:
             random.shuffle(self.bag)
 
         return self.bag.pop()
+
