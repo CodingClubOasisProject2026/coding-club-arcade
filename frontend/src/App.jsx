@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const WORD_LENGTH = 5;
 const MAX_ATTEMPTS = 6;
+const START_SECONDS = 120;
 const KEY_ROWS = ['qwertyuiop', 'asdfghjkl', '↵zxcvbnm⌫'];
 
 function getLaunchParams() {
@@ -12,20 +13,6 @@ function getLaunchParams() {
   };
 }
 
-function getStorageKey(sessionId, seed) {
-  return `wordle:${sessionId}:${seed}`;
-}
-
-function readHistory(key) {
-  try {
-    const value = JSON.parse(sessionStorage.getItem(key) || '[]');
-    return Array.isArray(value) && value.every((guess) => typeof guess === 'string')
-      ? value
-      : [];
-  } catch {
-    return [];
-  }
-}
 
 async function postWordle(path, payload) {
   const response = await fetch(`/wordle/${path}`, {
@@ -51,28 +38,37 @@ function Tile({ letter = '', mark, cursor = false }) {
 
 export default function App() {
   const { sessionId, seed } = useMemo(getLaunchParams, []);
-  const storageKey = useMemo(() => getStorageKey(sessionId, seed), [sessionId, seed]);
-  const [history, setHistory] = useState(() => readHistory(storageKey));
+
   const [snapshot, setSnapshot] = useState(null);
   const [draft, setDraft] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [deadline, setDeadline] = useState(null);
+  const [timeLeft, setTimeLeft] = useState(START_SECONDS);
 
   const validLaunch = Boolean(
     sessionId && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId)
       && /^\d+$/.test(seed),
   );
-  const active = snapshot?.game_status === 'in_progress' && !loading;
+  const clockExpired = deadline !== null && timeLeft <= 0;
+  const active = snapshot?.game_status === 'in_progress' && !loading && !clockExpired;
 
   const showApiState = useCallback((data) => {
     setSnapshot(data);
     setDraft('');
-    if (data.game_status === 'lost') {
-      setNotice(`Game over — the answer was ${data.answer?.toUpperCase() || 'unknown'}.`);
+    const remaining = Math.max(0, Math.min(START_SECONDS, data.time_remaining ?? 0));
+    setTimeLeft(remaining);
+    setDeadline(Date.now() + remaining * 1000);
+    if (data.game_status === 'time_up') {
+      setNotice("Time's up! The game is over.");
+    } else if (data.game_status === 'lost') {
+      setNotice(`No words remain. The answer was ${data.answer?.toUpperCase() || 'unknown'}.`);
     } else if (data.game_status === 'cleared') {
       setNotice(`All words cleared! Final score: ${data.score}.`);
+    } else if (data.missed) {
+      setNotice(`Six misses — ${data.answer?.toUpperCase() || 'word'} was the answer. −20s; next word.`);
     } else if (data.solved) {
       setNotice('Correct! On to the next word.');
     } else {
@@ -86,21 +82,30 @@ export default function App() {
       return;
     }
     let cancelled = false;
-    const saved = readHistory(storageKey);
-    setHistory(saved);
-    postWordle('initialize', { session_id: sessionId, seed, guesses: saved })
+    postWordle('initialize', { session_id: sessionId, seed })
       .then((data) => {
-        if (!cancelled) {
-          setSnapshot(data);
-          setNotice(data.game_status === 'in_progress' ? '' : data.game_status === 'lost'
-            ? `Game over — the answer was ${data.answer?.toUpperCase() || 'unknown'}.`
-            : `All words cleared! Final score: ${data.score}.`);
-        }
+        if (!cancelled) showApiState(data);
       })
       .catch((cause) => { if (!cancelled) setError(cause.message); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [seed, sessionId, storageKey, validLaunch]);
+  }, [seed, sessionId, showApiState, validLaunch]);
+
+  useEffect(() => {
+    if (deadline === null) return undefined;
+    const updateClock = () => {
+      setTimeLeft(Math.max(0, Math.ceil((deadline - Date.now()) / 1000)));
+    };
+    updateClock();
+    const interval = window.setInterval(updateClock, 250);
+    return () => window.clearInterval(interval);
+  }, [deadline]);
+
+  useEffect(() => {
+    if (clockExpired && snapshot?.game_status === 'in_progress') {
+      setNotice("Time's up! The game is over.");
+    }
+  }, [clockExpired, snapshot?.game_status]);
 
   const submitGuess = useCallback(async () => {
     if (!active || sending) return;
@@ -114,19 +119,15 @@ export default function App() {
       const data = await postWordle('guess', {
         session_id: sessionId,
         seed,
-        guesses: history,
         guess: draft,
       });
-      const nextHistory = [...history, draft];
-      sessionStorage.setItem(storageKey, JSON.stringify(nextHistory));
-      setHistory(nextHistory);
       showApiState(data);
     } catch (cause) {
       setError(cause.message);
     } finally {
       setSending(false);
     }
-  }, [active, draft, history, seed, sending, sessionId, showApiState, storageKey]);
+  }, [active, draft, seed, sending, sessionId, showApiState]);
 
   const pressKey = useCallback((key) => {
     if (!active || sending) return;
@@ -153,7 +154,20 @@ export default function App() {
   }, [pressKey]);
 
   const rows = snapshot?.board || [];
+  const keyboardMarks = useMemo(() => {
+    const marks = {};
+    for (const row of rows) {
+      for (let index = 0; index < row.word.length; index++) {
+        const letter = row.word[index];
+        const mark = row.mask[index];
+        marks[letter] = Math.max(marks[letter] ?? -1, mark);
+      }
+    }
+    return marks;
+  }, [rows]);
   const attemptsLeft = snapshot?.attempts_left ?? MAX_ATTEMPTS;
+  const healthPercent = Math.min(100, Math.max(0, (timeLeft / START_SECONDS) * 100));
+  const timerText = `${Math.floor(timeLeft / 60)}:${String(timeLeft % 60).padStart(2, '0')}`;
   const message = error || notice || (loading ? 'Loading game…' : 'Type a guess or use the on-screen keyboard.');
 
   return (
@@ -164,9 +178,7 @@ export default function App() {
             <span className={`brand-tile brand-${index % 3}`} key={`${letter}-${index}`}>{letter}</span>
           ))}
         </div>
-        <div className="session-badge" title={sessionId || 'No session id'}>
-          Session <code>{sessionId ? `${sessionId.slice(0, 8)}…` : 'missing'}</code>
-        </div>
+
       </header>
 
       {!validLaunch ? (
@@ -178,10 +190,13 @@ export default function App() {
       ) : (
         <>
           <section className="stats" aria-label="Game statistics">
-            <div><span>Word</span><strong>{snapshot?.word_number ?? '—'} / {snapshot?.total_words ?? '—'}</strong></div>
+            <div><span>Time</span><strong className={timeLeft <= 15 ? 'time-low' : ''}>{timerText}</strong></div>
             <div><span>Guesses left</span><strong>{attemptsLeft}</strong></div>
             <div><span>Score</span><strong>{snapshot?.score ?? 0}</strong></div>
           </section>
+          <div className={`healthbar${timeLeft <= 15 ? ' healthbar-low' : ''}`} role="progressbar" aria-label="Time remaining" aria-valuemin="0" aria-valuemax={START_SECONDS} aria-valuenow={timeLeft}>
+            <div className="healthbar-fill" style={{ width: `${healthPercent}%` }} />
+          </div>
 
           <section className="game" aria-label="Wordle game">
             <div className="board" aria-live="polite">
@@ -215,6 +230,7 @@ export default function App() {
                     return (
                       <button
                         className={`key${special ? ' key-special' : ''}`}
+                        data-mark={keyboardMarks[key]}
                         key={key}
                         type="button"
                         disabled={!active || sending}
@@ -234,7 +250,6 @@ export default function App() {
           </section>
         </>
       )}
-      <footer>Green: correct spot · Yellow: in the word · Dark: not in the word</footer>
     </main>
   );
 }

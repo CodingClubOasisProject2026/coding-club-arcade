@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "create:session": "node create-session.mjs",
     "build": "vite build",
     "preview": "vite preview"
   },

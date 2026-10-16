@@ -64,22 +64,13 @@ button { font: inherit; }
 .brand-0 { background: var(--green); }
 .brand-1 { background: var(--yellow); }
 .brand-2 { background: var(--absent); }
-.session-badge {
-  max-width: 100%;
-  padding: 8px 11px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  color: var(--muted);
-  background: rgb(255 255 255 / 3%);
-  font-size: .75rem;
-}
-.session-badge code, .launch-example { color: #d6ebca; font-family: "DM Mono", monospace; }
+
 
 .stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin: 18px 0 12px;
+  gap: 8px;
+  margin: 18px 0 10px;
 }
 .stats > div {
   display: grid;
@@ -92,6 +83,21 @@ button { font: inherit; }
 }
 .stats span { color: var(--muted); font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; }
 .stats strong { font-size: 1.13rem; font-variant-numeric: tabular-nums; }
+.stats strong.time-low { color: #ff8f84; animation: pulse 1s infinite; }
+.healthbar {
+  height: 9px;
+  margin: 0 1px 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #303a33;
+}
+.healthbar-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #b8e6a4, #538d4e);
+  transition: width .25s linear, background .2s;
+}
+.healthbar-low .healthbar-fill { background: #ff8f84; }
 
 .game { width: 100%; }
 .board { display: grid; gap: 7px; justify-content: center; margin: 18px 0 12px; }
@@ -143,6 +149,9 @@ button { font: inherit; }
 .key:hover:not(:disabled) { filter: brightness(1.18); }
 .key:active:not(:disabled) { transform: scale(.95); }
 .key:disabled { opacity: .5; cursor: default; }
+.key[data-mark="2"] { background: var(--green); color: #fff; }
+.key[data-mark="1"] { background: var(--yellow); color: #fff; }
+.key[data-mark="0"] { background: #202923; color: #7e8c82; }
 .key-special { flex: 1.5 1 0; font-size: .75rem; }
 .submit-button {
   width: 100%;
@@ -167,6 +176,14 @@ footer { margin-top: auto; padding-top: 22px; color: var(--muted); text-align: c
 }
 .notice-card h1 { margin-top: 0; font-size: 1.35rem; }
 .launch-example { display: block; overflow-wrap: anywhere; }
+
+@media (max-width: 420px) {
+  .stats { grid-template-columns: repeat(2, 1fr); }
+}
+
+@keyframes pulse {
+  50% { opacity: .6; }
+}
 
 @media (max-width: 380px) {
   .key { height: 43px; font-size: .82rem; }

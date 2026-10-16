@@ -24,6 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = getenv('DJANGO_SECRET_KEY', 'django-insecure-et)!msrct_432zm#f0-0a$rm&e&4fe%pc04szbx(x_kr=-ex(^')
+WORDLE_ANSWER_KEY = getenv('WORDLE_ANSWER_KEY', SECRET_KEY)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = getenv('DEBUG', 'true') == 'true'

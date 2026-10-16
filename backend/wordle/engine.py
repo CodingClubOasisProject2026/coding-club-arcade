@@ -57,8 +57,9 @@ def score_guess(guess: str, answer: str) -> list[int]:
     return mask
 
 
-def word_score(attempts: int) -> int:
-    return 100 + 20 * (MAX_ATTEMPTS - attempts)
+POINTS_PER_GREEN = 5
+POINTS_FOR_SOLVING = 30
+PENALTY_FOR_MISSED_WORD = 20
 
 
 def apply_guess(
@@ -69,10 +70,8 @@ def apply_guess(
 ) -> tuple[GameState, list[int]]:
     if state.status != IN_PROGRESS:
         raise InvalidActions(f"game already ended ({state.status})")
-    if state.word_idx >= len(answers):
-        raise InvalidActions(
-            f"word_idx {state.word_idx} is out of range for {len(answers)} answers"
-        )
+    if not answers:
+        raise InvalidActions("the game needs at least one answer word")
 
     g = str(guess).lower()
     if len(g) != WORD_LENGTH or not g.isalpha():
@@ -80,23 +79,30 @@ def apply_guess(
     if allowed is not None and g not in allowed:
         raise InvalidActions(f"{g!r} is not in the allowed word list")
 
-    answer = answers[state.word_idx].lower()
+    answer = answers[state.word_idx % len(answers)].lower()
     mask = score_guess(g, answer)
     attempts = state.attempts + 1
+    green_points = mask.count(CORRECT) * POINTS_PER_GREEN
+    solved_points = POINTS_FOR_SOLVING if g == answer else 0
+    missed_penalty = (
+        PENALTY_FOR_MISSED_WORD
+        if g != answer and attempts >= MAX_ATTEMPTS
+        else 0
+    )
+    new_score = max(0, state.score + green_points + solved_points - missed_penalty)
 
     if g == answer:
-        next_idx = state.word_idx + 1
         new = GameState(
-            word_idx=next_idx,
+            word_idx=state.word_idx + 1,
             attempts=0,
             words_solved=state.words_solved + 1,
-            score=state.score + word_score(attempts),
-            status=CLEARED if next_idx >= len(answers) else IN_PROGRESS,
+            score=new_score,
+            status=IN_PROGRESS,
         )
     elif attempts >= MAX_ATTEMPTS:
-        new = replace(state, attempts=attempts, status=LOST)
+        new = replace(state, word_idx=state.word_idx + 1, attempts=0, score=new_score)
     else:
-        new = replace(state, attempts=attempts)
+        new = replace(state, attempts=attempts, score=new_score)
 
     return new, mask
 

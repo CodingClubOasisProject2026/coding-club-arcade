@@ -1,12 +1,24 @@
 # Wordle React test frontend
 
-This is a small Vite + React client for the stateless Wordle API. The hub should launch it with its session UUID and seed in the query string:
+This is a small Vite + React client for Wordle. The hub should launch it with a real hub session UUID and its seed in the query string:
 
 ```text
 http://localhost:5173/?session_id=<hub-session-uuid>&seed=<hub-seed>
 ```
 
-The client calls `POST /wordle/initialize` and `POST /wordle/guess`. It stores the submitted guesses in the current browser tab so a refresh can rebuild the game state from the same seed.
+The client calls `POST /wordle/initialize` and `POST /wordle/guess`. Guess history and the 2-minute server deadline are stored on the hub session, so refreshing restores authoritative game state and time. Arbitrary or fabricated session IDs are rejected.
+
+## Create a real test session
+
+After the backend is available at port 8000 and the hub has been seeded with a `WORDLE` game, set credentials for an existing hub account and run:
+
+```sh
+export WORDLE_USERNAME='your-username'
+export WORDLE_PASSWORD='your-password'
+npm run create:session
+```
+
+The helper authenticates to the hub, creates a session, and prints a launch URL containing its real session ID and seed. It does not put credentials in source files. Optional overrides: `WORDLE_API_URL` and `WORDLE_FRONTEND_URL`.
 
 ## Run with the backend in Docker Compose
 

@@ -1,8 +1,9 @@
 import hashlib
-import random
+import hmac
 from functools import lru_cache
 from pathlib import Path
 
+from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 
 from .engine import WORD_LENGTH
@@ -72,14 +73,23 @@ def list_version() -> str:
     return h.hexdigest()[:12]
 
 
-def pick_sequence(seed: int, length: int = SEQUENCE_LENGTH) -> list[str]:
-    """Return a repeatable answer sequence for a hub-provided game seed."""
+def pick_sequence(
+    seed: int, session_id: str, length: int = SEQUENCE_LENGTH
+) -> list[str]:
+    """Derive a stable, session-specific sequence that clients cannot predict."""
     answers = get_answers()
     if length > len(answers):
         raise ValueError(
             f"cannot pick {length} distinct words from {len(answers)} answers"
         )
-    return random.Random(seed).sample(answers, length)
+
+    key = settings.WORDLE_ANSWER_KEY.encode("utf-8")
+    context = f"wordle-answer-v1:{session_id}:{seed}:".encode("utf-8")
+    ranked = sorted(
+        answers,
+        key=lambda word: hmac.digest(key, context + word.encode("ascii"), "sha256"),
+    )
+    return ranked[:length]
 
 
 def clear_caches() -> None:
