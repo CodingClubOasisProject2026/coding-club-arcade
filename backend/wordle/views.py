@@ -1,6 +1,18 @@
+from django.http import HttpResponse
+from django.template.loader import render_to_string
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.generic import TemplateView
+
+
+def style_css(request):
+    css = render_to_string("wordle/style.css")
+    return HttpResponse(css, content_type="text/css")
+
+
+@method_decorator(ensure_csrf_cookie, name="dispatch")
+class PlayView(TemplateView):
+    template_name = "wordle/index.html"
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response

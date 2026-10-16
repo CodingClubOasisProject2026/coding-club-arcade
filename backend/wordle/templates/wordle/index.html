@@ -1,153 +1,632 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content</head>
-  <title>Wordle API smoke test</title>
-  <style>
-    :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #101413; color: #eef4ef; }
-    * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 28px 16px; }
-    main { width: min(100%, 620px); }
-    h1 { margin: 0 0 6px; font-size: 2rem; letter-spacing: .08em; }
-    .subtle { color: #a5b5aa; line-height: 1.5; }
-    section { background: #1b2420; border: 1px solid #34443a; border-radius: 14px; padding: 18px; margin: 16px 0; }
-    label { display: block; color: #b7c6bc; font-size: .9rem; margin: 0 0 6px; }
-    input, button { font: inherit; border-radius: 8px; padding: 10px 12px; }
-    input { width: 100%; color: #eef4ef; background: #111815; border: 1px solid #43564a; margin-bottom: 12px; }
-    button { color: #101413; background: #b4e4a1; border: 0; font-weight: 700; cursor: pointer; }
-    button.secondary { color: #eef4ef; background: #34443a; }
-    button:disabled { opacity: .45; cursor: not-allowed; }
-    .actions { display: flex; flex-wrap: wrap; gap: 8px; }
-    #message { min-height: 1.5em; color: #d6e8d8; }
-    #message.error { color: #ffaaa2; }
-    #board { display: grid; grid-template-columns: repeat(5, 52px); gap: 7px; justify-content: center; margin: 20px 0; }
-    .tile { height: 52px; display: grid; place-items: center; border: 2px solid #526157; border-radius: 6px; font-size: 1.4rem; font-weight: 800; text-transform: uppercase; }
-    .tile[data-mark="2"] { background: #538d4e; border-color: #538d4e; }
-    .tile[data-mark="1"] { background: #b59f3b; border-color: #b59f3b; }
-    .tile[data-mark="0"] { background: #3a423d; border-color: #3a423d; }
-    .stats { display: flex; flex-wrap: wrap; gap: 16px; color: #c6d3c9; }
-    code { color: #d8ebc9; }
-    @media (max-width: 430px) { #board { grid-template-columns: repeat(5, 44px); gap: 5px; } .tile { height: 44px; } }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wordle</title>
+  <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
-<main>
-  <h1>WORDLE</h1>
-  <div class="subtle">Temporary API smoke-test page. Sign in with an existing Django account; credentials stay in this tab and are sent over same-origin HTTPS/HTTP Basic Auth.</div>
+  <main class="app">
+    <header class="topbar">
+      <div class="logo" aria-label="Wordle">
+        <span class="g">W</span><span class="y">O</span><span class="d">R</span><span class="g">D</span><span
+          class="y">L</span><span class="g">E</span>
+      </div>
+      <div class="top-actions" id="top-actions" hidden>
+        <span class="chip" id="word-chip">Word 1</span>
+        <button class="btn small" id="play-btn" type="button" disabled>Play again</button>
+        <button class="btn ghost small" id="end-btn" type="button">End game</button>
+        <button class="btn ghost small" id="logout-btn" type="button">Sign out</button>
+      </div>
+    </header>
 
-  <section>
-    <label for="username">Username</label>
-    <input id="username" autocomplete="username" placeholder="Django username">
-    <label for="password">Password</label>
-    <input id="password" type="password" autocomplete="current-password" placeholder="Password">
-    <div class="actions">
-      <button id="start">Start / resume</button>
-      <button id="restore" class="secondary">Restore active game</button>
-    </div>
-  </section>
+    <!-- Login -->
+    <section class="card login" id="login-view" hidden>
+      <h1>Ready to play?</h1>
+      <p>Sign in to start a run. Solve words to earn time; every wrong guess costs you points.</p>
+      <form id="login-form" autocomplete="on">
+        <label class="field"><span>Username</span>
+          <input id="username" autocomplete="username" required>
+        </label>
+        <label class="field"><span>Password</span>
+          <input id="password" type="password" autocomplete="current-password" required>
+        </label>
+        <button class="btn" id="login-btn" type="submit">Start playing</button>
+        <p class="form-error" id="login-error" role="alert"></p>
+      </form>
+    </section>
 
-  <section>
-    <div class="stats"><span>Session: <code id="session">none</code></span><span>Status: <code id="status">not started</code></span></div>
-    <div class="stats" style="margin-top:8px"><span>Word <code id="word-number">-</code></span><span>Attempts left <code id="attempts-left">-</code></span><span>Score <code id="score">-</code></span></div>
-    <div id="board" aria-label="Wordle board"></div>
-    <label for="guess">Guess (5 letters)</label>
-    <input id="guess" maxlength="5" autocomplete="off" autocapitalize="characters" placeholder="Enter a guess" disabled>
-    <div class="actions">
-      <button id="submit" disabled>Submit guess</button>
-      <button id="finish" class="secondary" disabled>Finish early</button>
+    <!-- Game -->
+    <section id="game-view" hidden>
+      <div class="hud">
+        <div class="stat" id="time-card"><span class="stat-label">Time</span><span class="stat-value"
+            id="timer">02:00</span></div>
+        <div class="stat" id="score-card"><span class="stat-label">Score</span><span class="stat-value"
+            id="score">0</span></div>
+        <div class="stat" id="solved-card"><span class="stat-label">Solved</span><span class="stat-value"
+            id="solved">0/50</span></div>
+      </div>
+      <div class="timebar" style="margin-top:12px">
+        <div id="timer-fill"></div>
+      </div>
+
+      <div class="board" id="board" aria-label="Game board"></div>
+      <div class="keyboard" id="keyboard" aria-label="Keyboard"></div>
+    </section>
+  </main>
+
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+
+  <div class="modal-backdrop" id="modal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="result-title">
+      <h2 id="result-title"></h2>
+      <p id="result-sub"></p>
+      <div class="result-stats">
+        <div><b id="result-score">0</b><small>Score</small></div>
+        <div><b id="result-solved">0/50</b><small>Solved</small></div>
+      </div>
+      <button class="btn" id="modal-close" type="button">Close</button>
     </div>
-    <p id="message" role="status" aria-live="polite">Log in, then start or restore a game.</p>
-  </section>
-  <p class="subtle">When a game ends, Wordle queues its score for Celery. For background scoring, start RabbitMQ plus a Celery worker listening to the <code>wordle</code> queue. Celery Beat runs stale-session cleanup every five minutes.</p>
-</main>
-<script>
-(() => {
-  let sessionId = null;
-  let authHeader = null;
-  const $ = (id) => document.getElementById(id);
-  const setMessage = (text, error = false) => {
-    $('message').textContent = text;
-    $('message').classList.toggle('error', error);
-  };
-  const csrfToken = () => document.cookie.split('; ').find((cookie) => cookie.startsWith('csrftoken='))?.split('=')[1];
-  const request = async (path, options = {}) => {
-    if (!authHeader) throw new Error('Enter your username and password first.');
-    const response = await fetch(`/wordle/${path}`, {
-      ...options,
-      headers: {
-        'Authorization': authHeader,
-        ...(options.body ? { 'Content-Type': 'application/json' } : {}),
-        ...(csrfToken() ? { 'X-CSRFToken': decodeURIComponent(csrfToken()) } : {}),
-        ...options.headers,
-      },
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error?.message || data.detail || `Request failed (${response.status})`);
-    return data;
-  };
-  const update = (data) => {
-    if (data.session_id) sessionId = data.session_id;
-    $('session').textContent = sessionId || 'none';
-    $('status').textContent = data.game_status || data.status || 'unknown';
-    $('word-number').textContent = data.word_number ?? '-';
-    $('attempts-left').textContent = data.attempts_left ?? '-';
-    $('score').textContent = data.score ?? '-';
-    const board = $('board');
-    board.replaceChildren();
-    for (const row of (data.board || [])) {
-      for (let i = 0; i < 5; i++) {
-        const tile = document.createElement('div');
-        tile.className = 'tile';
-        tile.textContent = row.word[i] || '';
-        tile.dataset.mark = row.mask[i];
-        board.append(tile);
+  </div>
+
+  <script>
+    (() => {
+      // ---- Tuning knobs: change these freely ----
+      const CONFIG = {
+        START_SECONDS: 120,          // time at the start of a game
+        SOLVE_BONUS_BASE: 15,        // seconds added for any solved word
+        SOLVE_BONUS_PER_SPARE: 5,    // extra seconds per unused attempt
+        WRONG_PENALTY_POINTS: 10,    // points removed per wrong (valid) guess
+        LOW_TIME_SECONDS: 15,        // timer turns red below this
+      };
+      const WORD_LENGTH = 5;
+      const MAX_ATTEMPTS = 6;
+      const FLIP_STEP_MS = 260;
+      const REVEAL_MS = FLIP_STEP_MS * (WORD_LENGTH - 1) + 520;
+      const PRAISE = ['Genius', 'Magnificent', 'Impressive', 'Splendid', 'Great', 'Phew!'];
+      const KEY_ROWS = ['qwertyuiop', 'asdfghjkl', '*zxcvbnm<']; // * = Enter, < = Backspace
+      const AUTH_KEY = 'wordle-auth';
+
+      const $ = (id) => document.getElementById(id);
+      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+      const store = {
+        get(key) { try { return sessionStorage.getItem(key); } catch (e) { return null; } },
+        set(key, value) { try { sessionStorage.setItem(key, value); } catch (e) { /* ignore */ } },
+        remove(key) { try { sessionStorage.removeItem(key); } catch (e) { /* ignore */ } },
+      };
+
+      const S = {
+        authHeader: null,
+        sessionId: null,
+        rows: [],            // committed guesses for the current word: [{word, mask}]
+        current: '',         // letters being typed
+        active: false,
+        busy: false,
+        ending: false,
+        serverScore: 0,
+        penalty: 0,
+        solved: 0,
+        total: 50,
+        wordNumber: 1,
+        deadline: 0,
+        totalSeconds: CONFIG.START_SECONDS,
+        timerId: null,
+      };
+
+      // ---------- API ----------
+      const csrfToken = () => {
+        try {
+          return document.cookie.split('; ').find((c) => c.startsWith('csrftoken='))?.split('=')[1];
+        } catch (e) {
+          return undefined; // cookies unavailable (e.g. sandboxed frame): just skip the CSRF header
+        }
+      };
+
+      async function api(path, options = {}) {
+        const headers = {};
+        if (S.authHeader) headers.Authorization = S.authHeader;
+        if (options.body) headers['Content-Type'] = 'application/json';
+        const token = csrfToken();
+        if (token) headers['X-CSRFToken'] = decodeURIComponent(token);
+        const response = await fetch(`/wordle/${path}`, { ...options, headers });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          const error = new Error(data.error?.message || data.detail || `Request failed (${response.status})`);
+          error.status = response.status;
+          error.code = data.error?.code;
+          throw error;
+        }
+        return data;
       }
-    }
-    const active = data.status === 'active' && data.game_status === 'in_progress';
-    $('guess').disabled = !active;
-    $('submit').disabled = !active;
-    $('finish').disabled = !active;
-  };
-  const run = async (fn) => {
-    try { await fn(); }
-    catch (error) { setMessage(error.message, true); }
-  };
-  const authenticate = () => {
-    const user = $('username').value;
-    const password = $('password').value;
-    if (!user || !password) throw new Error('Enter your username and password.');
-    authHeader = `Basic ${btoa(`${user}:${password}`)}`;
-  };
-  $('start').addEventListener('click', () => run(async () => {
-    authenticate();
-    const data = await request('start', { method: 'POST' });
-    update(data);
-    setMessage(data.resumed ? 'Resumed your active game.' : 'Game started. Make your first guess.');
-  }));
-  $('restore').addEventListener('click', () => run(async () => {
-    authenticate();
-    const data = await request('state');
-    update(data);
-    setMessage('Active game restored.');
-  }));
-  $('submit').addEventListener('click', () => run(async () => {
-    const guess = $('guess').value.trim().toLowerCase();
-    const data = await request('guess', { method: 'POST', body: JSON.stringify({ session_id: sessionId, guess }) });
-    update(data);
-    $('guess').value = '';
-    if (data.game_status === 'lost') setMessage(`Game over. Answer: ${data.answer}`);
-    else if (data.game_status === 'cleared') setMessage(`All words cleared! Final score: ${data.score}. Scoring queued for Celery.`);
-    else if (data.solved) setMessage('Correct! Next word.');
-    else setMessage('Guess recorded.');
-  }));
-  $('guess').addEventListener('keydown', (event) => { if (event.key === 'Enter' && !$('submit').disabled) $('submit').click(); });
-  $('finish').addEventListener('click', () => run(async () => {
-    const data = await request('finish', { method: 'POST', body: JSON.stringify({ session_id: sessionId }) });
-    update(data);
-    setMessage('Game finished early. Score verification queued for Celery.');
-  }));
-})();
-</script>
+
+      function friendlyError(error) {
+        const message = error.message || '';
+        if (error.status === 429) return 'Slow down a little';
+        if (message.includes('allowed word list')) return 'Not in word list';
+        if (message.includes('letter word')) return 'Not enough letters';
+        return message || 'Something went wrong';
+      }
+
+      // ---------- Board + keyboard ----------
+      const tiles = [];
+      const rowEls = [];
+      const keyEls = {};
+
+      function buildBoard() {
+        const board = $('board');
+        board.replaceChildren();
+        for (let r = 0; r < MAX_ATTEMPTS; r++) {
+          const row = document.createElement('div');
+          row.className = 'row';
+          const rowTiles = [];
+          for (let c = 0; c < WORD_LENGTH; c++) {
+            const tile = document.createElement('div');
+            tile.className = 'tile';
+            row.append(tile);
+            rowTiles.push(tile);
+          }
+          board.append(row);
+          rowEls.push(row);
+          tiles.push(rowTiles);
+        }
+      }
+
+      function buildKeyboard() {
+        const keyboard = $('keyboard');
+        keyboard.replaceChildren();
+        for (const layout of KEY_ROWS) {
+          const row = document.createElement('div');
+          row.className = 'krow';
+          for (const ch of layout) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'key';
+            if (ch === '*') {
+              button.textContent = 'Guess';
+              button.id = 'guess-btn';
+              button.disabled = true;
+              button.dataset.key = 'Enter';
+              button.classList.add('wide');
+            } else if (ch === '<') {
+              button.textContent = '\u232B';
+              button.dataset.key = 'Backspace';
+              button.setAttribute('aria-label', 'Backspace');
+              button.classList.add('wide');
+            } else {
+              button.textContent = ch;
+              button.dataset.key = ch;
+              keyEls[ch] = button;
+            }
+            row.append(button);
+          }
+          keyboard.append(row);
+        }
+        keyboard.addEventListener('pointerdown', (event) => { if (event.target.closest('.key')) event.preventDefault(); });
+        keyboard.addEventListener('click', (event) => {
+          const button = event.target.closest('.key');
+          if (button && !button.disabled) handleKey(button.dataset.key);
+        });
+      }
+
+      function renderBoard() {
+        for (let r = 0; r < MAX_ATTEMPTS; r++) {
+          for (let c = 0; c < WORD_LENGTH; c++) {
+            const tile = tiles[r][c];
+            tile.className = 'tile';
+            tile.style.animationDelay = '';
+            delete tile.dataset.state;
+            if (r < S.rows.length) {
+              tile.textContent = S.rows[r].word[c] || '';
+              tile.dataset.state = S.rows[r].mask[c];
+            } else if (r === S.rows.length) {
+              const ch = S.current[c] || '';
+              tile.textContent = ch;
+              if (ch) tile.classList.add('filled');
+            } else {
+              tile.textContent = '';
+            }
+          }
+        }
+      }
+
+      function renderKeyboard() {
+        const best = {};
+        for (const { word, mask } of S.rows) {
+          for (let i = 0; i < word.length; i++) {
+            best[word[i]] = Math.max(best[word[i]] ?? -1, Number(mask[i]));
+          }
+        }
+        for (const [ch, el] of Object.entries(keyEls)) {
+          if (best[ch] === undefined) delete el.dataset.state;
+          else el.dataset.state = best[ch];
+        }
+      }
+
+      function bump(el) {
+        el.classList.remove('bump');
+        void el.offsetWidth;
+        el.classList.add('bump');
+      }
+
+      function renderStats() {
+        $('score').textContent = Math.max(0, S.serverScore - S.penalty);
+        $('solved').textContent = `${S.solved}/${S.total}`;
+        $('word-chip').textContent = `Word ${S.wordNumber}`;
+      }
+
+      // Play again is only usable once the game is over; End game is always available.
+      function updateControls() {
+        $('play-btn').disabled = S.active || S.busy;
+        $('guess-btn').disabled = !S.active || S.busy || S.ending ||
+          S.current.length !== WORD_LENGTH || S.rows.length >= MAX_ATTEMPTS;
+      }
+
+      function renderAll() {
+        renderBoard();
+        renderKeyboard();
+        renderStats();
+      }
+
+      function shakeRow(index) {
+        const row = rowEls[index];
+        if (!row) return;
+        row.classList.remove('shake');
+        void row.offsetWidth;
+        row.classList.add('shake');
+      }
+
+      function toast(text) {
+        const el = document.createElement('div');
+        el.className = 'toast';
+        el.textContent = text;
+        $('toasts').append(el);
+        setTimeout(() => el.remove(), 1800);
+      }
+
+      function floatText(parent, text, kind) {
+        const el = document.createElement('span');
+        el.className = `float-pop ${kind}`;
+        el.textContent = text;
+        parent.append(el);
+        setTimeout(() => el.remove(), 1100);
+      }
+
+      function showView(name) {
+        $('login-view').hidden = name !== 'login';
+        $('game-view').hidden = name !== 'game';
+        $('top-actions').hidden = name !== 'game';
+        if (name === 'login') $('username').focus();
+      }
+
+      // ---------- Timer ----------
+      const timerKey = () => `wordle-timer-${S.sessionId}`;
+      const saveTimer = () => store.set(timerKey(), JSON.stringify({ deadline: S.deadline, penalty: S.penalty, totalSeconds: S.totalSeconds }));
+
+      function loadTimer() {
+        let saved = null;
+        try { saved = JSON.parse(store.get(timerKey())); } catch (e) { /* ignore */ }
+        if (saved && saved.deadline) {
+          S.deadline = saved.deadline;
+          S.penalty = saved.penalty || 0;
+          S.totalSeconds = saved.totalSeconds || CONFIG.START_SECONDS;
+        } else {
+          S.deadline = Date.now() + CONFIG.START_SECONDS * 1000;
+          S.penalty = 0;
+          S.totalSeconds = CONFIG.START_SECONDS;
+          saveTimer();
+        }
+      }
+
+      const formatTime = (secs) => `${String(Math.floor(secs / 60)).padStart(2, '0')}:${String(secs % 60).padStart(2, '0')}`;
+
+      function tick() {
+        const remainingMs = Math.max(0, S.deadline - Date.now());
+        const secs = Math.ceil(remainingMs / 1000);
+        const low = secs <= CONFIG.LOW_TIME_SECONDS;
+        $('timer').textContent = formatTime(secs);
+        $('timer').classList.toggle('low', low && S.active);
+        $('timer-fill').classList.toggle('low', low);
+        $('timer-fill').style.width = `${Math.min(100, (remainingMs / (S.totalSeconds * 1000)) * 100)}%`;
+        if (remainingMs <= 0 && S.active && !S.busy && !S.ending) handleTimeUp();
+      }
+
+      function startTimer() {
+        stopTimer();
+        tick();
+        S.timerId = setInterval(tick, 250);
+      }
+
+      function stopTimer() {
+        if (S.timerId) clearInterval(S.timerId);
+        S.timerId = null;
+      }
+
+      function addTime(seconds) {
+        S.deadline += seconds * 1000;
+        S.totalSeconds = Math.max(S.totalSeconds, Math.ceil((S.deadline - Date.now()) / 1000));
+        saveTimer();
+        tick();
+      }
+
+      // ---------- Game flow ----------
+      function applySnapshot(data) {
+        S.sessionId = data.session_id;
+        S.serverScore = data.score ?? 0;
+        S.solved = data.words_solved ?? 0;
+        S.total = data.total_words ?? S.total;
+        S.wordNumber = data.word_number ?? 1;
+        S.rows = (data.board || []).map((row) => ({ word: row.word, mask: row.mask }));
+        S.current = '';
+        S.active = data.status === 'active' && data.game_status === 'in_progress';
+        renderAll();
+        updateControls();
+      }
+
+      async function beginGame() {
+        const data = await api('start', { method: 'POST' });
+        S.sessionId = data.session_id;
+        loadTimer();
+        S.ending = false;
+        S.busy = false;
+        updateControls();
+        applySnapshot(data);
+        showView('game');
+        startTimer();
+      }
+
+      function handleKey(key) {
+        if (!S.active || S.busy || S.ending || S.rows.length >= MAX_ATTEMPTS) return;
+        if (key === 'Enter') { submitGuess(); return; }
+        if (key === 'Backspace') {
+          if (!S.current.length) return;
+          S.current = S.current.slice(0, -1);
+          const tile = tiles[S.rows.length][S.current.length];
+          tile.textContent = '';
+          tile.classList.remove('filled');
+          updateControls();
+          return;
+        }
+        if (/^[a-z]$/.test(key) && S.current.length < WORD_LENGTH) {
+          const tile = tiles[S.rows.length][S.current.length];
+          S.current += key;
+          tile.textContent = key;
+          tile.classList.add('filled');
+          updateControls();
+        }
+      }
+
+      async function revealRow(rowIndex, word, mask) {
+        tiles[rowIndex].forEach((tile, i) => {
+          tile.textContent = word[i];
+          tile.classList.remove('filled');
+          tile.dataset.state = mask[i];
+          tile.style.animationDelay = `${i * FLIP_STEP_MS}ms`;
+          tile.classList.add('flip');
+        });
+        await sleep(REVEAL_MS);
+      }
+
+      async function submitGuess() {
+        if (!S.active || S.busy || S.ending || S.rows.length >= MAX_ATTEMPTS) return;
+        const rowIndex = S.rows.length;
+        if (S.current.length < WORD_LENGTH) { shakeRow(rowIndex); toast('Not enough letters'); return; }
+        if (Date.now() >= S.deadline) { handleTimeUp(); return; }
+
+        const guess = S.current;
+        const attemptsUsed = rowIndex + 1;
+        S.busy = true;
+        updateControls();
+
+        let data;
+        try {
+          data = await api('guess', { method: 'POST', body: JSON.stringify({ session_id: S.sessionId, guess }) });
+        } catch (error) {
+          S.busy = false;
+          updateControls();
+          if (error.code === 'session_not_active') { toast('This game has ended'); showResult('ended', null); return; }
+          shakeRow(rowIndex);
+          toast(friendlyError(error));
+          return; // invalid words never cost points or time
+        }
+
+        await revealRow(rowIndex, guess, data.mask);
+
+        if (data.solved) {
+          const bonus = CONFIG.SOLVE_BONUS_BASE + CONFIG.SOLVE_BONUS_PER_SPARE * (MAX_ATTEMPTS - attemptsUsed);
+          addTime(bonus);
+          floatText($('time-card'), `+${bonus}s`, 'good');
+          toast(PRAISE[attemptsUsed - 1] || 'Nice!');
+        } else {
+          S.penalty += CONFIG.WRONG_PENALTY_POINTS;
+          saveTimer();
+          floatText($('score-card'), `-${CONFIG.WRONG_PENALTY_POINTS}`, 'bad');
+        }
+
+        applySnapshot(data);
+        bump($('score'));
+        if (data.solved) bump($('solved'));
+        S.busy = false;
+        updateControls();
+
+        if (data.game_status === 'lost') showResult('lost', data);
+        else if (data.game_status === 'cleared') showResult('cleared', data);
+      }
+
+      async function finishGame(kind) {
+        if (S.ending) return;
+        S.ending = true;
+        S.active = false;
+        updateControls();
+        stopTimer();
+        tick();
+        let data = null;
+        try {
+          data = await api('finish', { method: 'POST', body: JSON.stringify({ session_id: S.sessionId }) });
+          applySnapshot(data);
+        } catch (error) { /* already finished elsewhere */ }
+        showResult(kind, data);
+      }
+
+      const handleTimeUp = () => finishGame('time');
+
+      async function showResult(kind, data) {
+        S.active = false;
+        updateControls();
+        S.ending = true;
+        stopTimer();
+        updateControls();
+        const copy = {
+          cleared: ['You cleared them all!', 'Every single word solved. Incredible.'],
+          lost: ['Out of guesses', data && data.answer ? `The word was ${data.answer.toUpperCase()}` : 'Better luck next time'],
+          time: ["Time's up!", 'The clock ran out.'],
+          ended: ['Game over', 'Thanks for playing.'],
+        }[kind];
+        $('result-title').textContent = copy[0];
+        $('result-sub').textContent = copy[1];
+        $('result-score').textContent = Math.max(0, S.serverScore - S.penalty);
+        $('result-solved').textContent = `${S.solved}/${S.total}`;
+        await sleep(kind === 'lost' || kind === 'cleared' ? 600 : 0);
+        $('modal').hidden = false;
+        $('modal-close').focus();
+      }
+
+      // ---------- Events ----------
+      document.addEventListener('keydown', (event) => {
+        if (event.ctrlKey || event.metaKey || event.altKey) return;
+        if (!$('modal').hidden || $('game-view').hidden) return;
+        if (event.target.matches('input, textarea')) return;
+        const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
+        if (key === 'Enter' || key === 'Backspace' || /^[a-z]$/.test(key)) {
+          event.preventDefault();
+          handleKey(key);
+        }
+      });
+
+      $('modal-close').addEventListener('click', () => { $('modal').hidden = true; });
+
+      $('play-btn').addEventListener('click', async (event) => {
+        event.currentTarget.blur();
+        if (S.active) return;
+        $('play-btn').disabled = true;
+        try {
+          await beginGame();
+          $('modal').hidden = true;
+        } catch (error) {
+          toast(friendlyError(error));
+          updateControls();
+        }
+      });
+
+      $('end-btn').addEventListener('click', (event) => {
+        event.currentTarget.blur();
+        if (S.active) {
+          if (S.busy) { toast('One moment...'); return; }
+          if (window.confirm('End this game and keep your score so far?')) finishGame('ended');
+        } else {
+          // No game running: End game means leave, back to the sign-in screen.
+          signOut();
+        }
+      });
+
+      function signOut() {
+        store.remove(AUTH_KEY);
+        S.authHeader = null;
+        S.active = false;
+        updateControls();
+        stopTimer();
+        $('modal').hidden = true;
+        $('username').value = '';
+        $('password').value = '';
+        showView('login');
+      }
+
+      $('logout-btn').addEventListener('click', (event) => {
+        event.currentTarget.blur();
+        if (S.active && !window.confirm('Sign out? Your current game stays active and can be resumed.')) return;
+        signOut();
+      });
+
+      $('login-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const user = $('username').value.trim();
+        const password = $('password').value;
+        const errorEl = $('login-error');
+        errorEl.textContent = '';
+        if (!user || !password) { errorEl.textContent = 'Enter your username and password.'; return; }
+
+        let binary = '';
+        new TextEncoder().encode(`${user}:${password}`).forEach((b) => { binary += String.fromCharCode(b); });
+        S.authHeader = `Basic ${btoa(binary)}`;
+
+        $('login-btn').disabled = true;
+        try {
+          await beginGame();
+          store.set(AUTH_KEY, S.authHeader);
+          $('password').value = '';
+        } catch (error) {
+          S.authHeader = null;
+          errorEl.textContent = error.status === 401 || error.status === 403 ? 'Wrong username or password.' : friendlyError(error);
+        }
+        $('login-btn').disabled = false;
+      });
+
+      // ---------- Init ----------
+      buildBoard();
+      buildKeyboard();
+      // Page reload: restore the active game via the existing /wordle/state endpoint.
+      async function restoreGame() {
+        try {
+          const data = await api('state');
+          S.sessionId = data.session_id;
+          loadTimer();
+          S.ending = false;
+          S.busy = false;
+          updateControls();
+          applySnapshot(data);
+          showView('game');
+          startTimer();
+        } catch (error) {
+          if (error.status === 404) { // no active game: wait for the player to press Play again
+            stopTimer();
+            S.sessionId = null;
+            S.deadline = 0;
+            S.active = false;
+            updateControls();
+            S.ending = true;
+            S.busy = false;
+            updateControls();
+            S.rows = [];
+            S.current = '';
+            S.serverScore = 0;
+            S.penalty = 0;
+            S.solved = 0;
+            S.wordNumber = 1;
+            renderAll();
+            tick();
+            updateControls();
+            showView('game');
+            return;
+          }
+          throw error;
+        }
+      }
+
+      const savedAuth = store.get(AUTH_KEY);
+      if (savedAuth) {
+        S.authHeader = savedAuth;
+        restoreGame().catch(() => {
+          store.remove(AUTH_KEY);
+          S.authHeader = null;
+          showView('login');
+        });
+      } else {
+        showView('login');
+      }
+    })();
+  </script>
 </body>
+
 </html>
