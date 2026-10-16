@@ -33,6 +33,8 @@ ALLOWED_HOSTS = [ host for host in getenv('ALLOWED_HOSTS', '*').split(',') if ho
 AUTH_USER_MODEL = 'hub.CustomUser'
 
 # CELERY
+CELERY_WORKER_MINGLE = False
+CELERY_WORKER_GOSSIP = False
 CELERY_BROKER_URL = getenv('CELERY_BROKER_URL', 'amqp://guest:guest@localhost:5672//')
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
@@ -53,15 +55,6 @@ CELERY_TASK_ACKS_LATE = True
 CELERY_TASK_REJECT_ON_WORKER_LOST = True
 CELERY_TASK_DEFAULT_DELIVERY_MODE = 'persistent'
 
-# Caching
-# https://docs.djangoproject.com/en/6.1/topics/cache/
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
-        'LOCATION': 'arcade-cache-table',
-    }
-}
-
 # Application definition
 
 INSTALLED_APPS = [
@@ -81,7 +74,7 @@ INSTALLED_APPS = [
 
 REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 10,
+    'PAGE_SIZE': 25,
     "DEFAULT_THROTTLE_RATES": {
             "wordle_start": "20/min",
             "wordle_guess": "60/min",
@@ -125,8 +118,22 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': getenv("POSTGRES_DB", 'myprojectdb'),
+        'USER': getenv("POSTGRES_USER", 'myuser'),
+        'PASSWORD': getenv("POSTGRES_PASSWORD", 'mypassword'),
+        'HOST': 'db',
+        'PORT': '5432',
+    }
+}
+
+# Caching
+# https://docs.djangoproject.com/en/6.1/topics/cache/
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'leaderboard-cache',
     }
 }
 
@@ -166,6 +173,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 
 # Email
