@@ -1,5 +1,5 @@
 import hashlib
-import secrets
+import random
 from functools import lru_cache
 from pathlib import Path
 
@@ -72,13 +72,14 @@ def list_version() -> str:
     return h.hexdigest()[:12]
 
 
-def pick_sequence(length: int = SEQUENCE_LENGTH) -> list[str]:
+def pick_sequence(seed: int, length: int = SEQUENCE_LENGTH) -> list[str]:
+    """Return a repeatable answer sequence for a hub-provided game seed."""
     answers = get_answers()
     if length > len(answers):
         raise ValueError(
             f"cannot pick {length} distinct words from {len(answers)} answers"
         )
-    return secrets.SystemRandom().sample(answers, length)
+    return random.Random(seed).sample(answers, length)
 
 
 def clear_caches() -> None:

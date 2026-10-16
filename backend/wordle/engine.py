@@ -1,7 +1,7 @@
 from collections import Counter
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Sequence, Set
 from dataclasses import dataclass, field, replace
-from typing import Optional
+
 
 WORD_LENGTH = 5
 MAX_ATTEMPTS = 6
@@ -65,7 +65,7 @@ def apply_guess(
     state: GameState,
     guess: str,
     answers: Sequence[str],
-    allowed: set | None = None,
+    allowed: Set[str] | None = None,
 ) -> tuple[GameState, list[int]]:
     if state.status != IN_PROGRESS:
         raise InvalidActions(f"game already ended ({state.status})")
@@ -104,7 +104,7 @@ def apply_guess(
 def replay(
     answers: Sequence[str],
     guesses: Iterable[str],
-    allowed: set | None = None,
+    allowed: Set[str] | None = None,
 ) -> Result:
     state = GameState()
     masks: list[list[int]] = []

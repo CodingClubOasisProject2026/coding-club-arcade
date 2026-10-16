@@ -1,8 +1,17 @@
+"""Stateless Wordle endpoints backed only by the deterministic engine."""
 from django.http import HttpResponse
 from django.template.loader import render_to_string
-from django.utils.decorators import method_decorator
-from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.generic import TemplateView
+from rest_framework import serializers, status
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from . import words
+from .engine import IN_PROGRESS, LOST, InvalidActions, apply_guess, replay
+
+
+class PlayView(TemplateView):
+    template_name = "wordle/index.html"
 
 
 def style_css(request):
@@ -10,100 +19,105 @@ def style_css(request):
     return HttpResponse(css, content_type="text/css")
 
 
-@method_decorator(ensure_csrf_cookie, name="dispatch")
-class PlayView(TemplateView):
-    template_name = "wordle/index.html"
-from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.throttling import ScopedRateThrottle
-from rest_framework.views import APIView
-
-from . import services
-from .serializers import FinishRequestSerializer, GuessRequestSerializer
-
-_ERROR_STATUS = {
-    services.SessionNotFound: status.HTTP_404_NOT_FOUND,
-    services.SessionNotActive: status.HTTP_409_CONFLICT,
-    services.InvalidGuess: status.HTTP_422_UNPROCESSABLE_ENTITY,
-}
+class GameRequestSerializer(serializers.Serializer):
+    session_id = serializers.UUIDField()
+    seed = serializers.IntegerField(min_value=0, max_value=2**63 - 1)
+    guesses = serializers.ListField(
+        child=serializers.CharField(max_length=16),
+        required=False,
+        default=list,
+        max_length=300,
+    )
 
 
-def _error(code: str, message: str, http_status: int) -> Response:
-    return Response({"error": {"code": code, "message": message}}, status=http_status)
+class GuessRequestSerializer(GameRequestSerializer):
+    guess = serializers.CharField(max_length=16)
 
 
-@method_decorator(ensure_csrf_cookie, name="dispatch")
-class PlayView(TemplateView):
-    template_name = "wordle/index.html"
+def _snapshot(
+    session_id, answers, guesses, result, last_mask=None, solved=False, answer=None
+):
+    board = []
+    for word, mask in zip(guesses, result.masks):
+        board.append({"word": word.strip().lower(), "mask": mask})
+        if mask == [2] * 5:
+            board.clear()
+    state = result.state
+    if answer is None and state.status == LOST:
+        answer = answers[state.word_idx]
+    return {
+        "session_id": str(session_id),
+        "status": "active" if state.status == IN_PROGRESS else "finished",
+        "game_status": state.status,
+        "word_number": min(state.word_idx + 1, len(answers)),
+        "total_words": len(answers),
+        "words_solved": state.words_solved,
+        "attempts": state.attempts,
+        "attempts_left": max(6 - state.attempts, 0),
+        "score": state.score,
+        "board": board,
+        "mask": last_mask,
+        "solved": solved,
+        "answer": answer,
+    }
 
 
-class WordleAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-    throttle_classes = [ScopedRateThrottle]
-    throttle_scope = None  # each subclass sets its own scope
+def _validated_history(raw_guesses, answers):
+    guesses = [guess.strip().lower() for guess in raw_guesses]
+    try:
+        result = replay(answers, guesses, words.get_allowed())
+    except InvalidActions as exc:
+        raise serializers.ValidationError({"guesses": str(exc)}) from exc
+    return guesses, result
 
-    def handle_exception(self, exc):
-        if isinstance(exc, services.WordleError):
-            return _error(
-                exc.code, str(exc), _ERROR_STATUS.get(type(exc), status.HTTP_400_BAD_REQUEST)
+
+class StatelessGameAPIView(APIView):
+    authentication_classes = []
+    permission_classes = []
+    throttle_classes = []
+
+    def _validate(self, serializer_class, request):
+        serializer = serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        answers = words.pick_sequence(data["seed"])
+        guesses, result = _validated_history(data.get("guesses", []), answers)
+        return data, answers, guesses, result
+
+
+class InitializeView(StatelessGameAPIView):
+    """Initialize or restore a game from the hub session id and seed."""
+
+    def post(self, request):
+        data, answers, guesses, result = self._validate(GameRequestSerializer, request)
+        return Response(_snapshot(data["session_id"], answers, guesses, result))
+
+
+class GuessView(StatelessGameAPIView):
+    def post(self, request):
+        data, answers, guesses, result = self._validate(GuessRequestSerializer, request)
+        guess = data["guess"].strip().lower()
+        try:
+            new_state, mask = apply_guess(
+                result.state, guess, answers, words.get_allowed()
             )
-        return super().handle_exception(exc)
-
-
-class StartView(WordleAPIView):
-    """Start a game, or resume the active one (201 new, 200 resumed)."""
-
-    throttle_scope = "wordle_start"
-
-    def post(self, request):
-        session, created = services.start_session(request.user)
-        body = {"resumed": not created, **services.snapshot(session)}
-        return Response(
-            body, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK
-        )
-
-
-class GuessView(WordleAPIView):
-    throttle_scope = "wordle_guess"
-
-    def post(self, request):
-        data = GuessRequestSerializer(data=request.data)
-        data.is_valid(raise_exception=True)
-
-        outcome = services.submit_guess(
-            request.user, data.validated_data["session_id"], data.validated_data["guess"]
-        )
-        return Response(
-            {
-                "mask": outcome.mask,
-                "solved": outcome.solved,
-                "answer": outcome.answer,  # only set when this guess lost the game
-                **services.snapshot(outcome.session),
-            }
-        )
-
-
-class FinishView(WordleAPIView):
-    throttle_scope = "wordle_finish"
-
-    def post(self, request):
-        data = FinishRequestSerializer(data=request.data)
-        data.is_valid(raise_exception=True)
-
-        session = services.finish_session(request.user, data.validated_data["session_id"])
-        return Response(services.snapshot(session))
-
-
-class StateView(WordleAPIView):
-    """Snapshot for page reloads."""
-
-    throttle_scope = "wordle_state"
-
-    def get(self, request):
-        session = services.get_active_session(request.user)
-        if session is None:
-            return _error(
-                "no_active_session", "no active wordle session", status.HTTP_404_NOT_FOUND
+        except InvalidActions as exc:
+            return Response(
+                {"error": {"code": "invalid_guess", "message": str(exc)}},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
-        return Response(services.snapshot(session))
+
+        guesses.append(guess)
+        updated = replay(answers, guesses, words.get_allowed())
+        lost_answer = answers[result.state.word_idx] if new_state.status == LOST else None
+        return Response(
+            _snapshot(
+                data["session_id"],
+                answers,
+                guesses,
+                updated,
+                last_mask=mask,
+                solved=new_state.words_solved > result.state.words_solved,
+                answer=lost_answer,
+            )
+        )
