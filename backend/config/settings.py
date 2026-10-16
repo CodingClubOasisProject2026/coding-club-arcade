@@ -42,12 +42,10 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TASK_QUEUES = (
     Queue('snake'),
     Queue('tetris'),
-    Queue('wordle'),
 )
 CELERY_TASK_ROUTES = {
     'snake.tasks.*': {'queue': 'snake'},
     'tetris.tasks.*': {'queue': 'tetris'},
-    'wordle.tasks.*': {'queue': 'wordle'},
 }
 CELERY_TASK_ACKS_LATE = True
 CELERY_TASK_REJECT_ON_WORKER_LOST = True
