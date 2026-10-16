@@ -1,0 +1,244 @@
+:root {
+  --bg: #f6f6f8;
+  --surface: #ffffff;
+  --text: #1d1b22;
+  --text-muted: #6b6375;
+  --border: #e3e1e8;
+  --accent: #7c3aed;
+  --accent-bg: rgba(124, 58, 237, 0.1);
+  --on-accent: #ffffff;
+  --danger: #dc2626;
+  --danger-bg: rgba(220, 38, 38, 0.2);
+  --success: #16a34a;
+
+  --board: #c9c6d2;
+  --cell-hidden: #ece9f3;
+  --cell-hover: #ddd8ea;
+  --cell-open: #fbfbfd;
+  --n1: #2563eb;
+  --n2: #15803d;
+  --n3: #dc2626;
+  --n4: #4338ca;
+  --n5: #9a3412;
+  --n6: #0e7490;
+  --n7: #1d1b22;
+  --n8: #6b7280;
+
+  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, 'SF Mono', Consolas, monospace;
+
+  font: 16px/1.5 var(--sans);
+  color: var(--text);
+  background: var(--bg);
+  color-scheme: light;
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #131318;
+    --surface: #1c1c23;
+    --text: #ecebf1;
+    --text-muted: #9a97a6;
+    --border: #2d2c36;
+    --accent: #a78bfa;
+    --accent-bg: rgba(167, 139, 250, 0.15);
+    --on-accent: #131318;
+    --danger: #ef4444;
+    --danger-bg: rgba(239, 68, 68, 0.25);
+    --success: #4ade80;
+
+    --board: #2a2933;
+    --cell-hidden: #3a3946;
+    --cell-hover: #474656;
+    --cell-open: #1c1c23;
+    --n1: #60a5fa;
+    --n2: #4ade80;
+    --n3: #f87171;
+    --n4: #a5b4fc;
+    --n5: #fb923c;
+    --n6: #22d3ee;
+    --n7: #ecebf1;
+    --n8: #9ca3af;
+
+    color-scheme: dark;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+}
+
+#root {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 16px 48px;
+}
+
+h1,
+h2 {
+  line-height: 1.2;
+}
+
+a {
+  color: var(--accent);
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+}
+
+.brand {
+  font-weight: 700;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.auth {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.auth input {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  width: 140px;
+}
+
+.auth button {
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.auth button.link {
+  border: 0;
+  background: none;
+  color: var(--accent);
+  padding: 0;
+}
+
+.hub {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.hub h1 {
+  margin: 0 0 4px;
+}
+
+.game-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.game-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+  transition: border-color 0.15s;
+}
+
+.game-card h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.game-card p {
+  margin: 0;
+  color: var(--text-muted);
+  flex: 1;
+}
+
+a.game-card:hover {
+  border-color: var(--accent);
+}
+
+.game-card .play {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.game-card.disabled {
+  opacity: 0.55;
+}
+
+.game-card .soon {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.leaderboard {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  max-width: 420px;
+  counter-reset: rank;
+}
+
+.leaderboard li {
+  display: flex;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  counter-increment: rank;
+}
+
+.leaderboard li:last-child {
+  border-bottom: 0;
+}
+
+.leaderboard li::before {
+  content: counter(rank);
+  color: var(--text-muted);
+  width: 20px;
+}
+
+.leaderboard li span:first-of-type {
+  flex: 1;
+}
+
+.leaderboard .score {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}

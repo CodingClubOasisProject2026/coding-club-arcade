@@ -1,5 +1,8 @@
 import random 
 
+# Stays under the PositiveSmallIntegerField limit (32767) for move_count.
+MAX_MOVES = 30_000
+
 # (width, height, mine_count)
 DIFFICULTIES = {
     "beginner": (9, 9, 10),

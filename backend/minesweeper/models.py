@@ -18,6 +18,7 @@ class Game(models.Model):
     mines = models.JSONField(null = True, blank = True)
     revealed = models.JSONField(null = True, blank = True)
     flagged = models.JSONField(null = True, blank = True)
+    exploded = models.JSONField(null = True, blank = True)
     move_count = models.PositiveSmallIntegerField(default=0)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.IN_PROGRESS)
 

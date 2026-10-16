@@ -7,7 +7,7 @@ from rest_framework.response import Response
 
 from hub.models import GameChoices, Session
 
-from .game import DIFFICULTIES, count, neighbors, reveal, score, set_mines
+from .game import DIFFICULTIES, MAX_MOVES, count, neighbors, reveal, score, set_mines
 from .models import Game
 from .serializers import MoveSerializer, StartSerializer
 
@@ -17,6 +17,29 @@ def _finish(game, result):
     game.finishedAt = timezone.now()
     game.score = score(game)
     Session.objects.filter(id=game.pk).update(score=game.score, updated_at=game.finishedAt)
+
+
+def _state(game):
+    # Full board as the player sees it, so a client can rebuild after a refresh.
+    mines = set(game.mines or [])
+    data = {
+        "id": game.pk,
+        "width": game.width,
+        "height": game.height,
+        "mine_count": game.mine_count,
+        "status": game.status,
+        "move_count": game.move_count,
+        "cells": [[i, count(mines, i, game.width, game.height)] for i in game.revealed or []],
+        "flagged": game.flagged or [],
+        "mines_left": game.mine_count - len(game.flagged or []),
+        "startedAt": game.startedAt if game.mines is not None else None,
+        "finishedAt": game.finishedAt,
+    }
+    if game.status != Game.Status.IN_PROGRESS:
+        data["mines"] = game.mines
+        data["exploded"] = game.exploded or []
+        data["score"] = game.score
+    return data
 
 
 @api_view(["POST"])
@@ -33,17 +56,13 @@ def start_game(request, game_id):
     if not created:
         return Response({"detail": "Game already started."}, status=status.HTTP_409_CONFLICT)
 
-    return Response(
-        {
-            "id": game.pk,
-            "width": game.width,
-            "height": game.height,
-            "mine_count": game.mine_count,
-            "status": game.status,
-            "move_count": game.move_count,
-        },
-        status=status.HTTP_201_CREATED,
-    )
+    return Response(_state(game), status=status.HTTP_201_CREATED)
+
+
+@api_view(["GET"])
+def game_state(request, game_id):
+    game = get_object_or_404(Game, pk=game_id)
+    return Response(_state(game))
 
 
 @api_view(["POST"])
@@ -79,6 +98,8 @@ def play_move(request, game_id):
         if move["type"] == "flag":
             if idx in revealed:
                 return Response({"detail": "Cell is already revealed."}, status=status.HTTP_400_BAD_REQUEST)
+            if idx not in flagged and len(flagged) >= game.mine_count:
+                return Response({"detail": "No flags left."}, status=status.HTTP_400_BAD_REQUEST)
             flagged ^= {idx}
             game.flagged = sorted(flagged)
 
@@ -102,7 +123,9 @@ def play_move(request, game_id):
                     return Response({"detail": "Flag count does not match."}, status=status.HTTP_400_BAD_REQUEST)
                 targets = [n for n in around if n not in revealed and n not in flagged]
 
-            if any(t in mines for t in targets):
+            hit = [t for t in targets if t in mines]
+            if hit:
+                game.exploded = hit
                 _finish(game, Game.Status.LOST)
             else:
                 for t in targets:
@@ -111,6 +134,9 @@ def play_move(request, game_id):
                     _finish(game, Game.Status.WON)
 
         game.move_count += 1
+        if game.status == Game.Status.IN_PROGRESS and game.move_count >= MAX_MOVES:
+            # Hitting the move cap ends the game as a loss.
+            _finish(game, Game.Status.LOST)
         game.save()
 
     data = {
@@ -118,8 +144,10 @@ def play_move(request, game_id):
         "move_count": game.move_count,
         "cells": cells,
         "flagged": game.flagged,
+        "mines_left": game.mine_count - len(game.flagged),
     }
     if game.status != Game.Status.IN_PROGRESS:
         data["mines"] = game.mines
+        data["exploded"] = game.exploded or []
         data["score"] = game.score
     return Response(data)
