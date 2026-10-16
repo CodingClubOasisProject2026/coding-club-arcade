@@ -1,7 +1,9 @@
 from django.contrib.auth import get_user_model
-from django.db.models import Sum
+from django.db.models import F, Sum
+from django.db.transaction import atomic
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
+from rest_framework.exceptions import ValidationError
 from rest_framework.generics import CreateAPIView, ListAPIView, UpdateAPIView
 from rest_framework.permissions import IsAuthenticated
 
@@ -31,8 +33,12 @@ class SessionStartView(CreateAPIView):
     serializer_class = SessionSerializer
     permission_classes = (IsAuthenticated,)
 
+    @atomic
     def perform_create(self, serializer):
         game_id = self.kwargs["game_id"]
+        used = User.objects.select_for_update().filter(id=self.request.user.pk,tickets__gt=0).update(tickets=F("tickets") - 1)
+        if not used:
+            raise ValidationError({"tickets": "You need at least one ticket to start a game."})
         serializer.save(user_id=self.request.user.pk, game_id=game_id)
 
 
