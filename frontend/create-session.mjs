@@ -39,7 +39,7 @@ try {
     method: 'POST',
     body: JSON.stringify({}),
   });
-  const launchUrl = new URL('/', frontendBase);
+  const launchUrl = new URL('/play/wordle/', frontendBase);
   launchUrl.searchParams.set('session_id', session.id);
   launchUrl.searchParams.set('seed', String(session.seed));
 

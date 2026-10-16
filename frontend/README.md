@@ -1,9 +1,9 @@
-# Wordle React test frontend
+# Coding Club Arcade frontend
 
-This is a small Vite + React client for Wordle. The hub should launch it with a real hub session UUID and its seed in the query string:
+This is the React frontend for the Coding Club Arcade hub. The home page lists available games; Wordle is currently available at `/play/wordle/` and expects a real hub session UUID and its seed in the query string:
 
 ```text
-http://localhost:5173/?session_id=<hub-session-uuid>&seed=<hub-seed>
+http://localhost:5173/play/wordle/?session_id=<hub-session-uuid>&seed=<hub-seed>
 ```
 
 The client calls `POST /wordle/initialize` and `POST /wordle/guess`. Guess history and the 2-minute server deadline are stored on the hub session, so refreshing restores authoritative game state and time. Arbitrary or fabricated session IDs are rejected.
@@ -35,4 +35,4 @@ npm install
 npm run dev
 ```
 
-Open the URL above with the `session_id` and `seed` supplied by the hub. Vite proxies `/wordle/*` to the backend at `http://127.0.0.1:8000`.
+Open the URL above with the `session_id` and `seed` supplied by the hub. Vite proxies `/games/*`, `/sessions/*`, and `/wordle/*` to the backend at `http://127.0.0.1:8000`. The hub home page is `/`; Wordle is `/play/wordle/`.
