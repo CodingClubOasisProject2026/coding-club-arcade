@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ApiError, getCredentials } from '../../api'
+import { ApiError } from '../../api'
+import { useAuth } from '../../auth'
+import GoogleSignIn from '../../GoogleSignIn'
 import { type Difficulty, type GameState, type MoveType, getGame, newGame, playMove } from './api'
 import './Minesweeper.css'
 
@@ -52,7 +54,8 @@ export default function Minesweeper() {
   const [flagMode, setFlagMode] = useState(false)
   const [localStart, setLocalStart] = useState<number | null>(null)
   const pending = useRef(false)
-  const loggedIn = getCredentials() !== null
+  const { me, refresh } = useAuth()
+  const signedIn = me?.authenticated === true
 
   // Resume the last game after a refresh.
   useEffect(() => {
@@ -76,11 +79,9 @@ export default function Minesweeper() {
       setLocalStart(null)
     } catch (e) {
       if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
-        setError(
-          getCredentials()
-            ? `${e.message} Log out and log in again with the right username and password.`
-            : 'Log in to start a game.',
-        )
+        // Either signed out (session expired) or a CSRF failure; show the server's reason.
+        setError(signedIn ? e.message : 'Sign in to start a game.')
+        refresh()
       } else if (e instanceof ApiError && e.status === 400) {
         // e.g. {"tickets": "You need at least one ticket to start a game."}
         const body = e.body as Record<string, unknown> | null
@@ -91,8 +92,10 @@ export default function Minesweeper() {
       }
     } finally {
       setBusy(false)
+      // Starting a session spends a ticket.
+      refresh()
     }
-  }, [difficulty])
+  }, [difficulty, signedIn, refresh])
 
   const move = useCallback(
     async (type: MoveType, index: number) => {
@@ -178,7 +181,13 @@ export default function Minesweeper() {
         </button>
       </div>
 
-      {!loggedIn && <p className="ms-note">Log in (top right) to start a game.</p>}
+      {me && !signedIn && (
+        <div className="ms-note">
+          <span>Sign in to start a game.</span>
+          <GoogleSignIn />
+        </div>
+      )}
+      {signedIn && me.tickets === 0 && <p className="ms-note">You have no tickets left, so you can’t start a new game.</p>}
       {error && <p className="ms-error">{error}</p>}
 
       {game && view && (

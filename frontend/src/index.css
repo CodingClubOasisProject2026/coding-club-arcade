@@ -242,3 +242,19 @@ a.game-card:hover {
   font-family: var(--mono);
   font-variant-numeric: tabular-nums;
 }
+
+.google-signin {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.google-signin:hover {
+  border-color: var(--accent);
+}

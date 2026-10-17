@@ -17,15 +17,18 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173. The dev server proxies the backend routes (`/sessions/`, `/minesweeper/`, `/leaderboard/`, `/games/`, `/admin/`, `/static/`) to the Docker stack. Point it elsewhere with `BACKEND_URL=http://host npm run dev`.
+Open http://localhost:5173. The dev server proxies the backend routes (`/accounts/`, `/me/`, `/sessions/`, `/minesweeper/`, `/leaderboard/`, `/games/`, `/admin/`, `/static/`) to the Docker stack. Point it elsewhere with `BACKEND_URL=http://host npm run dev`.
 
-## Logging in
+## Signing in
 
-The backend has no login endpoint yet. "Log in" stores a username and password in `localStorage` and sends them as HTTP basic auth, which is only used to start a hub session. Create a user with `docker compose exec web python manage.py createsuperuser`.
+Sign-in is Google OAuth through django-allauth (`/accounts/google/login/`). It needs `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `docker/.env`, and the Google OAuth client must list the callback URL for every address you open the site on, e.g. `http://localhost/accounts/google/login/callback/` (Docker) and `http://localhost:5173/accounts/google/login/callback/` (dev server).
+
+The API then uses Django's session cookie. `GET /me/` reports who is signed in and their ticket balance and sets the `csrftoken` cookie. `src/api.ts` sends that cookie's value as `X-CSRFToken` on every POST.
 
 ## Structure
 
-- `src/api.ts`: fetch wrapper, credentials, hub sessions, leaderboard
+- `src/api.ts`: fetch wrapper (cookies + CSRF), `/me/`, logout, hub sessions, leaderboard
+- `src/auth.ts`, `src/AuthProvider.tsx`, `src/GoogleSignIn.tsx`: signed-in state and the Google sign-in button
 - `src/pages/Hub.tsx`: game list and leaderboard
 - `src/games/minesweeper/`: the Minesweeper section (`api.ts` for its endpoints, `Minesweeper.tsx` for the UI)
 
@@ -33,4 +36,4 @@ New games go in `src/games/<name>/` with a route in `src/App.tsx`.
 
 ## Config
 
-- `VITE_MINESWEEPER_GAME_ID`: the hub game ID to fall back on if `/games/` can't be read. It defaults to `1`, and is needed while `/games/` returns 500.
+- `VITE_MINESWEEPER_GAME_ID`: the hub game ID to fall back on if `/games/` can't be read. It defaults to `1`.

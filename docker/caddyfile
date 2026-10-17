@@ -3,7 +3,7 @@
 
     # Django routes sit at the root with a trailing slash. Bare paths like /minesweeper
     # are React pages, so only /<prefix>/... goes to the backend.
-    @backend path_regexp ^/(admin|static|leaderboard|games|sessions|minesweeper|snake|tetris|wordle)/
+    @backend path_regexp ^/(admin|static|accounts|me|leaderboard|games|sessions|minesweeper|snake|tetris|wordle)/
     handle @backend {
         reverse_proxy web:8000
     }

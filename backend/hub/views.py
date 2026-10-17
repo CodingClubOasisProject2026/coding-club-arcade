@@ -3,9 +3,12 @@ from django.db.models import F, Sum
 from django.db.transaction import atomic
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
+from django.views.decorators.csrf import ensure_csrf_cookie
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import CreateAPIView, ListAPIView, UpdateAPIView
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from config.celery import app
 from hub.models import Game, Session
@@ -22,6 +25,17 @@ class LeaderboardView(ListAPIView):
     @method_decorator(cache_page(10))
     def dispatch(self, request, *args, **kwargs):
         return super().dispatch(request, *args, **kwargs)
+
+
+class MeView(APIView):
+    """Who is signed in. Also sets the csrftoken cookie the frontend needs for POSTs."""
+
+    @method_decorator(ensure_csrf_cookie)
+    def get(self, request):
+        user = request.user
+        if not user.is_authenticated:
+            return Response({"authenticated": False})
+        return Response({"authenticated": True, "username": user.username, "tickets": user.tickets})
 
 
 class GameListView(ListAPIView):
