@@ -75,7 +75,20 @@ export default function Minesweeper() {
       setGame(g)
       setLocalStart(null)
     } catch (e) {
-      setError(e instanceof ApiError && (e.status === 401 || e.status === 403) ? 'Log in to start a game.' : String((e as Error).message))
+      if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
+        setError(
+          getCredentials()
+            ? `${e.message} Log out and log in again with the right username and password.`
+            : 'Log in to start a game.',
+        )
+      } else if (e instanceof ApiError && e.status === 400) {
+        // e.g. {"tickets": "You need at least one ticket to start a game."}
+        const body = e.body as Record<string, unknown> | null
+        const first = body && Object.values(body)[0]
+        setError(String(Array.isArray(first) ? first[0] : (first ?? e.message)))
+      } else {
+        setError(String((e as Error).message))
+      }
     } finally {
       setBusy(false)
     }

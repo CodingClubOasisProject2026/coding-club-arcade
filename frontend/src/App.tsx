@@ -11,7 +11,7 @@ function AuthBar() {
   function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const form = new FormData(e.currentTarget)
-    setCreds(setCredentials(String(form.get('username')), String(form.get('password'))))
+    setCreds(setCredentials(String(form.get('username')).trim(), String(form.get('password'))))
     setOpen(false)
     // Pages read credentials on render; reload so they pick up the change.
     window.location.reload()
@@ -37,7 +37,15 @@ function AuthBar() {
 
   return open ? (
     <form className="auth" onSubmit={submit}>
-      <input name="username" placeholder="Username" autoComplete="username" required />
+      <input
+        name="username"
+        placeholder="Username"
+        autoComplete="username"
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
+        required
+      />
       <input name="password" type="password" placeholder="Password" autoComplete="current-password" required />
       <button type="submit">Log in</button>
     </form>

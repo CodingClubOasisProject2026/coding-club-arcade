@@ -2,7 +2,11 @@
 
 React + TypeScript + Vite.
 
-## Running locally
+## Running with Docker
+
+`docker compose up -d --build` (from `docker/`) builds this app into the Caddy image (`docker/Dockerfile.caddy`) and serves it on http://localhost alongside the API. Rebuild after frontend changes.
+
+## Running the dev server
 
 1. Start the backend stack (`cd docker && docker compose up -d`). It serves the API on http://localhost.
 2. Then:

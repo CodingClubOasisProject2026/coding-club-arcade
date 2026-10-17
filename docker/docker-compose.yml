@@ -59,7 +59,9 @@ services:
       retries: 12
     restart: unless-stopped
   caddy:
-    image: caddy:2-alpine
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.caddy
     env_file:
       - .env
     ports:
