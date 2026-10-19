@@ -1,7 +1,5 @@
 from django.shortcuts import render
-
 import json
-import random
 
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -53,6 +51,12 @@ def start_game(request):
             status=400,
         )
 
+    if not session.user.is_authenticated:
+        return JsonResponse(
+            {"error" : "Authentication required"},
+             status = 401,
+        )
+    
     try:
         session = Session.objects.select_related("game").get(
             id=session_id,
@@ -71,9 +75,6 @@ def start_game(request):
 
     # Reuse the arcade session's seed.
     game = create_game(session.seed)
-
-    game["rng_seed"] = session.seed
-    game["rng"] = random.Random(session.seed)
 
     # Record direction changes for backend replay.
     game["actions"] = []
@@ -154,8 +155,6 @@ def move_snake(request, session_id):
     return JsonResponse(serialize_game(session_id, game))
 
 
-@csrf_exempt
-@require_POST
 @csrf_exempt
 @require_POST
 def end_game(request, session_id):

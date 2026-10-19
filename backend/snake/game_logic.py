@@ -36,6 +36,7 @@ def create_game(seed):
         "apples_eaten": 0,
         "status": "ACTIVE",
         "tick": 0,
+        "rng": rng,
     }
 
     return game
@@ -167,8 +168,8 @@ def replay_actions(seed, action_log):
 
         previous_tick = tick
 
-    rng = random.Random(seed)
     game = create_game(seed)
+    rng = game["rng"]
 
     # Keep track of the direction currently being followed.
     current_direction = INITIAL_DIRECTION
@@ -192,5 +193,8 @@ def replay_actions(seed, action_log):
             raise ValueError("Actions continue after the game ended")
 
         move_snake(game, current_direction, rng)
+    
+    if game["status"] == "ACTIVE":
+        raise ValueError("Game has not ended")
 
     return game
