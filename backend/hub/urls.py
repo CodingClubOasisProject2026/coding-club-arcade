@@ -1,6 +1,12 @@
 from django.urls import path
 
-from .views import GameListView, LeaderboardView, MeView, SessionStartView, SessionSubmitView
+from .views import (
+    GameListView,
+    LeaderboardView,
+    MeView,
+    SessionStartView,
+    SessionSubmitView,
+)
 
 urlpatterns = [
     path('me/', MeView.as_view(), name='me'),

@@ -28,8 +28,6 @@ class LeaderboardView(ListAPIView):
 
 
 class MeView(APIView):
-    """Who is signed in. Also sets the csrftoken cookie the frontend needs for POSTs."""
-
     @method_decorator(ensure_csrf_cookie)
     def get(self, request):
         user = request.user
