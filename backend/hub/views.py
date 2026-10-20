@@ -38,7 +38,7 @@ class MeView(APIView):
 
 class GameListView(ListAPIView):
     serializer_class = GameSerializer
-    queryset = Game.objects.all()
+    queryset = Game.objects.order_by("name")
 
 
 class SessionStartView(CreateAPIView):

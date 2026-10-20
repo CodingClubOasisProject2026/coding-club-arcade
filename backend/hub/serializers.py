@@ -23,6 +23,7 @@ class GameSerializer(serializers.ModelSerializer):
 
 
 class SessionSerializer(serializers.ModelSerializer):
+    seed = serializers.CharField(read_only=True)
     actions = serializers.JSONField(write_only=True, required=False)
 
     class Meta:

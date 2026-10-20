@@ -6,7 +6,7 @@ const GAMES = [
   { name: 'Minesweeper', path: '/minesweeper', blurb: 'Clear the board without hitting a mine.', ready: true },
   { name: 'Snake', path: '/snake', blurb: 'Eat, grow, and don’t bite yourself.', ready: false },
   { name: 'Tetris', path: '/tetris', blurb: 'Stack falling blocks and clear lines.', ready: false },
-  { name: 'Wordle', path: '/wordle', blurb: 'Guess the word in six tries.', ready: false },
+  { name: 'Wordle', path: '/wordle', blurb: 'Beat the clock. Crack as many words as you can.', ready: true }
 ]
 
 export default function Hub() {

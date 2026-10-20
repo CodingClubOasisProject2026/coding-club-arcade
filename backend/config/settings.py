@@ -24,6 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = getenv('DJANGO_SECRET_KEY', 'django-insecure-et)!msrct_432zm#f0-0a$rm&e&4fe%pc04szbx(x_kr=-ex(^')
+WORDLE_ANSWER_KEY = getenv('WORDLE_ANSWER_KEY', SECRET_KEY)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = getenv('DEBUG', 'true') == 'true'
@@ -42,10 +43,12 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TASK_QUEUES = (
     Queue('snake'),
     Queue('tetris'),
+    Queue('wordle'),
 )
 CELERY_TASK_ROUTES = {
     'snake.tasks.*': {'queue': 'snake'},
     'tetris.tasks.*': {'queue': 'tetris'},
+    'wordle.tasks.*': {'queue': 'wordle'},
 }
 CELERY_TASK_ACKS_LATE = True
 CELERY_TASK_REJECT_ON_WORKER_LOST = True

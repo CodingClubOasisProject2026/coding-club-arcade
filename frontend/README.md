@@ -17,7 +17,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173. The dev server proxies the backend routes (`/accounts/`, `/me/`, `/sessions/`, `/minesweeper/`, `/leaderboard/`, `/games/`, `/admin/`, `/static/`) to the Docker stack. Point it elsewhere with `BACKEND_URL=http://host npm run dev`.
+Open http://localhost:5173. The dev server proxies the backend routes (`/accounts/`, `/me/`, `/sessions/`, `/minesweeper/`, `/leaderboard/`, `/games/`, `/admin/`, `/static/`, `/wordle/`) to the Docker stack. Point it elsewhere with `BACKEND_URL=http://host npm run dev`.
 
 ## Signing in
 
@@ -31,9 +31,11 @@ The API then uses Django's session cookie. `GET /me/` reports who is signed in a
 - `src/auth.ts`, `src/AuthProvider.tsx`, `src/GoogleSignIn.tsx`: signed-in state and the Google sign-in button
 - `src/pages/Hub.tsx`: game list and leaderboard
 - `src/games/minesweeper/`: the Minesweeper section (`api.ts` for its endpoints, `Minesweeper.tsx` for the UI)
+- `src/games/wordle/`: the Wordle landing, game UI, rules, and styling. The hub links to `/wordle`; the Play button creates an authenticated hub session, then starts the Wordle API session.
 
 New games go in `src/games/<name>/` with a route in `src/App.tsx`.
 
 ## Config
 
 - `VITE_MINESWEEPER_GAME_ID`: the hub game ID to fall back on if `/games/` can't be read. It defaults to `1`.
+- `VITE_WORDLE_GAME_ID`: the hub game ID to fall back on if `/games/` can't be read. It defaults to `4`.

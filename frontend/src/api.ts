@@ -76,7 +76,7 @@ export async function hubGameId(name: string, fallback: number): Promise<number>
   }
 }
 
-export type HubSession = { id: string; seed: number; game: number; user: number }
+export type HubSession = { id: string; seed: string | number; game: number; user: number }
 
 export function startHubSession(gameId: number) {
   return api<HubSession>(`/sessions/start/${gameId}/`, { method: 'POST', body: {} })

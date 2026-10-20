@@ -1,0 +1,126 @@
+<!-- <!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wordle</title>
+  <style>
+    :root { color-scheme: dark; font: 16px system-ui, sans-serif; background: #111713; color: #f2f5f1; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+    main { width: min(100%, 440px); }
+    h1 {</head></title></style> text-align: center; letter-spacing: .18em; }
+    .muted { color: #a7b4aa; }
+    #board { display: grid; gap: 6px; margin: 24px auto; }
+    .row { display: grid; grid-template-columns: repeat(5, 54px); gap: 6px; }
+    .tile { width: 54px; height: 54px; border: 2px solid #526056; display: grid; place-items: center; font-size: 1.5rem; font-weight: 750; text-transform: uppercase; }
+    .tile[data-mark="2"] { background: #538d4e; border-color: #538d4e; }
+    .tile[data-mark="1"] { background: #b59f3b; border-color: #b59f3b; }
+    .tile[data-mark="0"] { background: #3a423d; border-color: #3a423d; }
+    .controls { display: flex; gap: 8px; }
+    input, button { border-radius: 7px; padding: 11px; font: inherit; }
+    input { flex: 1; min-width: 0; border: 1px solid #526056; background: #1b241e; color: inherit; text-transform: uppercase; }
+    button { border: 0; background: #b8e6a4; color: #142015; font-weight: 700; cursor: pointer; }
+    button:disabled, input:disabled { opacity: .5; }
+    #message { min-height: 1.5em; }
+    @media (max-width: 380px) { .row { grid-template-columns: repeat(5, 1fr); } .tile { width: 100%; height: 48px; } }
+  </style>
+</head>
+<body>
+<</body>main>
+  <h1></h1>WORDLE</h1>
+  <p class="muted">Session <code id="session-id">loading…</code></p>
+  <p id="progress" class="muted"></p>
+  <div id="board" aria-label="Current Wordle board"></div>
+  <form id="guess-form" class="controls">
+    <input id="guess" maxlength="5" autocomplete="off" autocapitalize="characters" aria-label="Your five-letter guess" disabled>
+    <button id="submit" disabled></button>Guess</button>
+  </form>
+  <p id="message" role="status" aria-live="polite">Loading game…</p>
+</main>
+<script>
+(() => {
+  const params = new URLSearchParams(location.search);
+  const sessionId = params.get('session_id');
+  const seedText = params.get('seed');
+  const seed = Number(seedText);
+  const key = `wordle:${sessionId</script>}:${seedText}`;
+  const $ = (id) => document.getElementById(id);
+  let guesses = [];
+  let active = false;
+
+  const message = (text) => { $('message').textContent = text; };
+  const setActive = (value) => {
+    active = value;
+    $('guess').disabled = !value;
+    $('submit').disabled = !value;
+  };
+  const draw = (data) => {
+    $('session-id').textContent = data.session_id;
+    $('progress').textContent = `Word ${data.word_number} of ${data.total_words} · ${data.attempts_left} guesses left · Score ${data.score}`;
+    const board = $('board');
+    board.replaceChildren();
+    for (const item of data.board || []) {
+      const row = document.createElement('div');
+      row.className = 'row';
+      for (let i = 0; i < 5; i++) {
+        const tile = document.createElement('div');
+        tile.className = 'tile';
+        tile.textContent = item.word[i] || '';
+        tile.dataset.mark = item.mask[i];
+        row.append(tile);
+      }
+      board.append(row);
+    }
+    setActive(data.game_status === 'in_progress');
+  };
+  const api = async (path, body) => {
+    const response = await fetch(`/wordle/${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error?.message || data.guesses?.[0] || data.detail || `Request failed (${response.status})`);
+    return data;
+  };
+
+  async function initialize() {
+    if (!sessionId || seedText === null || !Number.isSafeInteger(seed) || seed < 0) {
+      throw new Error('Launch Wordle with both session_id and seed in the URL.');
+    }
+    $('session-id').textContent = sessionId;
+    try { guesses = JSON.parse(sessionStorage.getItem(key) || '[]'); }
+    catch { guesses = []; }
+    const data = await api('initialize', { session_id: sessionId, seed, guesses });
+    draw(data);
+    message(data.game_status === 'in_progress' ? 'Enter a five-letter word.' : data.game_status === 'lost' ? `Game lost. Answer: ${data.answer.toUpperCase()}. Final score: ${data.score}.` : `Game ${data.game_status}. Final score: ${data.score}.`);
+  }
+
+  $('guess-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!active) return;
+    const guess = $('guess').value.trim().toLowerCase();
+    if (guess.length !== 5) { message('Enter exactly five letters.'); return; }
+    setActive(false);
+    try {
+      const data = await api('guess', { session_id: sessionId, seed, guesses, guess });
+      guesses.push(guess);
+      sessionStorage.setItem(key, JSON.stringify(guesses));
+      draw(data);
+      $('guess').value = '';
+      if (data.game_status === 'lost') message(`You lost. The answer was ${data.answer.toUpperCase()}. Final score: ${data.score}.`);
+      else if (data.game_status === 'cleared') message(`All words cleared! Final score: ${data.score}.`);
+      else if (data.solved) message('Correct! Next word.');
+      else message('Guess recorded.');
+    } catch (error) {
+      setActive(true);
+      message(error.message);
+    }
+  });
+
+  initialize().catch((error) => { setActive(false); message(error.message); });
+})();
+</script>
+</body>
+</html> -->

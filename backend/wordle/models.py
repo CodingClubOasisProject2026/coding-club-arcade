@@ -1,3 +1,1 @@
-from django.db import models
-
-# Create your models here.
+"""Wordle currently keeps no server-side session or event models."""
