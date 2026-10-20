@@ -12,6 +12,8 @@ services:
         granian --interface wsgi --host 0.0.0.0 --port 8000 --workers 4 --blocking-threads 4 --respawn-failed-workers --workers-lifetime 3600 --workers-kill-timeout 30 config.wsgi:application"
     expose:
       - "8000"
+    volumes:
+      - static_files:/app/staticfiles
     restart: unless-stopped
     depends_on:
       db:
@@ -69,6 +71,7 @@ services:
       - "443:443"
     volumes:
       - ./caddyfile:/etc/caddy/Caddyfile:ro
+      - static_files:/srv/static:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
@@ -76,6 +79,7 @@ services:
     restart: unless-stopped
 
 volumes:
+  static_files:
   postgres_prod_data:
   caddy_data:
   caddy_config:
