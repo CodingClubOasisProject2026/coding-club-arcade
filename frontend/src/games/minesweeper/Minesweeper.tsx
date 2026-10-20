@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ApiError, devLogin } from '../../api'
+import { ApiError } from '../../api'
 import { useAuth } from '../../auth'
 import GoogleSignIn from '../../GoogleSignIn'
 import { type Difficulty, type GameState, type MoveType, getGame, newGame, playMove } from './api'
@@ -751,28 +751,10 @@ export default function Minesweeper() {
             {soundOn ? '🔊' : '🔇'}
           </button>
 
-          {signedIn ? (
+          {signedIn && (
             <div className="ms-user-tickets" title="Tickets left">
               🎟️ <span>{me.tickets}</span>
             </div>
-          ) : (
-            <button
-              type="button"
-              className="ms-btn-quick"
-              onClick={async () => {
-                try {
-                  await devLogin('Player1')
-                } catch {
-                  setError('Quick play is unavailable right now. Try signing in instead.')
-                  return
-                }
-                refresh()
-                start()
-              }}
-            >
-              <span className="quick-full">Quick play</span>
-              <span className="quick-short">Play</span>
-            </button>
           )}
         </div>
       </header>
