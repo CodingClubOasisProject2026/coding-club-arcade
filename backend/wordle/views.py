@@ -61,7 +61,7 @@ def _snapshot(
             attempts_on_word = 0
 
     state = result.state
-    if answer is None and state.status == LOST:
+    if answer is None and (state.status == LOST or timed_out):
         answer = answers[state.word_idx % len(answers)]
     game_status = "time_up" if timed_out else state.status
     return {
@@ -246,3 +246,31 @@ class GuessView(WordleAPIView):
                     timed_out=timed_out,
                 )
             )
+
+class FinishView(WordleAPIView):
+    """End the game now and return the final state, including the answer."""
+
+    def post(self, request):
+        serializer = GameRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        with transaction.atomic():
+            session = _find_hub_session(data["session_id"], data["seed"])
+            if session is None:
+                return _not_found()
+
+            state = dict(session.wordle_state or {})
+            if not isinstance(state.get("deadline"), (int, float)):
+                return Response(
+                    {"error": {"code": "not_initialized", "message": "Initialize the game first."}},
+                    status=status.HTTP_409_CONFLICT,
+                )
+
+            state["timed_out"] = True
+            _persist_state(session, state)
+
+            guesses = state.get("guesses", [])
+            answers = words.pick_sequence(data["seed"], str(session.id))
+            result = _replay_history(guesses, answers)
+            return Response(_snapshot(session.id, answers, guesses, result, 0, timed_out=True))

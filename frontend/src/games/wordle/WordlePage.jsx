@@ -1,53 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './wordle.css';
+import { HUB_URL, MAX_ATTEMPTS, MISS_PENALTY_SECONDS, START_SECONDS, RulesContent } from './WordleRules';
+import Landing from './WordleLanding';
+import { startSession } from '../../hubSession';
 
 const WORD_LENGTH = 5;
-const MAX_ATTEMPTS = 6;
-const START_SECONDS = 120;
-const MISS_PENALTY_SECONDS = 20;
-// These mirror backend/wordle/engine.py and views.py. If the backend numbers change, change them here too.
-const POINTS_PER_GREEN = 5;
-const SECONDS_PER_GREEN = 5;
-const SOLVE_POINTS = 30;
-const SOLVE_SECONDS = 15;
-const MISS_PENALTY_POINTS = 20;
-const MAX_SECONDS = 120;
 const KEY_ROWS = ['qwertyuiop', 'asdfghjkl', '↵zxcvbnm⌫'];
-const HUB_URL = '/';
 
 const POPUP_MS = 3500;        // how long the floating "+15s" / "-20s" popups stay (keep in sync with the float-up animation in wordle.css)
 const MIN_TIME_CHANGE = 3;    // time changes smaller than this (seconds) are treated as network jitter
 const FLASH_MS = 1100;        // how long a solved word stays on screen before the board clears
 
-// One row per number of green tiles in a single guess. Five greens means the word is solved.
-const SCORE_ROWS = Array.from({ length: WORD_LENGTH + 1 }, (_, greens) => {
-  const solved = greens === WORD_LENGTH;
-  return {
-    greens,
-    solved,
-    points: greens * POINTS_PER_GREEN + (solved ? SOLVE_POINTS : 0),
-    seconds: greens * SECONDS_PER_GREEN + (solved ? SOLVE_SECONDS : 0),
-  };
-});
-const formatClock = (total) => `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
-
-// Text shown in the pop-ups. Edit these so they match the backend rules.
-const RULES = [
-  `You start with ${START_SECONDS / 60} minutes. The clock does not pause.`,
-  `Guess each five-letter word in ${MAX_ATTEMPTS} tries, then move on to the next one.`,
-  `Every green tile earns +${POINTS_PER_GREEN} points and +${SECONDS_PER_GREEN} seconds.`,
-  `Solving a word adds +${SOLVE_POINTS} points and +${SOLVE_SECONDS} seconds on top.`,
-];
-const PENALTIES = [
-  `Use all ${MAX_ATTEMPTS} guesses without solving a word: −${MISS_PENALTY_POINTS} points and −${MISS_PENALTY_SECONDS}s, then the next word.`,
-  'Time reaches zero: the game ends.',
-  'Leaving mid-game abandons this attempt.',
-];
-const LEGEND = [
-  { mark: 2, label: 'Right spot' },
-  { mark: 1, label: 'Wrong spot' },
-  { mark: 0, label: 'Not in word' },
-];
 const LEAVE_WARNING = 'Leaving now abandons this attempt. The clock does not pause while you are away.';
 const TIME_UP_REVEAL_MS = 3000; // when time runs out, the answer stays visible this long before the result pop-up covers the screen
 
@@ -59,26 +22,30 @@ function getLaunchParams() {
   };
 }
 
-// "Play again" starts a fresh game on this same page: a new session_id + seed are sent to /wordle/initialize.
-function newSessionId() {
-  if (window.crypto?.randomUUID) return window.crypto.randomUUID();
-  // Fallback (version 4 UUID) for browsers without crypto.randomUUID
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
-    const value = Math.floor(Math.random() * 16);
-    return (char === 'x' ? value : (value & 0x3) | 0x8).toString(16);
-  });
+const SESSION_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const isValidLaunch = (sessionId, seed) => Boolean(sessionId && SESSION_ID_PATTERN.test(sessionId) && /^\d+$/.test(seed));
+
+function clearLaunchUrl() {
+  try {
+    window.history.replaceState(null, '', window.location.pathname);
+  } catch {
+    /* address bar could not be updated; the page still works */
+  }
 }
 
-function newSeed() {
-  const buffer = new Uint32Array(1);
-  window.crypto.getRandomValues(buffer);
-  return String(buffer[0] >>> 1); // 0 .. 2^31 - 1
+function setLaunchUrl({ sessionId, seed }) {
+  try {
+    const params = new URLSearchParams({ session_id: sessionId, seed });
+    window.history.replaceState(null, '', `${window.location.pathname}?${params}`);
+  } catch {
+    /* address bar could not be updated; the page still works */
+  }
 }
 
 // ---- Small localStorage helpers (never throw: storage can be blocked) ----
-const ATTEMPTS_KEY = 'wordle-attempts';
 const startedKey = (id) => `wordle-started-${id}`;
 const tallyKey = (id) => `wordle-tally-${id}`;
+const gridsKey = (id) => `wordle-grids-${id}`;
 
 function readStorage(key) {
   try { return window.localStorage.getItem(key); } catch { return null; }
@@ -86,25 +53,6 @@ function readStorage(key) {
 
 function writeStorage(key, value) {
   try { window.localStorage.setItem(key, value); } catch { /* storage unavailable */ }
-}
-
-// Gives every new session_id the next attempt number on this browser (1, 2, 3 ...).
-// If the backend ever sends `attempt_number`, that value is used instead (see Wordle).
-function registerAttempt(sessionId) {
-  try {
-    const saved = JSON.parse(readStorage(ATTEMPTS_KEY)) || {};
-    const map = saved.map || {};
-    let count = saved.count || 0;
-    if (!map[sessionId]) {
-      count += 1;
-      map[sessionId] = count;
-    }
-    const recent = Object.entries(map).sort((a, b) => a[1] - b[1]).slice(-20);
-    writeStorage(ATTEMPTS_KEY, JSON.stringify({ count, map: Object.fromEntries(recent) }));
-    return map[sessionId];
-  } catch {
-    return 1;
-  }
 }
 
 // Running totals for the score breakdown. Everything here is read from what the server
@@ -144,12 +92,104 @@ function describeResult(snapshot, timeUp, ended) {
       sub: snapshot.answer ? `The last word was ${snapshot.answer.toUpperCase()}.` : 'No words remain.',
     };
   }
-  if (ended) return { title: 'Game ended', sub: 'You ended this attempt.' };
+  if (ended) {
+    const answer = status === 'time_up' && snapshot?.answer ? String(snapshot.answer).toUpperCase() : '';
+    return { title: 'Game ended', sub: answer ? `You ended the game. The word was ${answer}.` : 'You ended this attempt.' };
+  }
   if (timeUp) {
     const answer = status === 'time_up' && snapshot?.answer ? String(snapshot.answer).toUpperCase() : '';
     return { title: "Time's up!", sub: answer ? `The word was ${answer}.` : 'The clock ran out.' };
   }
   return { title: 'Game over', sub: 'This attempt has ended.' };
+}
+
+// Every finished word's full grid, oldest first, for the game summary slider:
+// { rows: [{ word, mask }], answer, status: 'solved' | 'missed' | 'timeup' | 'ended' }
+function readGrids(sessionId) {
+  try {
+    const saved = JSON.parse(readStorage(gridsKey(sessionId)));
+    return Array.isArray(saved) ? saved.filter((item) => Array.isArray(item?.rows)) : [];
+  } catch {
+    return [];
+  }
+}
+
+// Marks a guess against the answer (2 = right spot, 1 = wrong spot, 0 = not in word) the way Wordle does.
+// Used for the last row of a missed word, because the server clears the board when it moves on.
+function scoreGuess(guess, answer) {
+  const marks = Array(WORD_LENGTH).fill(0);
+  const left = {};
+  for (let i = 0; i < WORD_LENGTH; i += 1) {
+    if (guess[i] === answer[i]) marks[i] = 2;
+    else left[answer[i]] = (left[answer[i]] || 0) + 1;
+  }
+  for (let i = 0; i < WORD_LENGTH; i += 1) {
+    if (marks[i] !== 2 && left[guess[i]] > 0) {
+      marks[i] = 1;
+      left[guess[i]] -= 1;
+    }
+  }
+  return marks;
+}
+
+const GRID_FOOTERS = {
+  solved: (answer) => `✓ ${answer}`,
+  missed: (answer) => `Answer: ${answer}`,
+  timeup: (answer) => (answer ? `Time's up · Answer: ${answer}` : "Time's up"),
+  ended: (answer) => (answer ? `Game ended · Answer: ${answer}` : 'Game ended'),
+};
+
+// Game summary: the full guess grid of every word side by side. The word the player could not
+// guess has its answer revealed at the bottom of its grid.
+function SummarySlider({ items }) {
+  const trackRef = useRef(null);
+
+  // Start scrolled to the end so the last grid (the one that ended the game) is in view.
+  useEffect(() => {
+    const track = trackRef.current;
+    if (track) track.scrollLeft = track.scrollWidth;
+  }, [items.length]);
+
+  const slide = (direction) => {
+    const track = trackRef.current;
+    if (track) track.scrollBy({ left: direction * Math.max(150, track.clientWidth * 0.8), behavior: 'smooth' });
+  };
+
+  return (
+    <div className="summary">
+      <div className="summary-head">
+        <h3>Game summary</h3>
+        {items.length > 2 && (
+          <div className="summary-nav">
+            <button type="button" aria-label="Earlier words" onClick={() => slide(-1)}>‹</button>
+            <button type="button" aria-label="Later words" onClick={() => slide(1)}>›</button>
+          </div>
+        )}
+      </div>
+      <div className="summary-track" ref={trackRef} tabIndex={0} aria-label="Guess grids from this game">
+        {items.map((item, index) => (
+          <div className={`summary-card summary-${item.status}`} key={`${item.answer}-${index}`}>
+            <span className="summary-count">Word {index + 1}</span>
+            <div className="mini-grid">
+              {Array.from({ length: MAX_ATTEMPTS }, (_, rowIndex) => {
+                const row = item.rows[rowIndex];
+                return (
+                  <div className="mini-row" key={rowIndex}>
+                    {Array.from({ length: WORD_LENGTH }, (_, colIndex) => (
+                      <span className="mini-tile" data-mark={row?.mask?.[colIndex]} key={colIndex}>
+                        {row?.word?.[colIndex] || ''}
+                      </span>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+            <span className="summary-label">{GRID_FOOTERS[item.status](String(item.answer || '').toUpperCase())}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function Tile({ letter = '', mark, cursor = false }) {
@@ -160,72 +200,9 @@ function Tile({ letter = '', mark, cursor = false }) {
   );
 }
 
-// Grid showing what one guess is worth, built from the constants above so it never drifts from the rules text.
-function ScoringGrid() {
-  return (
-    <div className="score-grid" aria-label="Scoring per guess">
-      <h3>Scoring per guess</h3>
-      <div className="score-grid-head">
-        <span>Green tiles</span>
-        <span>Points</span>
-        <span>Time</span>
-      </div>
-      {SCORE_ROWS.map((row) => (
-        <div className={`score-grid-row${row.solved ? ' score-grid-solved' : ''}`} key={row.greens}>
-          <span className="mini-tiles" aria-label={`${row.greens} green tiles`}>
-            {Array.from({ length: WORD_LENGTH }, (_, index) => (
-              <i key={index} data-mark={index < row.greens ? 2 : 0} />
-            ))}
-          </span>
-          <b className="pts">+{row.points}</b>
-          <b className="secs">+{row.seconds}s</b>
-        </div>
-      ))}
-      <div className="score-grid-row score-grid-miss">
-        <span className="miss-label">Word missed ({MAX_ATTEMPTS} guesses)</span>
-        <b className="pts bad">−{MISS_PENALTY_POINTS}</b>
-        <b className="secs bad">−{MISS_PENALTY_SECONDS}s</b>
-      </div>
-      <p className="score-grid-note">
-        Greens count on every guess, even letters you already found. Five greens solves the word and includes the
-        +{SOLVE_POINTS} point, +{SOLVE_SECONDS}s bonus. Time never goes above {formatClock(MAX_SECONDS)} and your score never drops below 0.
-      </p>
-    </div>
-  );
-}
-
-// Rules + penalties, shared by the "before you start" pop-up and the "?" button.
-function RulesContent() {
-  return (
-    <>
-      <ul className="rules-list">
-        {RULES.map((rule) => <li key={rule}>{rule}</li>)}
-      </ul>
-      <div className="legend" aria-label="Tile colours">
-        {LEGEND.map((item) => (
-          <span className="legend-item" key={item.mark}>
-            <i className="legend-chip" data-mark={item.mark} />
-            {item.label}
-          </span>
-        ))}
-      </div>
-      <ScoringGrid />
-      <div className="penalty-box">
-        <h3>Penalties</h3>
-        <ul className="rules-list">
-          {PENALTIES.map((penalty) => <li key={penalty}>{penalty}</li>)}
-        </ul>
-      </div>
-    </>
-  );
-}
-
-function Wordle({ launch, onReplay }) {
+function Wordle({ launch, onReplay, onHome }) {
   const { sessionId, seed } = launch;
-  const validLaunch = Boolean(
-    sessionId && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId)
-    && /^\d+$/.test(seed),
-  );
+  const validLaunch = isValidLaunch(sessionId, seed);
 
   const [snapshot, setSnapshot] = useState(null);
   const [draft, setDraft] = useState('');
@@ -236,17 +213,17 @@ function Wordle({ launch, onReplay }) {
   const [deadline, setDeadline] = useState(null);
   const [timeLeft, setTimeLeft] = useState(START_SECONDS);
   const [barMax, setBarMax] = useState(START_SECONDS); // the time bar scales to the most time the player has had
-  // The rules pop-up shows until the player clicks OK. A game that was already started
-  // (page reload) skips it, because the server clock is already running.
-  const [started, setStarted] = useState(() => validLaunch && readStorage(startedKey(sessionId)) === '1');
+  const [replayBusy, setReplayBusy] = useState(false);
+  const [replayError, setReplayError] = useState('');
   const [leaveOpen, setLeaveOpen] = useState(false);
+  const [leaveTarget, setLeaveTarget] = useState('hub'); // where "Leave" goes: the arcade hub or the Wordle landing page
   const [endOpen, setEndOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [ended, setEnded] = useState(false);
   const [showResult, setShowResult] = useState(false);
-  const [localAttempt] = useState(() => (validLaunch ? registerAttempt(sessionId) : 1));
   const [tally, setTally] = useState(() => readTally(sessionId));
+  const [summary, setSummary] = useState(() => readGrids(sessionId));
   const [popups, setPopups] = useState([]);
   const [shaking, setShaking] = useState(false);
   const [flash, setFlash] = useState(null); // { rows } - the solved word, shown briefly before the board clears
@@ -257,7 +234,6 @@ function Wordle({ launch, onReplay }) {
   const gameLive = snapshot?.game_status === 'in_progress' && !clockExpired && !ended;
   const active = gameLive && !loading && !leaveOpen && !endOpen && !helpOpen && !flash;
   const gameOver = Boolean(snapshot) && !gameLive;
-  const attemptNumber = Number(snapshot?.attempt_number) || localAttempt;
 
   const pushPopup = useCallback((target, text, tone) => {
     const id = popupId.current + 1;
@@ -279,7 +255,7 @@ function Wordle({ launch, onReplay }) {
     setDeadline(Date.now() + remaining * 1000);
     setBarMax((max) => Math.max(max, remaining));
     if (data.game_status === 'time_up') {
-      setNotice("Time's up! The game is over.");
+      setNotice(data.answer ? `Time's up! The word was ${String(data.answer).toUpperCase()}.` : "Time's up! The game is over.");
     } else if (data.game_status === 'lost') {
       setNotice(`No words remain. The answer was ${data.answer?.toUpperCase() || 'unknown'}.`);
     } else if (data.game_status === 'cleared') {
@@ -317,9 +293,13 @@ function Wordle({ launch, onReplay }) {
     writeStorage(tallyKey(sessionId), JSON.stringify(tally));
   }, [sessionId, tally]);
 
-  // The game (and the server clock) only starts after the player clicks OK on the rules.
   useEffect(() => {
-    if (!validLaunch || !started) {
+    writeStorage(gridsKey(sessionId), JSON.stringify(summary));
+  }, [sessionId, summary]);
+
+  // This page only mounts after the player presses Play on the landing page, so the game starts right away.
+  useEffect(() => {
+    if (!validLaunch) {
       setLoading(false);
       return undefined;
     }
@@ -333,7 +313,7 @@ function Wordle({ launch, onReplay }) {
       .catch((cause) => { if (!cancelled) setError(cause.message); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [retryCount, seed, sessionId, showApiState, started, validLaunch]);
+  }, [retryCount, seed, sessionId, showApiState, validLaunch]);
 
   useEffect(() => {
     if (deadline === null) return undefined;
@@ -430,6 +410,14 @@ function Wordle({ launch, onReplay }) {
       showApiState(data);
       recordChange(data, scoreBefore, expectedSeconds);
       if (data.solved) {
+        const rows = [...previousRows, { word: draft, mask: Array(WORD_LENGTH).fill(2) }];
+        setSummary((current) => [...current, { rows, answer: draft, status: 'solved' }]);
+      } else if (data.missed || data.game_status === 'lost') {
+        const answer = String(data.answer || '').toLowerCase();
+        const rows = [...previousRows, { word: draft, mask: answer.length === WORD_LENGTH ? scoreGuess(draft, answer) : [] }];
+        setSummary((current) => [...current, { rows, answer, status: 'missed' }]);
+      }
+      if (data.solved) {
         // The server clears the board when a word is solved; keep the winning row visible for a moment.
         setFlash({ rows: [...previousRows, { word: draft, mask: Array(WORD_LENGTH).fill(2) }] });
         window.setTimeout(() => setFlash(null), FLASH_MS);
@@ -468,19 +456,43 @@ function Wordle({ launch, onReplay }) {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [pressKey]);
 
-  const beginGame = () => {
-    writeStorage(startedKey(sessionId), '1');
-    setStarted(true);
+  // Play again asks the backend for a brand-new session (same login). If that fails, say why and stay on the result pop-up.
+  const handlePlayAgain = async () => {
+    if (replayBusy) return;
+    setReplayBusy(true);
+    setReplayError('');
+    try {
+      await onReplay();
+    } catch (cause) {
+      setReplayError(cause.message);
+      setReplayBusy(false);
+    }
   };
 
   const handleHubClick = (event) => {
     if (gameLive) {
       event.preventDefault();
+      setLeaveTarget('hub');
       setLeaveOpen(true);
     }
   };
 
+  // Back to the Wordle landing page. A live game asks first, because leaving abandons it.
+  const handleHomeClick = () => {
+    if (gameLive) {
+      setLeaveTarget('home');
+      setLeaveOpen(true);
+    } else {
+      onHome();
+    }
+  };
+
   const confirmLeave = () => {
+    if (leaveTarget === 'home') {
+      setLeaveOpen(false);
+      onHome();
+      return;
+    }
     leavingRef.current = true;
     window.location.assign(HUB_URL);
   };
@@ -492,7 +504,10 @@ function Wordle({ launch, onReplay }) {
     setEnded(true);
     try {
       const data = await postWordle('finish', { session_id: sessionId, seed });
-      if (data?.game_status) showApiState(data);
+      if (data?.game_status) {
+        showApiState(data);
+        if (data.answer) setNotice(`Game ended. The word was ${String(data.answer).toUpperCase()}.`);
+      }
     } catch {
       /* the page still ends the game even if the server has no finish call */
     }
@@ -510,12 +525,10 @@ function Wordle({ launch, onReplay }) {
     }
     return marks;
   }, [rows]);
-  const attemptsLeft = snapshot?.attempts_left ?? MAX_ATTEMPTS;
   const healthPercent = Math.min(100, Math.max(0, (timeLeft / barMax) * 100));
   const timerText = `${Math.floor(timeLeft / 60)}:${String(timeLeft % 60).padStart(2, '0')}`;
   const message = error || notice || (loading ? 'Loading game…' : 'Type a guess or use the on-screen keyboard.');
-  const showRules = validLaunch && !started;
-  const loadFailed = started && !loading && !snapshot && Boolean(error);
+  const loadFailed = !loading && !snapshot && Boolean(error);
   const showResultModal = showResult && gameOver;
   const result = describeResult(snapshot, clockExpired || snapshot?.game_status === 'time_up', ended);
   // Only a server-confirmed "time_up" state carries the answer for the word the player was on.
@@ -525,8 +538,15 @@ function Wordle({ launch, onReplay }) {
     : '';
 
   const score = snapshot?.score ?? 0;
+  // Summary slider: the grid of every word from this game, plus the word in progress when the game ended
+  // (its answer comes from the server with "time_up").
+  const currentRows = snapshot?.board || []; // the server keeps the unfinished word's rows in its time_up reply too
+  const finalGrid = (ended || timedOut) && (currentRows.length > 0 || revealAnswer)
+    ? { rows: currentRows, answer: revealAnswer, status: ended ? 'ended' : 'timeup' }
+    : null;
+  const summaryItems = finalGrid ? [...summary, finalGrid] : summary;
   const solvedCount = snapshot?.words_solved ?? tally.solvedCount;
-  const solvedText = snapshot?.total_words ? `${solvedCount}/${snapshot.total_words}` : String(solvedCount);
+  const solvedText = String(solvedCount);
 
   // Score breakdown rows (only non-zero ones). "Other" keeps the rows adding up to the real score.
   const other = score - tally.solvedPts - tally.guessPts;
@@ -544,7 +564,10 @@ function Wordle({ launch, onReplay }) {
   return (
     <main className="app-shell">
       <header className="topbar">
-        <a className="hub-link" href={HUB_URL} onClick={handleHubClick}>← Arcade hub</a>
+        <div className="top-left">
+          <a className="hub-link" href={HUB_URL} onClick={handleHubClick}>← Arcade hub</a>
+          <button className="home-button" type="button" onClick={handleHomeClick}>⌂ Home</button>
+        </div>
         <div className="brand" aria-label="Wordle">
           {'WORDLE'.split('').map((letter, index) => (
             <span className={`brand-tile brand-${index % 3}`} key={`${letter}-${index}`}>{letter}</span>
@@ -570,7 +593,6 @@ function Wordle({ launch, onReplay }) {
             <div className="stat-time"><span>Time</span><strong className={timeLeft <= 15 ? 'time-low' : ''}>{timerText}</strong>{popupsFor('time')}</div>
             <div className="stat-score"><span>Score</span><strong className="bump" key={score}>{score}</strong>{popupsFor('score')}</div>
             <div className="stat-solved"><span>Solved</span><strong className="bump" key={solvedText}>{solvedText}</strong></div>
-            <div><span>Guesses left</span><strong>{attemptsLeft}</strong></div>
           </section>
           <div className={`healthbar${timeLeft <= 15 ? ' healthbar-low' : ''}`} role="progressbar" aria-label="Time remaining" aria-valuemin="0" aria-valuemax={barMax} aria-valuenow={timeLeft}>
             <div className="healthbar-fill" style={{ width: `${healthPercent}%` }} />
@@ -647,20 +669,6 @@ function Wordle({ launch, onReplay }) {
         </>
       )}
 
-      {/* Rules + penalties: shown before the game (and the clock) begins */}
-      {showRules && (
-        <div className="overlay">
-          <section className="modal" role="dialog" aria-modal="true" aria-labelledby="rules-title">
-            {attemptNumber > 1 && <span className="modal-badge">Attempt #{attemptNumber}</span>}
-            <h2 id="rules-title">Before you start</h2>
-            <p className="modal-sub">The clock starts when you press OK.</p>
-            <RulesContent />
-            <button className="modal-primary" type="button" autoFocus onClick={beginGame}>OK, start game</button>
-            <a className="modal-link" href={HUB_URL}>Back to arcade hub</a>
-          </section>
-        </div>
-      )}
-
       {/* The "?" button: the same rules, mid-game */}
       {helpOpen && (
         <div className="overlay">
@@ -723,8 +731,8 @@ function Wordle({ launch, onReplay }) {
             <p className="modal-sub">{result.sub}</p>
             <div className="result-stats">
               <div><span>Score</span><strong>{score}</strong></div>
-              <div><span>Attempt</span><strong>#{attemptNumber}</strong></div>
             </div>
+            {summaryItems.length > 0 && <SummarySlider items={summaryItems} />}
             {showBreakdown && (
               <div className="breakdown">
                 <h3>Score breakdown</h3>
@@ -743,8 +751,10 @@ function Wordle({ launch, onReplay }) {
                 )}
               </div>
             )}
-            <button className="modal-primary" type="button" autoFocus onClick={() => onReplay()}>Play again</button>
-            <p className="modal-hint">Your next run will be attempt #{attemptNumber + 1}.</p>
+            {replayError && <p className="modal-error" role="alert">{replayError}</p>}
+            <button className="modal-primary" type="button" autoFocus disabled={replayBusy} onClick={handlePlayAgain}>
+              {replayBusy ? 'Starting…' : 'Play again'}
+            </button>
             <a className="modal-link" href={HUB_URL}>Back to arcade hub</a>
           </section>
         </div>
@@ -755,19 +765,60 @@ function Wordle({ launch, onReplay }) {
 
 export default function App() {
   const [launch, setLaunch] = useState(getLaunchParams);
+  const [starting, setStarting] = useState(false);
+  const [startError, setStartError] = useState('');
+  // A game that was already started (page reload) goes straight back to the board, because the server clock is running.
+  // Everyone else lands on the welcome page first.
+  const [screen, setScreen] = useState(() => {
+    const initial = getLaunchParams();
+    return isValidLaunch(initial.sessionId, initial.seed) && readStorage(startedKey(initial.sessionId)) === '1'
+      ? 'game'
+      : 'landing';
+  });
 
-  // Play again: fresh session_id + seed, same page. The key remounts the game, so every
-  // piece of state (board, clock, pop-ups) starts clean and late replies from the old game are ignored.
-  const replay = useCallback(() => {
-    const next = { sessionId: newSessionId(), seed: newSeed() };
-    try {
-      const params = new URLSearchParams({ session_id: next.sessionId, seed: next.seed });
-      window.history.replaceState(null, '', `${window.location.pathname}?${params}`);
-    } catch {
-      /* address bar could not be updated; the game still restarts */
+  // Play: use the session the hub just created if this game has not been played yet.
+  // Otherwise (after Home, or a session that was already used) ask the backend for a new one with the saved login.
+  const play = useCallback(async () => {
+    if (starting) return;
+    setStartError('');
+    if (isValidLaunch(launch.sessionId, launch.seed) && readStorage(startedKey(launch.sessionId)) !== '1') {
+      writeStorage(startedKey(launch.sessionId), '1');
+      setScreen('game');
+      return;
     }
+    setStarting(true);
+    try {
+      const next = await startSession();
+      writeStorage(startedKey(next.sessionId), '1');
+      setLaunchUrl(next);
+      setLaunch(next);
+      setScreen('game');
+    } catch (cause) {
+      setStartError(cause.message);
+    } finally {
+      setStarting(false);
+    }
+  }, [launch, starting]);
+
+  // Play again: a new session from the backend, same page. The key remounts the game, so every
+  // piece of state (board, clock, pop-ups) starts clean and late replies from the old game are ignored.
+  // Errors are thrown to the Play again button, which shows them.
+  const replay = useCallback(async () => {
+    const next = await startSession();
+    writeStorage(startedKey(next.sessionId), '1');
+    setLaunchUrl(next);
     setLaunch(next);
   }, []);
 
-  return <Wordle key={launch.sessionId} launch={launch} onReplay={replay} />;
+  // Home: back to the landing page with no session. The next Play asks the backend for a fresh one,
+  // so the old (abandoned) game cannot be resumed.
+  const goHome = useCallback(() => {
+    clearLaunchUrl();
+    setLaunch({ sessionId: '', seed: '' });
+    setStartError('');
+    setScreen('landing');
+  }, []);
+
+  if (screen === 'landing') return <Landing onPlay={play} busy={starting} error={startError} />;
+  return <Wordle key={launch.sessionId} launch={launch} onReplay={replay} onHome={goHome} />;
 }

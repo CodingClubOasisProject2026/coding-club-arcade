@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { basicAuth, saveCredentials } from '../Hubsession.js';
 
 async function readResponse(response) {
   const data = await response.json().catch(() => ({}));
@@ -7,13 +8,6 @@ async function readResponse(response) {
     throw new Error(detail || `Hub request failed (${response.status})`);
   }
   return data;
-}
-
-function basicAuth(username, password) {
-  const bytes = new TextEncoder().encode(`${username}:${password}`);
-  let binary = '';
-  bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
-  return `Basic ${btoa(binary)}`;
 }
 
 export default function HubHome() {
@@ -54,6 +48,8 @@ export default function HubHome() {
         body: JSON.stringify({}),
       });
       const session = await readResponse(response);
+      // Keep the login for this browser tab only, so Wordle can start new sessions (Play again) without asking again.
+      saveCredentials(username, password);
       const launch = new URL('/play/wordle/', window.location.origin);
       launch.searchParams.set('session_id', session.id);
       launch.searchParams.set('seed', String(session.seed));
@@ -109,7 +105,7 @@ export default function HubHome() {
         <div>
           <p className="eyebrow">START A SESSION</p>
           <h2>Ready for Wordle?</h2>
-          <p>Sign in with your hub account. Credentials are used for this request only and aren’t saved by the page.</p>
+          <p>Sign in with your hub account. Your login is kept only in this browser tab so you can play again, and is cleared when the tab is closed.</p>
         </div>
         <form className="hub-login" onSubmit={launchWordle}>
           <label>
