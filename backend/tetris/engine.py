@@ -26,3 +26,26 @@ def lock_tetromino(grid, tetromino):
                 if 0 <= y < len(grid) and 0 <= x < len(grid[0]):
                     grid[y][x] = 1
     return grid
+
+def validate_move(grid, tetromino, action):
+    direction = action.get("direction")
+
+
+    old_x, old_y = tetromino.x, tetromino.y
+
+    if direction == "left":
+        tetromino.x -= 1
+    elif direction == "right":
+        tetromino.x += 1
+    elif direction == "down":
+        tetromino.y += 1
+    elif direction == "up":
+        pass
+    else:
+        raise ValueError("direction must be left, right, down, or up")
+
+    if check_collision(grid, tetromino):
+        tetromino.x, tetromino.y = old_x, old_y
+        return tetromino.x, tetromino.y
+
+    return tetromino.x, tetromino.y

@@ -6,6 +6,12 @@ class ScoringSystem:
         2: 200,
         3: 300,
         4: 400,
+        5: 500,
+        6: 600,
+        7: 700,
+        8: 800,
+        9: 900,
+        10: 1000,
     }
 
     GRAVITY_INTERVAL_MS = 800
@@ -20,7 +26,7 @@ class ScoringSystem:
             raise TypeError("lines_cleared must be an integer")
 
         if lines_cleared not in self.LINE_CLEAR_POINTS:
-            raise ValueError("lines_cleared must be between 0 and 4")
+            raise ValueError("lines_cleared must be between 0 and 10")
 
         if lines_cleared == 0:
             self.consecutive_clears = 0
