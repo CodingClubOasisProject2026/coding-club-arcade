@@ -116,8 +116,8 @@ def calculate_score(session_id, actions: list[dict]) -> dict:
                 "lines_cleared": lines_cleared,
             })
 
-#         session.score = scoring.total_score
-#         session.save(update_fields=["score", "updated_at"])
+        session.score = scoring.total_score
+        session.save(update_fields=["score", "updated_at"])
 
         return {
             "score": scoring.total_score,
