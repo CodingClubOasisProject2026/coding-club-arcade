@@ -57,7 +57,8 @@ class SessionStartView(CreateAPIView):
 class SessionSubmitView(UpdateAPIView):
     serializer_class = SessionSerializer
     permission_classes = (IsAuthenticated,)
-    lookup_field = "session_id"
+    lookup_field = "id"
+    lookup_url_kwarg = "session_id"
 
     def get_queryset(self):  # pyright: ignore[reportIncompatibleMethodOverride]
         return Session.objects.filter(user_id=self.request.user.pk)

@@ -10,13 +10,25 @@ export function csrfToken() {
   return cookie('csrftoken')
 }
 
+function responseErrorMessage(body: unknown): string | null {
+  if (typeof body === 'string') return body.trim() || null
+  if (Array.isArray(body)) {
+    return body.map(responseErrorMessage).filter(Boolean).join(' ') || null
+  }
+  if (body && typeof body === 'object') {
+    const fields = body as Record<string, unknown>
+    if (typeof fields.detail === 'string') return fields.detail
+    return Object.values(fields).map(responseErrorMessage).filter(Boolean).join(' ') || null
+  }
+  return null
+}
+
 export class ApiError extends Error {
   status: number
   body: unknown
 
   constructor(status: number, body: unknown) {
-    const detail = (body as { detail?: string } | null)?.detail
-    super(detail ?? `Request failed (${status})`)
+    super(responseErrorMessage(body) ?? `Request failed (${status})`)
     this.status = status
     this.body = body
   }

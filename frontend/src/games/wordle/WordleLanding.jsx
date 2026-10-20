@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { HUB_URL, RulesContent } from './WordleRules';
 
 // The page players land on when they click Wordle in the arcade hub.
-export default function Landing({ onPlay, busy = false, error = '' }) {
+export default function Landing({ me, onPlay, busy = false, error = '' }) {
     const [helpOpen, setHelpOpen] = useState(false);
     return (
         <main className="app-shell landing">
@@ -19,10 +19,16 @@ export default function Landing({ onPlay, busy = false, error = '' }) {
                 <h1>Welcome to Wordle!</h1>
                 <p className="landing-sub">Beat the clock. Crack as many words as you can.</p>
                 <div className="landing-actions">
+                    {me === null && <p className="landing-sub">Checking your hub sign-in…</p>}
+                    {me?.authenticated && me.tickets > 0 && <p className="landing-sub">🎟 {me.tickets} ticket{me.tickets === 1 ? '' : 's'} available</p>}
+                    {me?.authenticated && me.tickets <= 0 && <p className="landing-error" role="status">No tickets left. Ask an arcade admin to add tickets to your account.</p>}
+                    {me && !me.authenticated && <p className="landing-error" role="status">Sign in through the arcade hub before playing.</p>}
                     {error && <p className="landing-error" role="alert">{error}</p>}
-                    <button className="modal-primary landing-play" type="button" autoFocus disabled={busy} onClick={onPlay}>
-                        {busy ? 'Starting…' : '▶ Play'}
-                    </button>
+                    {me?.authenticated && me.tickets > 0 && (
+                        <button className="modal-primary landing-play" type="button" autoFocus disabled={busy} onClick={onPlay}>
+                            {busy ? 'Starting…' : '▶ Play'}
+                        </button>
+                    )}
                     <a className="modal-secondary" href={HUB_URL}>← Back to arcade hub</a>
                 </div>
                 <p className="landing-hint">New here? Tap <b>?</b> for how it works.</p>

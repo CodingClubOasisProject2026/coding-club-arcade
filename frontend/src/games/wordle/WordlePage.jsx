@@ -3,6 +3,7 @@ import './wordle.css';
 import { HUB_URL, MAX_ATTEMPTS, MISS_PENALTY_SECONDS, START_SECONDS, RulesContent } from './WordleRules';
 import Landing from './WordleLanding';
 import { api, hubGameId, startHubSession } from '../../api';
+import { useAuth } from '../../auth';
 
 const WORD_LENGTH = 5;
 const KEY_ROWS = ['qwertyuiop', 'asdfghjkl', '↵zxcvbnm⌫'];
@@ -781,6 +782,7 @@ async function createWordleSession() {
 }
 
 export default function WordlePage() {
+  const { me, refresh } = useAuth();
   const [launch, setLaunch] = useState(getLaunchParams);
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState('');
@@ -805,6 +807,7 @@ export default function WordlePage() {
     setStarting(true);
     try {
       const next = await createWordleSession();
+      await refresh();
       writeStorage(startedKey(next.sessionId), '1');
       setLaunchUrl(next);
       setLaunch(next);
@@ -814,17 +817,18 @@ export default function WordlePage() {
     } finally {
       setStarting(false);
     }
-  }, [launch, starting]);
+  }, [launch, refresh, starting]);
 
   // Play again: a new session from the backend, same page. The key remounts the game, so every
   // piece of state (board, clock, pop-ups) starts clean and late replies from the old game are ignored.
   // Errors are thrown to the Play again button, which shows them.
   const replay = useCallback(async () => {
     const next = await createWordleSession();
+    await refresh();
     writeStorage(startedKey(next.sessionId), '1');
     setLaunchUrl(next);
     setLaunch(next);
-  }, []);
+  }, [refresh]);
 
   // Home returns to the landing page. The next Play requests a fresh hub session.
   const goHome = useCallback(() => {
@@ -834,6 +838,8 @@ export default function WordlePage() {
     setScreen('landing');
   }, []);
 
-  if (screen === 'landing') return <Landing onPlay={play} busy={starting} error={startError} />;
+  if (screen === 'landing' || me?.authenticated !== true) {
+    return <Landing me={me} onPlay={play} busy={starting} error={startError} />;
+  }
   return <Wordle key={launch.sessionId} launch={launch} onReplay={replay} onHome={goHome} />;
 }
