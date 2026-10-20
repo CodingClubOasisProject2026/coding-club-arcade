@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './wordle.css';
 import { HUB_URL, MAX_ATTEMPTS, MISS_PENALTY_SECONDS, START_SECONDS, RulesContent } from './WordleRules';
 import Landing from './WordleLanding';
-import { startSession } from '../../hubSession';
+import { startSession } from '../../Hubsession';
 
 const WORD_LENGTH = 5;
 const KEY_ROWS = ['qwertyuiop', 'asdfghjkl', '↵zxcvbnm⌫'];
