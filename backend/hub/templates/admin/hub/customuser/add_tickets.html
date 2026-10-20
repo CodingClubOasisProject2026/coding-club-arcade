@@ -1,0 +1,53 @@
+{% extends "admin/base_site.html" %}
+{% load admin_urls %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">Home</a>
+  &rsaquo; <a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+  &rsaquo; {{ title }}
+</div>
+{% endblock %}
+
+{% block content %}
+<form method="post">{% csrf_token %}
+  <fieldset class="module aligned">
+    <h2>Add tickets to {{ users|length }} selected user{{ users|length|pluralize }}</h2>
+    <div class="form-row{% if form.errors %} errors{% endif %}">
+      {{ form.amount.errors }}
+      <div>
+        {{ form.amount.label_tag }}
+        {{ form.amount }}
+      </div>
+    </div>
+  </fieldset>
+
+  <div class="results">
+    <table>
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Current tickets</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for user in users %}
+          <tr class="{% cycle 'row1' 'row2' %}">
+            <td>{{ user.username }}</td>
+            <td>{{ user.tickets }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% for user in users %}
+    <input type="hidden" name="_selected_action" value="{{ user.pk }}">
+  {% endfor %}
+  <input type="hidden" name="action" value="add_tickets">
+  <div class="submit-row">
+    <input type="submit" class="default" value="Add tickets">
+    <a href="{% url opts|admin_urlname:'changelist' %}" class="closelink">Cancel</a>
+  </div>
+</form>
+{% endblock %}
