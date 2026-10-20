@@ -50,7 +50,7 @@ PIECE_TYPES = ("I", "O", "T", "S", "Z", "J", "L")
 
 
 def create_grid():
-    return [[None for _ in range(COLUMNS)] for _ in range(ROWS)]
+    return [[0 for _ in range(COLUMNS)] for _ in range(ROWS)]
 
 class SeededPieceRandomizer:
     def __init__(self, seed: int):

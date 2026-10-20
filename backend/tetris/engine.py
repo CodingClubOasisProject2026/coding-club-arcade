@@ -52,3 +52,26 @@ def validate_move(grid, tetromino, action):
         return tetromino.x, tetromino.y
 
     return tetromino.x, tetromino.y
+
+
+def rotate_tetromino(grid, tetromino, direction):
+    """Rotate a piece if its new shape fits, using small horizontal wall kicks."""
+    if direction not in ("clockwise", "counterclockwise"):
+        raise ValueError("direction must be 'clockwise' or 'counterclockwise'")
+
+    old_shape = tetromino.shape
+    if direction == "clockwise":
+        rotated = [list(row) for row in zip(*old_shape[::-1])]
+    else:
+        rotated = [list(row) for row in zip(*old_shape)][::-1]
+
+    old_x = tetromino.x
+    tetromino.shape = rotated
+    for kick in (0, -1, 1, -2, 2):
+        tetromino.x = old_x + kick
+        if not check_collision(grid, tetromino):
+            return True
+
+    tetromino.shape = old_shape
+    tetromino.x = old_x
+    return False
