@@ -4,8 +4,9 @@ import { useAuth } from './auth'
 import AuthProvider from './AuthProvider'
 import GoogleSignIn from './GoogleSignIn'
 import Minesweeper from './games/minesweeper/Minesweeper'
-import Hub from './pages/Hub'
 import WordlePage from './games/wordle/WordlePage.jsx'
+import Leaderboard from './pages/leaderboard'
+import Hub from './pages/Hub'
 
 function AuthBar() {
   const { me } = useAuth()
@@ -32,7 +33,7 @@ function AuthBar() {
   }
 
   return (
-    <div className="auth">
+    <div className="auth ">
       <GoogleSignIn />
     </div>
   )
@@ -43,25 +44,37 @@ export default function App() {
 
   return (
     <AuthProvider>
-      {!isWordle && <nav className="topbar">
-        <Link to="/" className="brand">
-          🕹️ Arcade
-        </Link>
-        <AuthBar />
-      </nav>}
-      <Routes>
-        <Route path="/" element={<Hub />} />
-        <Route path="/minesweeper" element={<Minesweeper />} />
-        <Route path="/wordle" element={<WordlePage />} />
-        <Route
-          path="*"
-          element={
-            <p>
-              Not found. <Link to="/">Back to the arcade</Link>
-            </p>
-          }
-        />
-      </Routes>
+      {!isWordle && (
+        <nav className="topbar">
+          <Link to="/" className="brand" id="logo">
+            <img src="/logo.jpeg" alt="logo" className="logo" width="30" height="30" />
+            Coding Club
+          </Link>
+          <Link to="/" className="brand">
+            🕹️ Arcade
+          </Link>
+          <Link to="/leaderboard" className="brand">
+            🏆 Leaderboard
+          </Link>
+          <AuthBar />
+        </nav>
+      )}
+      
+        <Routes>
+          <Route path="/" element={<Hub />} />
+          <Route path="/leaderboard" element={<Leaderboard />} />
+          <Route path="/minesweeper" element={<Minesweeper />} />
+          <Route path="/wordle" element={<WordlePage />} />
+          <Route
+            path="*"
+            element={
+              <p>
+                Not found. <Link to="/">Back to the arcade</Link>
+              </p>
+            }
+          />
+        </Routes>
+      
     </AuthProvider>
   )
 }

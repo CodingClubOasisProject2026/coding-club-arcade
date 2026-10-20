@@ -3,10 +3,10 @@ import { Link } from 'react-router-dom'
 import { type LeaderboardRow, fetchLeaderboard } from '../api'
 
 const GAMES = [
-  { name: 'Minesweeper', path: '/minesweeper', blurb: 'Clear the board without hitting a mine.', ready: true },
-  { name: 'Snake', path: '/snake', blurb: 'Eat, grow, and don’t bite yourself.', ready: false },
-  { name: 'Tetris', path: '/tetris', blurb: 'Stack falling blocks and clear lines.', ready: false },
-  { name: 'Wordle', path: '/wordle', blurb: 'Beat the clock. Crack as many words as you can.', ready: true }
+  { name: 'Minesweeper', path: '/minesweeper', blurb: 'Clear the board without hitting a mine.', ready: true,  color: 'var(--c-mine)'   },
+  { name: 'Snake',       path: '/snake',       blurb: "Eat, grow, and don't bite yourself.",    ready: false, color: 'var(--c-snake)'  },
+  { name: 'Tetris',      path: '/tetris',       blurb: 'Stack falling blocks and clear lines.',  ready: false, color: 'var(--c-tetris)' },
+  { name: 'Wordle',      path: '/wordle',       blurb: 'Beat the clock. Crack as many words as you can.',ready: true, color: 'var(--c-wordle)' },
 ]
 
 export default function Hub() {
@@ -27,13 +27,13 @@ export default function Hub() {
         <div className="game-grid">
           {GAMES.map((g) =>
             g.ready ? (
-              <Link key={g.name} to={g.path} className="game-card">
+              <Link key={g.name} to={g.path} className="game-card" style={{ '--cc': g.color } as React.CSSProperties}>
                 <h2>{g.name}</h2>
                 <p>{g.blurb}</p>
                 <span className="play">Play →</span>
               </Link>
             ) : (
-              <div key={g.name} className="game-card disabled" aria-disabled="true">
+              <div key={g.name} className="game-card disabled" aria-disabled="true" style={{ '--cc': g.color } as React.CSSProperties}>
                 <h2>{g.name}</h2>
                 <p>{g.blurb}</p>
                 <span className="soon">Coming soon</span>
@@ -43,22 +43,8 @@ export default function Hub() {
         </div>
       </section>
 
-      <section>
-        <h2>Leaderboard</h2>
-        {failed && <p className="muted">Couldn’t load the leaderboard. Is the backend running?</p>}
-        {!failed && !leaders && <p className="muted">Loading…</p>}
-        {leaders && leaders.length === 0 && <p className="muted">No players yet.</p>}
-        {leaders && leaders.length > 0 && (
-          <ol className="leaderboard">
-            {leaders.map((row) => (
-              <li key={row.username}>
-                <span>{row.username}</span>
-                <span className="score">{row.score ?? 0}</span>
-              </li>
-            ))}
-          </ol>
-        )}
-      </section>
+      
+      
     </div>
   )
 }
