@@ -1,14 +1,18 @@
 {$SITE_ADDRESS} {
-    encode gzip
+    encode zstd gzip
 
-    # Django routes sit at the root with a trailing slash. Bare paths like /minesweeper
-    # are React pages, so only /<prefix>/... goes to the backend.
-    @backend path_regexp ^/(admin|static|accounts|me|leaderboard|games|sessions|minesweeper|snake|tetris|wordle)/
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy same-origin
+        -Server
+    }
+    header /assets/* Cache-Control "public, max-age=31536000, immutable"
+
+    @backend path /admin/* /static/* /accounts/* /me/* /leaderboard/* /games/* /sessions/* /minesweeper/* /snake/* /tetris/* /wordle/*
     handle @backend {
         reverse_proxy web:8000
     }
 
-    # Everything else is the React app, with index.html as the fallback for client-side routes.
     handle {
         root * /srv
         try_files {path} /index.html

@@ -29,7 +29,14 @@ WORDLE_ANSWER_KEY = getenv('WORDLE_ANSWER_KEY', SECRET_KEY)
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = getenv('DEBUG', 'true') == 'true'
 
-ALLOWED_HOSTS = [ host for host in getenv('ALLOWED_HOSTS', '*').split(',') if host ]
+ALLOWED_HOSTS = [host.strip() for host in getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if host.strip()]
+
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_SECURE = COOKIE_SECURE
+CSRF_COOKIE_SECURE = COOKIE_SECURE
+SECURE_HSTS_SECONDS = int(getenv('SECURE_HSTS_SECONDS', '0'))
 
 AUTH_USER_MODEL = 'hub.CustomUser'
 
