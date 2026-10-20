@@ -9,9 +9,38 @@ from hub.models import Session
 from snake.game_logic import create_game, move_snake as update_game
 
 
+
 # Temporary in-memory storage for active Snake games.
 games = {}
 
+def get_user_game(request, session_id):
+    if not request.user.is_authenticated:
+        return None, JsonResponse(
+            {"error": "Authentication required"},
+            status=401,
+        )
+
+    game = games.get(str(session_id))
+
+    if game is None:
+        return None, JsonResponse(
+            {"error": "Game not found"},
+            status=404,
+        )
+
+    try:
+        session = Session.objects.get(
+            id=session_id,
+            user=request.user,
+            game__name="SNAKE",
+        )
+    except Session.DoesNotExist:
+        return None, JsonResponse(
+            {"error": "Game not found"},
+            status=404,
+        )
+
+    return game, None
 
 def serialize_game(session_id, game):
     # Convert the game state into a JSON-compatible response.
@@ -34,7 +63,6 @@ def serialize_game(session_id, game):
 @csrf_exempt
 @require_POST
 def start_game(request):
-    # Initialize Snake for an existing arcade session.
     try:
         body = json.loads(request.body)
         session_id = body.get("session_id")
@@ -50,27 +78,23 @@ def start_game(request):
             {"error": "Invalid request body"},
             status=400,
         )
-
-    if not session.user.is_authenticated:
-        return JsonResponse(
-            {"error" : "Authentication required"},
-             status = 401,
-        )
     
+    if not request.user.is_authenticated:
+        return JsonResponse(
+            {"error": "Authentication required"},
+            status=401,
+        )
+
     try:
         session = Session.objects.select_related("game").get(
             id=session_id,
+            user=request.user,
+            game__name="SNAKE",
         )
     except (Session.DoesNotExist, ValueError):
         return JsonResponse(
             {"error": "Session not found"},
             status=404,
-        )
-
-    if session.game.name != "SNAKE":
-        return JsonResponse(
-            {"error": "Session does not belong to Snake"},
-            status=400,
         )
 
     # Reuse the arcade session's seed.
@@ -91,13 +115,10 @@ def start_game(request):
 @require_GET
 def get_game(request, session_id):
     # Retrieve the current state of a Snake game.
-    game = games.get(str(session_id))
+    game, error = get_user_game(request, session_id)
 
-    if game is None:
-        return JsonResponse(
-            {"error": "Game not found"},
-            status=404,
-        )
+    if error:
+        return error
 
     return JsonResponse(serialize_game(session_id, game))
 
@@ -106,13 +127,10 @@ def get_game(request, session_id):
 @require_POST
 def move_snake(request, session_id):
     # Process one movement tick.
-    game = games.get(str(session_id))
+    game, error = get_user_game(request, session_id)
 
-    if game is None:
-        return JsonResponse(
-            {"error": "Game not found"},
-            status=404,
-        )
+    if error:
+        return error
 
     if game["status"] != "ACTIVE":
         return JsonResponse(
@@ -158,17 +176,20 @@ def move_snake(request, session_id):
 @csrf_exempt
 @require_POST
 def end_game(request, session_id):
-    # End the game and return the action log for score calculation.
-    game = games.get(str(session_id))
+    game, error = get_user_game(request, session_id)
 
-    if game is None:
-        return JsonResponse(
-            {"error": "Game not found"},
-            status=404,
-        )
+    if error:
+        return error
 
     if game["status"] == "ACTIVE":
-        game["status"] = "GAME_OVER"
+        end_reason = "QUIT"
+        game["status"] = "QUIT"
+
+    elif game["status"] == "WON":
+        end_reason = "WON"
+
+    else:
+        end_reason = "COLLISION"
 
     return JsonResponse({
         "session_id": str(session_id),
@@ -178,5 +199,6 @@ def end_game(request, session_id):
             "initial_direction": game["initial_direction"],
             "actions": game["actions"],
             "total_ticks": game["tick"],
+            "end_reason": end_reason,
         },
     })

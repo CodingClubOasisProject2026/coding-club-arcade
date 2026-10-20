@@ -117,25 +117,13 @@ def move_snake(game, action, rng):
     return game
 
 def replay_actions(seed, action_log):
-    
-    # Replay a Snake game from a validated sequence of direction changes.
-
-    # Expected action_log:
-    # {
-    #     "initial_direction": "RIGHT",
-    #     "actions": [
-    #         {"tick": 5, "direction": "UP"},
-    #         {"tick": 12, "direction": "LEFT"}
-    #     ],
-    #     "total_ticks": 20
-    # }
-    
     if not isinstance(action_log, dict):
         raise ValueError("Action log must be a JSON object")
 
     initial_direction = action_log.get("initial_direction")
     actions = action_log.get("actions")
     total_ticks = action_log.get("total_ticks")
+    end_reason = action_log.get("end_reason")
 
     if initial_direction != INITIAL_DIRECTION:
         raise ValueError("Invalid initial direction")
@@ -143,11 +131,13 @@ def replay_actions(seed, action_log):
     if not isinstance(actions, list):
         raise ValueError("Actions must be a list")
 
-    # bool is a subclass of int in Python, so explicitly reject it.
     if type(total_ticks) is not int or not 0 <= total_ticks <= 100_000:
         raise ValueError("Invalid total_ticks")
 
-    # Validate the complete action log before replaying it.
+    if end_reason not in {"QUIT", "COLLISION", "WON"}:
+        raise ValueError("Invalid end_reason")
+
+    # Validate the complete action log.
     previous_tick = 0
 
     for action in actions:
@@ -163,7 +153,7 @@ def replay_actions(seed, action_log):
         if tick <= previous_tick:
             raise ValueError("Action ticks must be strictly increasing")
 
-        if direction not in DIRECTIONS:
+        if not isinstance(direction, str) or direction not in DIRECTIONS:
             raise ValueError("Invalid direction")
 
         previous_tick = tick
@@ -171,12 +161,14 @@ def replay_actions(seed, action_log):
     game = create_game(seed)
     rng = game["rng"]
 
-    # Keep track of the direction currently being followed.
     current_direction = INITIAL_DIRECTION
     action_index = 0
 
     for tick in range(1, total_ticks + 1):
-        # Apply a direction change at the beginning of its tick.
+        # The game must still be active before processing this tick.
+        if game["status"] != "ACTIVE":
+            raise ValueError("Actions continue after the game ended")
+
         if (
             action_index < len(actions)
             and actions[action_index]["tick"] == tick
@@ -189,12 +181,20 @@ def replay_actions(seed, action_log):
             current_direction = new_direction
             action_index += 1
 
-        if game["status"] != "ACTIVE":
-            raise ValueError("Actions continue after the game ended")
-
         move_snake(game, current_direction, rng)
-    
-    if game["status"] == "ACTIVE":
-        raise ValueError("Game has not ended")
+
+    # Validate that the submitted ending reason matches the replay.
+    if end_reason == "COLLISION" and game["status"] != "GAME_OVER":
+        raise ValueError("Replay did not end in a collision")
+
+    if end_reason == "WON" and game["status"] != "WON":
+        raise ValueError("Replay did not end in a win")
+
+    if end_reason == "QUIT" and game["status"] != "ACTIVE":
+        raise ValueError("Cannot quit after the game has already ended")
+
+    # A quit is valid even if the snake was still alive.
+    if end_reason == "QUIT":
+        game["status"] = "QUIT"
 
     return game
