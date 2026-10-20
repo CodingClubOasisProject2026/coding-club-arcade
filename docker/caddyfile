@@ -1,0 +1,21 @@
+{$SITE_ADDRESS} {
+    encode zstd gzip
+
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy same-origin
+        -Server
+    }
+    header /assets/* Cache-Control "public, max-age=31536000, immutable"
+
+    @backend path /admin/* /static/* /accounts/* /me/* /leaderboard/* /games/* /sessions/* /minesweeper/* /snake/* /tetris/* /wordle/*
+    handle @backend {
+        reverse_proxy web:8000
+    }
+
+    handle {
+        root * /srv
+        try_files {path} /index.html
+        file_server
+    }
+}

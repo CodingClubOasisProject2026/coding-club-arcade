@@ -1,0 +1,1237 @@
+/* =========================================================
+   MINESWEEPER: "Control Panel" theme
+   Slate chassis, keycap tiles, red LCD readouts.
+   Class names are unchanged, so no JSX edits are required.
+   ========================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Martian+Mono:wght@400..800&display=swap');
+
+.ms-page {
+  /* Palette */
+  --ms-ink: #0d1017;
+  --ms-slate: #151a24;
+  --ms-slate-2: #1d2331;
+  --ms-line: rgba(233, 229, 219, 0.09);
+  --ms-bone: #e9e5db;
+  --ms-muted: #8b95ab;
+  --ms-ember: #ff5a3c;
+  --ms-amber: #ffb340;
+  --ms-mint: #5fd9a0;
+
+  /* Keycap tiles */
+  --ms-key-top: #3b455f;
+  --ms-key-bot: #2b3347;
+  --ms-pit: #0a0d13;
+
+  /* Type */
+  --ms-sans: 'Bricolage Grotesque', var(--sans, system-ui), -apple-system, 'Segoe UI', sans-serif;
+  --ms-mono: 'Martian Mono', var(--mono, ui-monospace), 'SF Mono', Menlo, Consolas, monospace;
+
+  /* Layout: toast height is derived from these, keep in sync with JS gap (2px) / padding (6px) on the board */
+  --ms-gap: 10px;
+  --ms-pad: 14px;
+  --ms-tele-h: 28px;
+  --ms-foot-h: 32px;
+
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: var(--ms-bone);
+  font-family: var(--ms-sans);
+  background:
+    radial-gradient(ellipse 70% 45% at 50% 0%, rgba(255, 90, 60, 0.12), transparent 70%),
+    radial-gradient(circle at 1px 1px, rgba(233, 229, 219, 0.07) 1px, transparent 0) 0 0 / 22px 22px,
+    var(--ms-ink);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ms-page *,
+.ms-page *::before,
+.ms-page *::after {
+  box-sizing: border-box;
+}
+
+.ms-page button:focus-visible,
+.ms-page a:focus-visible {
+  outline: 2px solid var(--ms-amber);
+  outline-offset: 2px;
+}
+
+/* Screen shake */
+.ms-page.screen-shake {
+  animation: msShake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes msShake {
+  10%, 90% { transform: translate3d(-2px, 0, 0); }
+  20%, 80% { transform: translate3d(4px, -1px, 0); }
+  30%, 50%, 70% { transform: translate3d(-4px, 2px, 0); }
+  40%, 60% { transform: translate3d(4px, -1px, 0); }
+}
+
+/* ---------------------------------------------------------
+   1. NAV BAR
+   --------------------------------------------------------- */
+.ms-nav {
+  flex-shrink: 0;
+  height: 48px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: rgba(13, 16, 23, 0.82);
+  border-bottom: 1px solid var(--ms-line);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 20;
+}
+
+.ms-nav-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.ms-back-link {
+  color: var(--ms-muted);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.15s;
+}
+
+.ms-back-link:hover {
+  color: var(--ms-bone);
+}
+
+.ms-title {
+  font-family: var(--ms-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ms-bone);
+  white-space: nowrap;
+  padding-left: 16px;
+  border-left: 1px solid var(--ms-line);
+}
+
+/* Difficulty segmented control */
+.ms-diff-pills {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--ms-slate);
+  border: 1px solid var(--ms-line);
+  border-radius: 10px;
+}
+
+.ms-diff-pill {
+  padding: 5px 14px;
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  color: var(--ms-muted);
+  font-family: var(--ms-sans);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.ms-diff-pill:hover {
+  color: var(--ms-bone);
+  background: rgba(233, 229, 219, 0.06);
+}
+
+.ms-diff-pill.active {
+  background: var(--ms-bone);
+  color: var(--ms-ink);
+  font-weight: 700;
+}
+
+.diff-short,
+.quick-short {
+  display: none;
+}
+
+.diff-full,
+.quick-full {
+  display: inline;
+}
+
+.ms-nav-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ms-btn-sound {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  background: var(--ms-slate);
+  border: 1px solid var(--ms-line);
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.ms-btn-sound:hover {
+  background: var(--ms-slate-2);
+  border-color: rgba(233, 229, 219, 0.25);
+}
+
+.ms-user-tickets {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  font-family: var(--ms-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ms-amber);
+  background: rgba(255, 179, 64, 0.08);
+  border: 1px solid rgba(255, 179, 64, 0.28);
+  border-radius: 8px;
+}
+
+.ms-btn-quick {
+  height: 32px;
+  padding: 0 14px;
+  background: var(--ms-amber);
+  border: 0;
+  border-radius: 8px;
+  color: #241600;
+  font-family: var(--ms-sans);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 1px 0 rgba(0, 0, 0, 0.4);
+  transition: filter 0.15s, transform 0.1s;
+}
+
+.ms-btn-quick:hover {
+  filter: brightness(1.08);
+}
+
+.ms-btn-quick:active {
+  transform: translateY(1px);
+}
+
+/* Alert banner */
+.ms-alert-banner {
+  flex-shrink: 0;
+  margin: 8px auto 0;
+  max-width: calc(100% - 24px);
+  padding: 6px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--ms-slate);
+  border: 1px solid var(--ms-line);
+  border-left: 3px solid var(--ms-amber);
+  border-radius: 8px;
+  color: var(--ms-bone);
+  font-size: 12px;
+  font-weight: 500;
+  z-index: 15;
+}
+
+/* ---------------------------------------------------------
+   2. MAIN STAGE + CABINET
+   --------------------------------------------------------- */
+.ms-main-stage {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  overflow: auto;
+}
+
+.ms-cabinet-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: auto;
+  gap: var(--ms-gap);
+  max-width: 100%;
+  padding: var(--ms-pad);
+  background: linear-gradient(180deg, var(--ms-slate-2), var(--ms-slate));
+  border: 1px solid var(--ms-line);
+  border-radius: 18px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 30px 60px -24px rgba(0, 0, 0, 0.85),
+    0 0 0 1px rgba(0, 0, 0, 0.5);
+}
+
+/* HUD: the one memorable element, red LCD readouts */
+.ms-hud-panel {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  background: #07090d;
+  border-radius: 12px;
+  box-shadow:
+    inset 0 2px 8px rgba(0, 0, 0, 0.9),
+    0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.ms-lcd-counter {
+  position: relative;
+  isolation: isolate;
+  padding: 4px 10px;
+  font-family: var(--ms-mono);
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  color: var(--ms-ember);
+  background: #120706;
+  border-radius: 6px;
+  text-shadow: 0 0 12px rgba(255, 90, 60, 0.65);
+  box-shadow: inset 0 0 0 1px rgba(255, 90, 60, 0.12);
+}
+
+/* Unlit "888" segments behind the live digits */
+.ms-lcd-counter::before {
+  content: '888';
+  position: absolute;
+  inset: 0;
+  padding: inherit;
+  z-index: -1;
+  color: rgba(255, 90, 60, 0.09);
+  text-shadow: none;
+}
+
+.ms-smiley-btn {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 25%, #55617f, #2b3347 70%);
+  cursor: pointer;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    inset 0 -3px 4px rgba(0, 0, 0, 0.35),
+    0 2px 4px rgba(0, 0, 0, 0.6);
+  transition: transform 0.1s ease, filter 0.15s;
+}
+
+.ms-smiley-btn:hover:not(:disabled) {
+  filter: brightness(1.15);
+}
+
+.ms-smiley-btn:active:not(:disabled) {
+  transform: translateY(1px) scale(0.97);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.7);
+}
+
+.ms-smiley-btn.glow {
+  animation: msSmilePulse 1.4s ease-in-out infinite;
+}
+
+@keyframes msSmilePulse {
+  0%, 100% { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), inset 0 -3px 4px rgba(0, 0, 0, 0.35), 0 0 0 0 rgba(255, 179, 64, 0.5); }
+  50% { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), inset 0 -3px 4px rgba(0, 0, 0, 0.35), 0 0 0 7px rgba(255, 179, 64, 0); }
+}
+
+.smiley-face {
+  font-size: 22px;
+  line-height: 1;
+}
+
+/* ---------------------------------------------------------
+   3. BOARD + TILES
+   The JS sizes the plate as: cols * tile + (cols - 1) * 2 + 12
+   so keep gap: 2px and padding: 6px, with no border on the plate.
+   --------------------------------------------------------- */
+.ms-board-viewport {
+  width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-x pan-y;
+  padding: 2px;
+  border-radius: 12px;
+  display: flex;
+}
+
+.ms-board-viewport::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+
+.ms-board-viewport::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 4px;
+}
+
+.ms-board-viewport::-webkit-scrollbar-thumb {
+  background: var(--ms-slate-2);
+  border: 1px solid var(--ms-line);
+  border-radius: 4px;
+}
+
+.ms-board-viewport::-webkit-scrollbar-thumb:hover {
+  background: rgba(233, 229, 219, 0.2);
+}
+
+.ms-board-plate {
+  margin: auto;
+  flex-shrink: 0;
+  display: grid;
+  gap: 2px;
+  padding: 6px;
+  background: var(--ms-pit);
+  border-radius: 10px;
+  box-shadow:
+    inset 0 2px 8px rgba(0, 0, 0, 0.9),
+    0 1px 0 rgba(255, 255, 255, 0.06);
+  user-select: none;
+}
+
+.tile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  color: var(--ms-bone);
+  font-family: var(--ms-mono);
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  background: linear-gradient(180deg, var(--ms-key-top), var(--ms-key-bot));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.35),
+    0 1px 2px rgba(0, 0, 0, 0.6);
+  /* each tile is its own size container so glyphs scale with the tile */
+  container-type: size;
+  transition: filter 0.1s;
+}
+
+.tile:hover:not(.open):not(.flag) {
+  filter: brightness(1.22);
+}
+
+.tile:active:not(.open) {
+  transform: translateY(1px);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+.tile.open {
+  background: #0b0e14;
+  box-shadow: inset 0 0 0 1px rgba(233, 229, 219, 0.05);
+  cursor: default;
+}
+
+/* Digits scale with the tile (fallback first for browsers without cq units) */
+.n-digit {
+  font-size: 16px;
+  font-size: 58cqh;
+  font-weight: 800;
+}
+
+.n1 .n-digit { color: #6cb2ff; }
+.n2 .n-digit { color: #4fd18b; }
+.n3 .n-digit { color: #ff6b6b; }
+.n4 .n-digit { color: #b794ff; }
+.n5 .n-digit { color: #ffa94d; }
+.n6 .n-digit { color: #3fd6d0; }
+.n7 .n-digit { color: #f2e394; }
+.n8 .n-digit { color: #aab4c8; }
+
+/* Emoji tiles: hide the text node and redraw the glyph so it scales with the tile */
+.tile.flag,
+.tile.boom,
+.tile.mine {
+  font-size: 0;
+}
+
+.tile.flag::after,
+.tile.boom::after,
+.tile.mine::after {
+  font-size: 15px;
+  font-size: 54cqh;
+  line-height: 1;
+}
+
+.tile.flag::after { content: '🚩'; }
+.tile.flag.wrong::after { content: '❌'; }
+.tile.boom::after { content: '💥'; }
+.tile.mine::after { content: '💣'; }
+
+.tile.flag {
+  background: linear-gradient(180deg, #4a3a46, #35293a);
+}
+
+.tile.flag.wrong {
+  background: linear-gradient(180deg, #5a2a2a, #3d1c1e);
+}
+
+.tile.boom {
+  background: var(--ms-ember) !important;
+  box-shadow: 0 0 18px rgba(255, 90, 60, 0.7) !important;
+  animation: msPop 0.3s ease;
+}
+
+@keyframes msPop {
+  0% { transform: scale(0.8); }
+  50% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+.tile.mine {
+  background: #1d0f12;
+  box-shadow: inset 0 0 0 1px rgba(255, 90, 60, 0.25);
+}
+
+/* ---------------------------------------------------------
+   4. TELEMETRY
+   --------------------------------------------------------- */
+.ms-telemetry-bar {
+  width: 100%;
+  height: var(--ms-tele-h);
+  display: flex;
+  align-items: stretch;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--ms-line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.telemetry-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--ms-mono);
+  font-size: 11px;
+}
+
+.telemetry-item + .telemetry-item {
+  border-left: 1px solid var(--ms-line);
+}
+
+.telemetry-lbl {
+  color: var(--ms-muted);
+  font-size: 10px;
+}
+
+.telemetry-val {
+  color: var(--ms-bone);
+  font-weight: 700;
+}
+
+/* ---------------------------------------------------------
+   5. FOOTER CONTROLS
+   --------------------------------------------------------- */
+.ms-card-footer {
+  width: 100%;
+  height: var(--ms-foot-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--ms-muted);
+}
+
+.ms-mode-switch {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--ms-line);
+  border-radius: 9px;
+}
+
+.mode-btn {
+  padding: 4px 12px;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: var(--ms-muted);
+  font-family: var(--ms-sans);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.mode-btn:hover:not(.active) {
+  color: var(--ms-bone);
+}
+
+.mode-btn.active {
+  background: var(--ms-bone);
+  color: var(--ms-ink);
+  font-weight: 700;
+}
+
+.mode-btn.flag.active {
+  background: var(--ms-ember);
+  color: #fff;
+}
+
+.ms-footer-hint {
+  font-size: 11px;
+  color: var(--ms-muted);
+}
+
+.ms-zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--ms-line);
+  border-radius: 9px;
+}
+
+.ms-zoom-btn {
+  width: 26px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: var(--ms-muted);
+  font-family: var(--ms-mono);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.ms-zoom-btn:hover:not(:disabled) {
+  color: var(--ms-bone);
+  background: rgba(233, 229, 219, 0.08);
+}
+
+.ms-zoom-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.ms-zoom-val {
+  padding: 2px 6px;
+  min-width: 44px;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: var(--ms-bone);
+  font-family: var(--ms-mono);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.ms-zoom-val:hover {
+  background: rgba(233, 229, 219, 0.08);
+  color: var(--ms-amber);
+}
+
+/* ---------------------------------------------------------
+   6. RESULT BAR
+   Overlays the telemetry + footer area so the board never
+   shifts (or scrolls) when a game ends.
+   --------------------------------------------------------- */
+.ms-status-toast {
+  position: absolute;
+  left: var(--ms-pad);
+  right: var(--ms-pad);
+  bottom: var(--ms-pad);
+  height: calc(var(--ms-tele-h) + var(--ms-foot-h) + var(--ms-gap));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: var(--ms-slate);
+  animation: msRise 0.22s ease-out;
+}
+
+@keyframes msRise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.ms-status-toast.won {
+  background: #0f2a20;
+  border: 1px solid rgba(95, 217, 160, 0.5);
+  color: var(--ms-mint);
+}
+
+.ms-status-toast.lost {
+  background: #2b1213;
+  border: 1px solid rgba(255, 90, 60, 0.5);
+  color: #ff8f78;
+}
+
+.toast-content {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.toast-content strong {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.toast-content span {
+  font-family: var(--ms-mono);
+  font-size: 10px;
+  color: var(--ms-muted);
+}
+
+.toast-restart-btn {
+  flex-shrink: 0;
+  padding: 7px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--ms-bone);
+  color: var(--ms-ink);
+  font-family: var(--ms-sans);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+
+.toast-restart-btn:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+
+/* ---------------------------------------------------------
+   7. MOBILE
+   --------------------------------------------------------- */
+@media (max-width: 640px) {
+  .ms-page {
+    --ms-gap: 6px;
+    --ms-pad: 8px;
+    --ms-tele-h: 26px;
+    --ms-foot-h: 30px;
+  }
+
+  .ms-nav {
+    height: 42px;
+    padding: 0 8px;
+    gap: 4px;
+    overflow: hidden;
+  }
+
+  .ms-title {
+    display: none;
+  }
+
+  .ms-nav-left {
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .ms-back-link {
+    font-size: 12px;
+  }
+
+  .ms-diff-pills {
+    padding: 2px;
+  }
+
+  .ms-diff-pill {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+
+  .diff-full {
+    display: none !important;
+  }
+
+  .diff-short {
+    display: inline !important;
+  }
+
+  .ms-nav-right {
+    gap: 5px;
+    flex-shrink: 0;
+  }
+
+  .ms-btn-sound {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+
+  .quick-full {
+    display: none !important;
+  }
+
+  .quick-short {
+    display: inline !important;
+  }
+
+  .ms-btn-quick {
+    height: 28px;
+    padding: 0 9px;
+    font-size: 12px;
+  }
+
+  .ms-user-tickets {
+    height: 28px;
+    padding: 0 8px;
+    font-size: 11px;
+  }
+
+  .ms-main-stage {
+    padding: 4px 6px;
+  }
+
+  .ms-cabinet-card {
+    border-radius: 14px;
+    width: 100%;
+  }
+
+  .ms-hud-panel {
+    padding: 6px 8px;
+  }
+
+  .ms-lcd-counter {
+    font-size: 17px;
+    padding: 4px 8px;
+  }
+
+  .ms-smiley-btn {
+    width: 38px;
+    height: 38px;
+  }
+
+  .ms-footer-hint {
+    display: none;
+  }
+
+  .ms-card-footer {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .toast-content strong {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 360px) {
+  .ms-btn-quick {
+    display: none;
+  }
+}
+
+/* ---------------------------------------------------------
+   8. MOBILE LANDSCAPE MODE
+   When phone is rotated sideways, compact all bars so 30x16
+   fits on screen with 0 scroll!
+   --------------------------------------------------------- */
+@media (max-height: 520px) and (min-width: 480px) {
+  .ms-page {
+    --ms-gap: 2px;
+    --ms-pad: 4px;
+    --ms-tele-h: 22px;
+    --ms-foot-h: 28px;
+  }
+
+  .ms-nav {
+    height: 30px;
+    padding: 0 8px;
+    gap: 4px;
+  }
+
+  .ms-title {
+    display: none;
+  }
+
+  .ms-diff-pills {
+    padding: 1px;
+  }
+
+  .ms-diff-pill {
+    padding: 2px 6px;
+    font-size: 11px;
+  }
+
+  .ms-main-stage {
+    padding: 2px 6px;
+    overflow: hidden;
+  }
+
+  /* Side-rail layout: Board takes the left, HUD & controls take the right side */
+  .ms-cabinet-card {
+    display: grid;
+    grid-template-columns: auto 210px;
+    grid-template-rows: auto 1fr auto;
+    grid-template-areas:
+      "board hud"
+      "board controls"
+      "board telemetry";
+    align-items: center;
+    gap: 6px 14px;
+    border-radius: 12px;
+    padding: 6px 12px;
+    margin: auto;
+    width: fit-content;
+    max-width: 100%;
+  }
+
+  .ms-board-viewport {
+    grid-area: board;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .ms-board-plate {
+    padding: 4px;
+    gap: 1px;
+    border-radius: 6px;
+    margin: 0;
+  }
+
+  .tile {
+    border-radius: 2px;
+  }
+
+  .ms-hud-panel {
+    grid-area: hud;
+    padding: 4px 8px;
+    border-radius: 8px;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .ms-lcd-counter {
+    font-size: 16px;
+    padding: 2px 6px;
+  }
+
+  .ms-smiley-btn {
+    width: 30px;
+    height: 30px;
+  }
+
+  .smiley-face {
+    font-size: 16px;
+  }
+
+  .ms-card-footer {
+    grid-area: controls;
+    height: auto;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: stretch;
+    justify-content: center;
+  }
+
+  .ms-footer-hint {
+    display: none;
+  }
+
+  .ms-mode-switch {
+    width: 100%;
+    display: flex;
+  }
+
+  .mode-btn {
+    flex: 1;
+    text-align: center;
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+
+  .ms-zoom-controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .ms-zoom-btn {
+    width: 28px;
+    height: 24px;
+    font-size: 13px;
+  }
+
+  .ms-zoom-val {
+    font-size: 11px;
+    min-width: 40px;
+    padding: 2px 4px;
+  }
+
+  .ms-telemetry-bar {
+    grid-area: telemetry;
+    height: 24px;
+    width: 100%;
+  }
+
+  .telemetry-item {
+    font-size: 10px;
+    gap: 4px;
+  }
+
+  .ms-status-toast {
+    position: absolute;
+    inset: auto 12px 12px auto;
+    width: 210px;
+    height: auto;
+    padding: 10px 12px;
+    flex-direction: column;
+    gap: 6px;
+    text-align: center;
+    border-radius: 10px;
+    z-index: 10;
+  }
+
+  .toast-content strong {
+    font-size: 12px;
+  }
+
+  .toast-restart-btn {
+    width: 100%;
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+}
+
+/* ---------------------------------------------------------
+   9. ROTATE PROMPT MODAL & CHIP
+   --------------------------------------------------------- */
+.ms-rotate-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(5, 7, 10, 0.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: msFadeIn 0.22s ease-out;
+}
+
+@keyframes msFadeIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.ms-rotate-card {
+  max-width: 340px;
+  width: 100%;
+  background: linear-gradient(180deg, #182030, #0e1422);
+  border: 1px solid rgba(255, 179, 64, 0.45);
+  border-radius: 20px;
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 14px;
+  box-shadow:
+    0 24px 48px rgba(0, 0, 0, 0.85),
+    0 0 35px rgba(255, 179, 64, 0.2);
+}
+
+.ms-rotate-badge {
+  display: inline-block;
+  padding: 3px 12px;
+  background: rgba(255, 179, 64, 0.15);
+  border: 1px solid rgba(255, 179, 64, 0.4);
+  border-radius: 999px;
+  font-family: var(--ms-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ms-amber);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.ms-rotate-icon-wrap {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 179, 64, 0.2), rgba(255, 179, 64, 0.05));
+  border: 1px solid rgba(255, 179, 64, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ms-amber);
+}
+
+.ms-phone-rotate-anim {
+  width: 40px;
+  height: 40px;
+  animation: msPhoneRotate 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes msPhoneRotate {
+  0%, 15% {
+    transform: rotate(0deg);
+  }
+  45%, 70% {
+    transform: rotate(90deg);
+  }
+  90%, 100% {
+    transform: rotate(0deg);
+  }
+}
+
+.ms-rotate-title {
+  margin: 0;
+  font-family: var(--ms-sans);
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--ms-bone);
+  letter-spacing: -0.01em;
+}
+
+.ms-rotate-desc {
+  margin: 0;
+  font-family: var(--ms-sans);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ms-muted);
+}
+
+.ms-rotate-desc strong {
+  color: var(--ms-amber);
+}
+
+.ms-rotate-actions {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.ms-btn-rotate-primary {
+  width: 100%;
+  padding: 12px;
+  background: var(--ms-amber);
+  border: 0;
+  border-radius: 12px;
+  color: #241600;
+  font-family: var(--ms-sans);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 14px rgba(255, 179, 64, 0.4);
+  transition: transform 0.1s, filter 0.15s;
+}
+
+.ms-btn-rotate-primary:active {
+  transform: scale(0.98);
+}
+
+.ms-btn-rotate-secondary {
+  width: 100%;
+  padding: 10px;
+  background: transparent;
+  border: 1px solid var(--ms-line);
+  border-radius: 12px;
+  color: var(--ms-muted);
+  font-family: var(--ms-sans);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.ms-btn-rotate-secondary:hover {
+  color: var(--ms-bone);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.ms-landscape-hint-chip {
+  flex-shrink: 0;
+  margin: 6px auto 0;
+  padding: 5px 12px;
+  background: rgba(255, 179, 64, 0.1);
+  border: 1px solid rgba(255, 179, 64, 0.35);
+  border-radius: 999px;
+  color: var(--ms-amber);
+  font-family: var(--ms-mono);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.ms-landscape-hint-chip:hover {
+  background: rgba(255, 179, 64, 0.18);
+}
+
+.ms-landscape-hint-chip:active {
+  transform: scale(0.98);
+}
+
+/* ---------------------------------------------------------
+   8. REDUCED MOTION
+   --------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .ms-page.screen-shake,
+  .ms-smiley-btn.glow,
+  .tile.boom,
+  .ms-status-toast {
+    animation: none;
+  }
+
+  .ms-page * {
+    transition: none !important;
+  }
+}

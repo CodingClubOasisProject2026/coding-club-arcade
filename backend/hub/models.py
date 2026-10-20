@@ -24,7 +24,7 @@ class GameChoices(models.TextChoices):
 
 class Game(models.Model):
     name = models.CharField(choices=GameChoices.choices,  max_length=30, unique=True)
-    ratio = models.DecimalField(default=Decimal("1.0"))
+    ratio = models.DecimalField(default=Decimal("1.0"), max_digits=10, decimal_places=5)
 
     def __str__(self) -> str:
         return self.name
@@ -38,6 +38,7 @@ class Session(models.Model):
     id = models.UUIDField(default=uuid7, primary_key=True, editable=False)
     seed = models.PositiveBigIntegerField(default=generate_seed, editable=False)
     score = models.PositiveIntegerField(default=None, null=True, blank=True)
+    wordle_state = models.JSONField(default=dict, blank=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="sessions")
     game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name="sessions")
     created_at = models.DateTimeField(auto_now_add=True)
