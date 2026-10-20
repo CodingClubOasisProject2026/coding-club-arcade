@@ -1,14 +1,9 @@
 from django.contrib.auth import get_user_model
-from django.db.models import F, Sum
-from django.db.transaction import atomic
+from django.db.models import Sum
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
-from django.views.decorators.csrf import ensure_csrf_cookie
-from rest_framework.exceptions import ValidationError
 from rest_framework.generics import CreateAPIView, ListAPIView, UpdateAPIView
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
 
 from config.celery import app
 from hub.models import Game, Session
@@ -27,15 +22,6 @@ class LeaderboardView(ListAPIView):
         return super().dispatch(request, *args, **kwargs)
 
 
-class MeView(APIView):
-    @method_decorator(ensure_csrf_cookie)
-    def get(self, request):
-        user = request.user
-        if not user.is_authenticated:
-            return Response({"authenticated": False})
-        return Response({"authenticated": True, "username": user.username, "tickets": user.tickets})
-
-
 class GameListView(ListAPIView):
     serializer_class = GameSerializer
     queryset = Game.objects.all()
@@ -45,12 +31,8 @@ class SessionStartView(CreateAPIView):
     serializer_class = SessionSerializer
     permission_classes = (IsAuthenticated,)
 
-    @atomic
     def perform_create(self, serializer):
         game_id = self.kwargs["game_id"]
-        used = User.objects.select_for_update().filter(id=self.request.user.pk,tickets__gt=0).update(tickets=F("tickets") - 1)
-        if not used:
-            raise ValidationError({"tickets": "You need at least one ticket to start a game."})
         serializer.save(user_id=self.request.user.pk, game_id=game_id)
 
 
