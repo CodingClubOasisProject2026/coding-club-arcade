@@ -163,21 +163,9 @@ export default function Minesweeper() {
   const [localStart, setLocalStart] = useState<number | null>(null)
   const [elapsed, setElapsed] = useState(0)
   const [totalClicks, setTotalClicks] = useState(0)
-  const [zoom, setZoom] = useState(1)
-  const [dismissedRotatePrompt, setDismissedRotatePrompt] = useState(false)
+  const [boardSpace, setBoardSpace] = useState({ width: 0, height: 0 })
 
-  // Viewport tracking for guaranteed responsive cell sizing
-  const [viewport, setViewport] = useState({
-    w: typeof window !== 'undefined' ? window.innerWidth : 1200,
-    h: typeof window !== 'undefined' ? window.innerHeight : 800,
-  })
-
-  useEffect(() => {
-    const onResize = () => setViewport({ w: window.innerWidth, h: window.innerHeight })
-    window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
-  }, [])
-
+  const lossDialogRef = useRef<HTMLDialogElement | null>(null)
   const pending = useRef(false)
   const longPressTimer = useRef<number | null>(null)
   const didLongPress = useRef(false)
@@ -270,15 +258,19 @@ export default function Minesweeper() {
   // (Calling start() from the pill's onClick would use the previous difficulty,
   // because the callback closes over the old value.)
   useEffect(() => {
-    setZoom(1)
-    setDismissedRotatePrompt(false)
-    if (boardViewportRef.current) {
-      boardViewportRef.current.scrollLeft = 0
-      boardViewportRef.current.scrollTop = 0
-    }
     start()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [difficulty])
+
+  // Native modal handles focus trapping, Escape, and focus restoration.
+  useEffect(() => {
+    const dialog = lossDialogRef.current
+    if (game?.status === 'lost') {
+      if (dialog && !dialog.open) dialog.showModal()
+    } else {
+      dialog?.close()
+    }
+  }, [game?.status, game?.id])
 
   // Win/Loss Audio triggers
   useEffect(() => {
@@ -295,6 +287,7 @@ export default function Minesweeper() {
   // Keyboard shortcuts
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (lossDialogRef.current?.open) return
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
       if (e.key === 'r' || e.key === 'R') {
         start()
@@ -304,12 +297,7 @@ export default function Minesweeper() {
           audio.playFlag(!f)
           return !f
         })
-      } else if (e.key === '+' || e.key === '=') {
-        setZoom((z) => Math.min(1.8, Number((z + 0.15).toFixed(2))))
-      } else if (e.key === '-' || e.key === '_') {
-        setZoom((z) => Math.max(0.7, Number((z - 0.15).toFixed(2))))
-      } else if (e.key === '0') {
-        setZoom(1)
+
       }
     }
     window.addEventListener('keydown', onKey)
@@ -668,48 +656,25 @@ export default function Minesweeper() {
     return Math.round((totalClicks / elapsed) * 60)
   }, [totalClicks, elapsed])
 
-  // Phone detection:
-  // Phones in portrait have narrow width (<= 500px).
-  // Phones in landscape have short height (<= 500px) and width <= 1050px.
-  // Laptops and desktops have height >= 600px and width >= 1024px.
-  const isPhonePortrait = viewport.w <= 500 && viewport.h > viewport.w
-  const isPhoneLandscape = viewport.h <= 500 && viewport.w <= 1050 && viewport.w > viewport.h
+  // Measure the board slot, not the window: headers, controls, and banners
+  // are already accounted for by CSS layout. Fractional cells fit small screens.
+  useEffect(() => {
+    const slot = boardViewportRef.current
+    if (!slot) return
+    const observer = new ResizeObserver(([entry]) => {
+      setBoardSpace({ width: entry.contentRect.width, height: entry.contentRect.height })
+    })
+    observer.observe(slot)
+    return () => observer.disconnect()
+  }, [])
 
-  // In phone landscape, the side rail takes ~240px on the right,
-  // so the board takes the remaining width and gets nearly the full screen height!
-  const maxBoardWidth = isPhoneLandscape
-    ? Math.max(280, viewport.w - 240)
-    : Math.min(viewport.w - 32, 980)
-
-  const maxBoardHeight = isPhoneLandscape
-    ? Math.max(160, viewport.h - 52)
-    : Math.max(220, viewport.h - 190)
-
-  const rawSizeByWidth = Math.floor((maxBoardWidth - (cols - 1) * 2 - 20) / cols)
-  const rawSizeByHeight = Math.floor((maxBoardHeight - (rows - 1) * 2 - 20) / rows)
-  const fitTileSize = Math.min(rawSizeByWidth, rawSizeByHeight)
-
-  // On laptop/desktop: strictly use fitTileSize so the HUD and Footer are NEVER cut off!
-  // In phone landscape: fitTileSize fits the full 30x16 field onto the phone with 0 scroll!
-  // In phone portrait: if user chooses to stay in portrait, provide a comfortable tap size.
-  const baseTileSize = isPhonePortrait
-    ? Math.max(30, Math.min(48, rawSizeByWidth))
-    : Math.max(12, Math.min(48, fitTileSize))
-
-  const optimalTileSize = Math.round(baseTileSize * zoom)
-
-  const tryRotateLandscape = async () => {
-    try {
-      if (document.documentElement.requestFullscreen) {
-        await document.documentElement.requestFullscreen()
-      }
-      if ('orientation' in screen && screen.orientation && 'lock' in screen.orientation) {
-        await (screen.orientation as { lock: (orientation: string) => Promise<void> }).lock('landscape')
-      }
-    } catch {
-      // Browsers like iOS Safari require physical rotation
-    }
-  }
+  const boardGap = boardSpace.width < 480 ? 1 : 2
+  const optimalTileSize = Math.max(0, Math.min(56,
+    (boardSpace.width - 12 - (cols - 1) * boardGap) / cols,
+    (boardSpace.height - 12 - (rows - 1) * boardGap) / rows,
+  ))
+  const safeCells = cols * rows - (game?.mine_count ?? currentConfig.mines)
+  const clearedPercent = Math.round(((view?.opened.size ?? 0) / safeCells) * 100)
 
   return (
     <div className={`ms-page ${isShaking ? 'screen-shake' : ''}`}>
@@ -746,6 +711,7 @@ export default function Minesweeper() {
             className="ms-btn-sound"
             onClick={() => setSoundOn(audio.toggle())}
             title={soundOn ? 'Mute sound' : 'Turn sound on'}
+            aria-pressed={soundOn}
             aria-label={soundOn ? 'Mute sound' : 'Turn sound on'}
           >
             {soundOn ? '🔊' : '🔇'}
@@ -766,59 +732,17 @@ export default function Minesweeper() {
         </div>
       )}
 
-      {/* Landscape Rotation Modal for Mobile Expert Mode */}
-      {difficulty === 'expert' && isPhonePortrait && !dismissedRotatePrompt && (
-        <div className="ms-rotate-overlay" role="dialog" aria-modal="true" aria-labelledby="ms-rotate-heading">
-          <div className="ms-rotate-card">
-            <div className="ms-rotate-badge">Widescreen Required</div>
-            <div className="ms-rotate-icon-wrap" aria-hidden="true">
-              <svg className="ms-phone-rotate-anim" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="5" y="2" width="14" height="20" rx="3" ry="3" />
-                <path d="M12 18h.01" />
-              </svg>
-            </div>
-
-            <h2 id="ms-rotate-heading" className="ms-rotate-title">Rotate Phone to Landscape</h2>
-            <p className="ms-rotate-desc">
-              Expert mode is <strong>30 columns wide</strong>. Rotate your device sideways to play the entire field without scrolling!
-            </p>
-
-            <div className="ms-rotate-actions">
-              <button
-                type="button"
-                className="ms-btn-rotate-primary"
-                onClick={async () => {
-                  await tryRotateLandscape()
-                }}
-              >
-                <span>🔄</span> Turn Sideways
-              </button>
-              <button
-                type="button"
-                className="ms-btn-rotate-secondary"
-                onClick={() => setDismissedRotatePrompt(true)}
-              >
-                Continue in Portrait
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Persistent hint chip when player chose to stay in portrait */}
-      {difficulty === 'expert' && isPhonePortrait && dismissedRotatePrompt && (
-        <div className="ms-landscape-hint-chip" onClick={() => setDismissedRotatePrompt(false)}>
-          <span>🔄</span> Rotate to landscape for zero-scroll widescreen
-        </div>
-      )}
-
       <main className="ms-main-stage">
-        <div className="ms-cabinet-card">
+        <div className={`ms-cabinet-card ${busy ? 'is-loading' : ''} ${game?.status === 'won' ? 'is-victory' : ''}`}>
+          <div className="ms-board-heading">
+            <div><span className="ms-eyebrow">CC ARCADE™ / POCKET SYSTEM</span><h2>Minesweeper <span className="ms-console-edition">{currentConfig.label}</span></h2></div>
+            <span className="ms-session-badge">{game?.id.startsWith('local-') ? 'Practice' : 'Arcade'} mode</span>
+          </div>
           {/* HUD: mines left, restart, timer */}
           <div className="ms-hud-panel">
-            <div className="ms-lcd-counter" title="Mines left" aria-label="Mines left">
+            <div className="ms-counter-group"><span className="ms-counter-label">Mines left</span><div className="ms-lcd-counter" title="Mines left" aria-label="Mines left">
               {formatDigits(game?.mines_left ?? currentConfig.mines)}
-            </div>
+            </div></div>
 
             <button
               type="button"
@@ -831,14 +755,14 @@ export default function Minesweeper() {
               <span className="smiley-face">{face}</span>
             </button>
 
-            <div className="ms-lcd-counter" title="Time in seconds" aria-label="Time in seconds">
+            <div className="ms-counter-group"><span className="ms-counter-label">Time / sec</span><div className="ms-lcd-counter" title="Time in seconds" aria-label="Time in seconds">
               {formatDigits(elapsed)}
-            </div>
+            </div></div>
           </div>
 
           {/* Minefield */}
-          {game && view && (
-            <div className="ms-board-viewport" ref={boardViewportRef}>
+          <div className="ms-board-viewport" ref={boardViewportRef}>
+            {game && view && optimalTileSize > 0 && (
               <div
                 className="ms-board-plate"
                 role="group"
@@ -846,7 +770,8 @@ export default function Minesweeper() {
                 style={{
                   gridTemplateColumns: `repeat(${cols}, ${optimalTileSize}px)`,
                   gridTemplateRows: `repeat(${rows}, ${optimalTileSize}px)`,
-                  width: cols * optimalTileSize + (cols - 1) * 2 + 12,
+                  width: cols * optimalTileSize + (cols - 1) * boardGap + 12,
+                  gap: boardGap,
                 }}
                 onContextMenu={(e) => e.preventDefault()}
               >
@@ -884,6 +809,7 @@ export default function Minesweeper() {
                       key={i}
                       type="button"
                       className={cls}
+                      disabled={busy}
                       style={{ width: `${optimalTileSize}px`, height: `${optimalTileSize}px` }}
                       aria-label={`Row ${Math.floor(i / cols) + 1}, column ${(i % cols) + 1}: ${label}`}
                       onMouseDown={(e) => {
@@ -906,9 +832,13 @@ export default function Minesweeper() {
                   )
                 })}
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
+          <div className="ms-progress-section">
+            <div className="ms-progress-label"><span>{busy ? 'Preparing your field…' : game?.status === 'won' ? 'Beautifully cleared.' : game?.status === 'lost' ? 'One more round?' : clearedPercent === 0 ? 'Your next move starts here' : 'Keep going. You’ve got this.'}</span><strong>{clearedPercent}% cleared</strong></div>
+            <div className="ms-progress" role="progressbar" aria-label="Safe cells cleared" aria-valuenow={clearedPercent} aria-valuemin={0} aria-valuemax={100}><span style={{ width: `${clearedPercent}%` }} /></div>
+          </div>
           {/* Stats */}
           <div className="ms-telemetry-bar">
             <div className="telemetry-item">
@@ -939,7 +869,7 @@ export default function Minesweeper() {
                   audio.playClick()
                 }}
               >
-                Dig
+                <span className="ms-action-key" aria-hidden="true">A</span><span>Reveal</span>
               </button>
               <button
                 type="button"
@@ -950,53 +880,32 @@ export default function Minesweeper() {
                   audio.playFlag(true)
                 }}
               >
-                Flag (F)
+                <span className="ms-action-key" aria-hidden="true">B</span><span>Flag</span>
               </button>
             </div>
 
-            {/* Zoom controls */}
-            <div className="ms-zoom-controls" role="group" aria-label="Board zoom">
-              <button
-                type="button"
-                className="ms-zoom-btn"
-                onClick={() => setZoom((z) => Math.max(0.7, Number((z - 0.15).toFixed(2))))}
-                disabled={zoom <= 0.7}
-                title="Zoom out (-)"
-                aria-label="Zoom out"
-              >
-                −
-              </button>
-              <button
-                type="button"
-                className="ms-zoom-val"
-                onClick={() => setZoom(1)}
-                title="Reset zoom (0)"
-                aria-label="Reset zoom"
-              >
-                {Math.round(zoom * 100)}%
-              </button>
-              <button
-                type="button"
-                className="ms-zoom-btn"
-                onClick={() => setZoom((z) => Math.min(1.8, Number((z + 0.15).toFixed(2))))}
-                disabled={zoom >= 1.8}
-                title="Zoom in (+)"
-                aria-label="Zoom in"
-              >
-                +
-              </button>
-            </div>
 
-            <span className="ms-footer-hint">
-              Left-click to dig. Right-click to flag. Click a number to chord.
-            </span>
           </div>
 
+          <div className="ms-console-hardware" aria-hidden="true">
+            <span className="ms-console-power"><i /> POWER</span>
+            <span className="ms-console-model">MS–01 · DIGITAL GAME SYSTEM</span>
+            <span className="ms-console-speaker"><i /><i /><i /><i /><i /></span>
+          </div>
+
+          {game?.status !== 'won' && (
+            <div className="ms-console-signature" aria-hidden="true">
+              <span className="ms-cartridge-slot" />
+              <strong>CC<span> / </span>01</strong>
+              <span>MINESWEEPER · {cols} × {rows}</span>
+              <span className="ms-console-grip"><i /><i /><i /></span>
+            </div>
+          )}
           {/* Result bar */}
-          {game && game.status !== 'in_progress' && (
-            <div className={`ms-status-toast ${game.status}`} role="status">
+          {game && game.status === 'won' && (
+            <div className="ms-status-toast won" role="status">
               <div className="toast-content">
-                <strong>{game.status === 'won' ? 'Board cleared' : 'You hit a mine'}</strong>
+                <strong>Board cleared</strong>
                 <span>
                   {elapsed}s · {game.move_count} moves · {apm} APM
                   {game.status === 'won' && game.score ? ` · Score ${game.score}` : ''}
@@ -1008,7 +917,22 @@ export default function Minesweeper() {
             </div>
           )}
         </div>
+        <div className="ms-instructions"><span><kbd>Click</kbd> reveal</span><span><kbd>Right-click / hold</kbd> flag</span><span><kbd>R</kbd> restart</span><span><kbd>F</kbd> switch mode</span></div>
       </main>
+      <dialog ref={lossDialogRef} className="ms-loss-popup" aria-labelledby="ms-loss-title" aria-describedby="ms-loss-description">
+        <button type="button" className="ms-popup-close" aria-label="Close and view board" onClick={() => lossDialogRef.current?.close()}>×</button>
+        <div className="ms-popup-mine" aria-hidden="true">✹</div>
+        <span className="ms-eyebrow">GAME OVER</span>
+        <h2 id="ms-loss-title">You hit a mine</h2>
+        <p id="ms-loss-description">One wrong step. A fresh field awaits.</p>
+        <div className="ms-popup-stats">
+          <span><strong>{elapsed}s</strong>Time</span>
+          <span><strong>{game?.move_count ?? 0}</strong>Moves</span>
+          <span><strong>{clearedPercent}%</strong>Cleared</span>
+        </div>
+        <button type="button" className="ms-popup-play" disabled={busy} onClick={() => { lossDialogRef.current?.close(); void start() }}>Play again ↗</button>
+        <button type="button" className="ms-popup-inspect" onClick={() => lossDialogRef.current?.close()}>View board</button>
+      </dialog>
     </div>
   )
 }
