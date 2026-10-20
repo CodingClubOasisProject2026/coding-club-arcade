@@ -18,6 +18,7 @@ def check_collision(grid, tetromino):
     return False
 
 def lock_tetromino(grid, tetromino):
+
     for i, row in enumerate(tetromino.shape):
         for j, cell in enumerate(row):
             if cell:
@@ -25,7 +26,9 @@ def lock_tetromino(grid, tetromino):
                 y = tetromino.y + i
                 if 0 <= y < len(grid) and 0 <= x < len(grid[0]):
                     grid[y][x] = 1
-    return grid
+                else:
+                    raise ValueError("Tetromino position is out of bounds")
+
 
 def validate_move(grid, tetromino, action):
     direction = action.get("direction")
