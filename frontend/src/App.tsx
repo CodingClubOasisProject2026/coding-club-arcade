@@ -11,70 +11,112 @@ import Hub from './pages/Hub'
 function AuthBar() {
   const { me } = useAuth()
 
-  if (!me) return <div className="auth" />
+  if (!me) {
+    return (
+      <div className="arcade-account">
+        <div className="arcade-auth">
+          <span className="arcade-auth-loading">Checking session…</span>
+        </div>
+      </div>
+    )
+  }
 
   if (me.authenticated) {
     return (
-      <div className="auth">
-        <span className="muted">
-          {me.username} · 🎟 {me.tickets}
-        </span>
-        <button
-          className="link"
-          onClick={async () => {
-            await logout()
-            window.location.reload()
-          }}
-        >
-          Log out
-        </button>
+      <div className="arcade-account">
+        <div className="arcade-auth">
+          <div className="arcade-user">
+            <span className="arcade-username">{me.username}</span>
+            <span className="arcade-tickets">🎟 {me.tickets} ticket{me.tickets === 1 ? '' : 's'}</span>
+          </div>
+          <button
+            type="button"
+            className="arcade-logout"
+            onClick={async () => {
+              await logout()
+              window.location.reload()
+            }}
+          >
+            Log out
+          </button>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="auth ">
-      <GoogleSignIn />
+    <div className="arcade-account">
+      <div className="arcade-auth">
+        <GoogleSignIn />
+      </div>
     </div>
   )
 }
 
 export default function App() {
-  const isWordle = useLocation().pathname.replace(/\/+$/, '') === '/wordle'
+  const location = useLocation()
+  const isWordle = location.pathname.replace(/\/+$/, '') === '/wordle'
+  const isMinesweeper = location.pathname.replace(/\/+$/, '') === '/minesweeper'
+
+  if (isWordle) {
+    return (
+      <AuthProvider>
+        <div className="wordle-route">
+          <Routes>
+            <Route path="/wordle" element={<WordlePage />} />
+          </Routes>
+        </div>
+      </AuthProvider>
+    )
+  }
+
+  if (isMinesweeper) {
+    return (
+      <AuthProvider>
+        <Routes>
+          <Route path="/minesweeper" element={<Minesweeper />} />
+        </Routes>
+      </AuthProvider>
+    )
+  }
 
   return (
     <AuthProvider>
-      {!isWordle && (
-        <nav className="topbar">
-          <Link to="/" className="brand" id="logo">
-            <img src="/logo.jpeg" alt="logo" className="logo" width="30" height="30" />
-            Coding Club
+      <div className="arcade-shell">
+        <header className="arcade-header">
+          <Link to="/" className="arcade-brand">
+            <img src="/logo.jpeg" alt="Coding Club" width="36" height="36" />
+            <span>
+              <strong>CODING CLUB</strong>
+              <small>ARCADE</small>
+            </span>
           </Link>
-          <Link to="/" className="brand">
-            🕹️ Arcade
-          </Link>
-          <Link to="/leaderboard" className="brand">
-            🏆 Leaderboard
-          </Link>
+          <nav className="arcade-navigation" aria-label="Main navigation">
+            <Link to="/" className={location.pathname === '/' ? 'is-active' : ''}>
+              Home
+            </Link>
+            <Link to="/leaderboard" className={location.pathname === '/leaderboard' ? 'is-active' : ''}>
+              Leaderboard
+            </Link>
+          </nav>
           <AuthBar />
-        </nav>
-      )}
-      
+        </header>
+
         <Routes>
           <Route path="/" element={<Hub />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
-          <Route path="/minesweeper" element={<Minesweeper />} />
-          <Route path="/wordle" element={<WordlePage />} />
           <Route
             path="*"
             element={
-              <p>
-                Not found. <Link to="/">Back to the arcade</Link>
-              </p>
+              <section className="arcade-not-found">
+                <h1>404</h1>
+                <p className="muted">Game cabinet not found.</p>
+                <Link to="/">Back to the arcade</Link>
+              </section>
             }
           />
         </Routes>
-      
+      </div>
     </AuthProvider>
   )
 }

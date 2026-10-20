@@ -1,7 +1,12 @@
-:root {
+.wordle-route {
   font-family: Manrope, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: #edf4ee;
-  background: #101713;
+  background:
+    radial-gradient(ellipse at 15% 0%, rgb(83 141 78 / 17%), transparent 38rem),
+    radial-gradient(ellipse at 95% 8%, rgb(181 159 59 / 11%), transparent 30rem),
+    #101713;
+  min-height: 100vh;
+  min-width: 320px;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   color-scheme: dark;
@@ -16,18 +21,8 @@
   --gold: #f3d97a;
 }
 
-* {
+.wordle-route * {
   box-sizing: border-box;
-}
-
-body {
-  min-width: 320px;
-  min-height: 100vh;
-  margin: 0;
-  background:
-    radial-gradient(ellipse at 15% 0%, rgb(83 141 78 / 17%), transparent 38rem),
-    radial-gradient(ellipse at 95% 8%, rgb(181 159 59 / 11%), transparent 30rem),
-    #101713;
 }
 
 button {
