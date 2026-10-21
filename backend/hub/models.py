@@ -17,6 +17,7 @@ class CustomUser(AbstractUser):
 
 class GameChoices(models.TextChoices):
     MINESWEEPER = "MINESWEEPER"
+    PACMAN = "PACMAN"
     SNAKE = "SNAKE"
     TETRIS = "TETRIS"
     WORDLE = "WORDLE"
