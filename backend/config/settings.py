@@ -41,18 +41,18 @@ SECURE_HSTS_SECONDS = int(getenv('SECURE_HSTS_SECONDS', '0'))
 AUTH_USER_MODEL = 'hub.CustomUser'
 
 # CELERY
-CELERY_WORKER_MINGLE = False
-CELERY_WORKER_GOSSIP = False
 CELERY_BROKER_URL = getenv('CELERY_BROKER_URL', 'amqp://guest:guest@localhost:5672//')
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TASK_QUEUES = (
+    Queue('minesweeper'),
     Queue('snake'),
     Queue('tetris'),
     Queue('wordle'),
 )
 CELERY_TASK_ROUTES = {
+    'minesweeper.tasks.*': {'queue': 'minesweeper'},
     'snake.tasks.*': {'queue': 'snake'},
     'tetris.tasks.*': {'queue': 'tetris'},
     'wordle.tasks.*': {'queue': 'wordle'},
@@ -76,28 +76,11 @@ INSTALLED_APPS = [
     'tetris',
     'wordle',
     'rest_framework',
-    'allauth',
-    'allauth.account',
-    'allauth.socialaccount',
-    'allauth.socialaccount.providers.google',
 ]
-
-SITE_ID = 1
 
 REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 20,
-    "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework.authentication.SessionAuthentication",
-    ],
-    'DEFAULT_THROTTLE_CLASSES': [
-        'rest_framework.throttling.AnonRateThrottle',
-        'rest_framework.throttling.UserRateThrottle',
-    ],
-    'DEFAULT_THROTTLE_RATES': {
-        'anon': '60/minute',
-        'user': '120/minute',
-    },
+    'PAGE_SIZE': 25,
 }
 
 MIDDLEWARE = [
@@ -106,29 +89,9 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'allauth.account.middleware.AccountMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
-
-AUTHENTICATION_BACKENDS = [
-    'django.contrib.auth.backends.ModelBackend',
-    'allauth.account.auth_backends.AuthenticationBackend',
-]
-
-SOCIALACCOUNT_AUTO_SIGNUP = True
-SOCIALACCOUNT_ONLY = True
-ACCOUNT_EMAIL_VERIFICATION = 'none'
-SOCIALACCOUNT_PROVIDERS = {
-    'google': {
-        'APP': {
-            'client_id': getenv('GOOGLE_CLIENT_ID', ''),
-            'secret': getenv('GOOGLE_CLIENT_SECRET', ''),
-            'key': '',
-        },
-        'SCOPE': ['profile', 'email'],
-    },
-}
 
 ROOT_URLCONF = 'config.urls'
 
@@ -210,7 +173,6 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 STATIC_URL = 'static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 
 # Email

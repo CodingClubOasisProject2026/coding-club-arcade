@@ -19,10 +19,9 @@ from django.urls import include, path
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('accounts/', include('allauth.urls')),
     path('', include('hub.urls')),
     path('minesweeper/', include('minesweeper.urls')),
     path('snake/', include('snake.urls')),
-    path('tetris/', include('tetris.urls')),
+    # path('tetris/', include('tetris.urls')),
     path('wordle/', include('wordle.urls')),
 ]

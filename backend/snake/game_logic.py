@@ -137,7 +137,7 @@ def replay_actions(seed, action_log):
     if end_reason not in {"QUIT", "COLLISION", "WON"}:
         raise ValueError("Invalid end_reason")
 
-    # Validate the complete action log.
+    # Validate the complete action log before replaying it.
     previous_tick = 0
 
     for action in actions:
@@ -196,5 +196,9 @@ def replay_actions(seed, action_log):
     # A quit is valid even if the snake was still alive.
     if end_reason == "QUIT":
         game["status"] = "QUIT"
+        if game["status"] != "ACTIVE":
+            raise ValueError("Actions continue after the game ended")
+
+        move_snake(game, current_direction, rng)
 
     return game
