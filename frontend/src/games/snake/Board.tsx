@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 
-const SPRITE_DIR = '/snake'
+const SPRITE_DIR = '/snake-assets'
 const BURST_MS = 700
 
 const VEC: Record<string, string> = { '1,0': 'right', '-1,0': 'left', '0,1': 'down', '0,-1': 'up' }

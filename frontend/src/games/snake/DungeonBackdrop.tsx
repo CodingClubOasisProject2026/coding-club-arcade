@@ -1,4 +1,4 @@
-const D = '/snake'
+const D = '/snake-assets'
 
 const CHAINS = [
   { side: 'left' as const, at: '3%', len: 120 },
