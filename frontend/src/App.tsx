@@ -5,6 +5,7 @@ import AuthProvider from './AuthProvider'
 import GoogleSignIn from './GoogleSignIn'
 import Minesweeper from './games/minesweeper/Minesweeper'
 import WordlePage from './games/wordle/WordlePage.jsx'
+import Snake from './games/snake/Snake'
 import Leaderboard from './pages/leaderboard'
 import Hub from './pages/Hub'
 
@@ -57,6 +58,7 @@ export default function App() {
   const location = useLocation()
   const isWordle = location.pathname.replace(/\/+$/, '') === '/wordle'
   const isMinesweeper = location.pathname.replace(/\/+$/, '') === '/minesweeper'
+  const isSnake = location.pathname.replace(/\/+$/, '') === '/snake'
 
   if (isWordle) {
     return (
@@ -75,6 +77,16 @@ export default function App() {
       <AuthProvider>
         <Routes>
           <Route path="/minesweeper" element={<Minesweeper />} />
+        </Routes>
+      </AuthProvider>
+    )
+  }
+
+  if (isSnake) {
+    return (
+      <AuthProvider>
+        <Routes>
+          <Route path="/snake" element={<Snake />} />
         </Routes>
       </AuthProvider>
     )

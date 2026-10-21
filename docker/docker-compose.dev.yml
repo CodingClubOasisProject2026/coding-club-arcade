@@ -1,0 +1,8 @@
+services:
+  web:
+    command: >
+      sh -c "python manage.py migrate &&
+        python manage.py seed_games &&
+        python manage.py runserver 0.0.0.0:8000 --noreload"
+    ports:
+      - "8000:8000"
