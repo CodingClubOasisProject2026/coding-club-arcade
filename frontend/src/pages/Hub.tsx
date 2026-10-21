@@ -47,7 +47,7 @@ const games: Game[] = [
     description: 'Make every block count. Leave no gaps behind.',
     category: 'PUZZLE',
     color: 'var(--c-tetris)',
-    ready: false,
+    ready: true,
     art: 'tetris',
   },
 ]

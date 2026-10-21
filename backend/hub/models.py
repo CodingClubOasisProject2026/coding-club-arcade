@@ -39,6 +39,7 @@ class Session(models.Model):
     seed = models.PositiveBigIntegerField(default=generate_seed, editable=False)
     score = models.PositiveIntegerField(default=None, null=True, blank=True)
     wordle_state = models.JSONField(default=dict, blank=True)
+    tetris_action_log = models.JSONField(default=dict, blank=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="sessions")
     game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name="sessions")
     created_at = models.DateTimeField(auto_now_add=True)

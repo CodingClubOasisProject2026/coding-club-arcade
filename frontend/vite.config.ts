@@ -1,5 +1,6 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig, loadEnv } from 'vite'
+import { resolve } from 'node:path'
 
 // Backend routes live at the site root (no /api prefix), so they're proxied to the
 // Docker stack (Caddy on :80) during development. Only paths with a trailing slash go
@@ -12,6 +13,14 @@ export default defineConfig(({ mode }) => {
   const target = env.BACKEND_URL ?? 'http://localhost'
   return {
     plugins: [react()],
+    build: {
+      rollupOptions: {
+        input: {
+          main: resolve(process.cwd(), 'index.html'),
+          tetris: resolve(process.cwd(), 'src/games/tetris/index.html'),
+        },
+      },
+    },
     server: {
       // Keep the browser's Host (localhost:5173) so Django's CSRF origin check and the
       // Google redirect URL both match the page the user is actually on.

@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#101017" />
+    <title>Arcade — Tetris</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <span id="connection-label" hidden>Ready</span>
+      <section class="intro">
+        <h1>Tetris</h1>
+      </section>
+      <section class="game-instructions" aria-label="How to play Tetris">
+        <div class="instruction-goal">
+          <h2>How to play</h2>
+          <p>Clear full rows to score. Keep the stack below the top.</p>
+        </div>
+        <div class="instruction-controls" aria-label="Keyboard controls">
+          <span class="instruction-control"><kbd>←</kbd><kbd>→</kbd> Move</span>
+          <span class="instruction-control"><kbd>↑</kbd> Rotate</span>
+          <span class="instruction-control"><kbd>↓</kbd> Soft drop</span>
+          <span class="instruction-control"><kbd>SPACE</kbd> Hard drop</span>
+          <span class="instruction-control"><kbd>P</kbd> Pause</span>
+        </div>
+      </section>
+      <p class="landing-hint"><span class="landing-swatch" aria-hidden="true"></span>Faded blocks show where your piece will land. Press <kbd>SPACE</kbd> to drop it there.</p>
+      <!-- Score panels, playfield, and session status. -->
+      <section class="game-layout" aria-label="Tetris game">
+        <aside class="side-column left-column">
+          <div class="panel">
+            <div class="panel-label">SCORE</div>
+            <div id="score" class="score">000000</div>
+            <div class="score-rule"></div>
+            <div class="stat-row">
+              <span>LINES</span><strong id="lines">00</strong>
+            </div>
+            <div class="stat-row">
+              <span>LEVEL</span><strong id="level">01</strong>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-label">NEXT UP</div>
+            <div id="next-preview" class="preview-grid"></div>
+          </div>
+        </aside>
+        <!-- The board overlay handles start, pause, and end-of-run states. -->
+        <div class="board-wrap">
+          <div class="board-head">
+            <span
+              ><i class="live-indicator"></i>
+              <span id="game-state-label">READY</span></span
+            ><span id="elapsed">00:00</span>
+          </div>
+          <div
+            id="board"
+            class="board"
+            role="grid"
+            aria-label="Tetris playfield"
+          ></div>
+          <div id="clear-callout" class="clear-callout" aria-live="polite" aria-atomic="true"></div>
+          <div id="overlay" class="board-overlay">
+            <div class="overlay-card">
+              <div class="overlay-icon">▦</div>
+              <h2 id="overlay-title">Ready to play?</h2>
+              <p id="overlay-copy">Use the controls above to stack pieces and clear rows.</p>
+              <button id="start-button" class="primary-button">
+                START GAME
+              </button>
+            </div>
+          </div>
+        </div>
+        <!-- Session identifiers and provisional local high score. -->
+        <aside class="side-column right-column">
+          <div class="panel">
+            <div class="panel-label">STATUS</div>
+            <div class="session-state">
+              <span class="state-dot" id="session-dot"></span
+              ><span id="session-label">No active session</span>
+            </div>
+            <span id="session-id" hidden>—</span>
+            <span id="session-seed" hidden>—</span>
+          </div>
+          <div class="panel">
+            <div class="panel-label">YOUR BEST</div>
+            <div class="best-score" id="best-score">000000</div>
+            <div class="muted-small">This device</div>
+          </div>
+        </aside>
+      </section>
+    </main>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

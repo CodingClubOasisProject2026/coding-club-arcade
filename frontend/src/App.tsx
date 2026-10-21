@@ -4,6 +4,7 @@ import { useAuth } from './auth'
 import AuthProvider from './AuthProvider'
 import GoogleSignIn from './GoogleSignIn'
 import Minesweeper from './games/minesweeper/Minesweeper'
+import TetrisPage from './games/tetris/TetrisPage'
 import WordlePage from './games/wordle/WordlePage.jsx'
 import Snake from './games/snake/Snake'
 import Leaderboard from './pages/leaderboard'
@@ -59,6 +60,7 @@ export default function App() {
   const isWordle = location.pathname.replace(/\/+$/, '') === '/wordle'
   const isMinesweeper = location.pathname.replace(/\/+$/, '') === '/minesweeper'
   const isSnake = location.pathname.replace(/\/+$/, '') === '/snake'
+  const isTetris = location.pathname.replace(/\/+$/, '') === '/tetris'
 
   if (isWordle) {
     return (
@@ -88,6 +90,14 @@ export default function App() {
         <Routes>
           <Route path="/snake" element={<Snake />} />
         </Routes>
+      </AuthProvider>
+    )
+  }
+
+  if (isTetris) {
+    return (
+      <AuthProvider>
+        <TetrisPage />
       </AuthProvider>
     )
   }
