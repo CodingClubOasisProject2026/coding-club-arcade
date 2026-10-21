@@ -40,7 +40,7 @@ export function useSnakeGame(sessionId) {
 
   const start = useCallback(async () => {
     if (!UUID_RE.test(sessionId || "")) {
-      setError("Missing or invalid session id. Open /snake?session=<ID>");
+      setError("Missing or invalid session id. Open /?session=<ID>");
       return;
     }
     const runId = ++runIdRef.current;
