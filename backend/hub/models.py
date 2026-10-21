@@ -20,6 +20,7 @@ class GameChoices(models.TextChoices):
     SNAKE = "SNAKE"
     TETRIS = "TETRIS"
     WORDLE = "WORDLE"
+    FLAPPY_BIRD = "FLAPPY_BIRD"
 
 
 class Game(models.Model):

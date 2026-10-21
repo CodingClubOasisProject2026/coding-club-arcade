@@ -14,4 +14,4 @@ class Command(BaseCommand):
                 defaults={"ratio": ratio},
             )
 
-        self.stdout.write(self.style.SUCCESS("Seeded all 4 games!"))
+        self.stdout.write(self.style.SUCCESS(f"Seeded all {len(GameChoices.choices)} games!"))

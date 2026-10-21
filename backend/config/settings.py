@@ -52,11 +52,13 @@ CELERY_TASK_QUEUES = (
     Queue('snake'),
     Queue('tetris'),
     Queue('wordle'),
+    Queue('flappy_bird'),
 )
 CELERY_TASK_ROUTES = {
     'snake.tasks.*': {'queue': 'snake'},
     'tetris.tasks.*': {'queue': 'tetris'},
     'wordle.tasks.*': {'queue': 'wordle'},
+    'flappy_bird.tasks.*': {'queue': 'flappy_bird'},
 }
 CELERY_TASK_ACKS_LATE = True
 CELERY_TASK_REJECT_ON_WORKER_LOST = True
@@ -76,6 +78,7 @@ INSTALLED_APPS = [
     'snake',
     'tetris',
     'wordle',
+    'flappy_bird',
     'rest_framework',
     'allauth',
     'allauth.account',
