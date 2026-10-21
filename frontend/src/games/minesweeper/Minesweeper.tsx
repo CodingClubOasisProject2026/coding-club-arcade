@@ -809,17 +809,6 @@ export default function Minesweeper() {
     }
   }
 
-  const requestLandscape = async () => {
-    try {
-      if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
-        await document.documentElement.requestFullscreen()
-      }
-      const orientation = screen.orientation as ScreenOrientation & { lock?: (type: string) => Promise<void> }
-      await orientation.lock?.('landscape')
-    } catch {
-      // iOS and some browsers only allow physical rotation.
-    }
-  }
 
   return (
     <div className={`ms-page ${isShaking ? 'screen-shake' : ''}`}>
