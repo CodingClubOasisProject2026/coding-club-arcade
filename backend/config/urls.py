@@ -25,5 +25,4 @@ urlpatterns = [
     path('snake/', include('snake.urls')),
     path('tetris/', include('tetris.urls')),
     path('wordle/', include('wordle.urls')),
-    path('flappy-bird/', include('flappy_bird.urls')),
 ]
