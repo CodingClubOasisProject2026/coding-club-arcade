@@ -1,14 +1,15 @@
-@import url("https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Press+Start+2P&family=Space+Grotesk:wght@400;500;600;700&display=swap");
 
 /* Shared colors and page defaults. */
 :root {
   color-scheme: dark;
-  --bg: #101017;
-  --panel: #17171f;
-  --stroke: #2a2935;
-  --text: #f4f2f7;
-  --purple: #a687ff;
-  --green: #a4f27b;
+  --bg: #090914;
+  --panel: #121222;
+  --stroke: #352b5c;
+  --text: #f4efff;
+  --purple: #c38aff;
+  --amber: #ffc857;
+  --cyan: #55eaff;
 }
 * {
   box-sizing: border-box;
@@ -16,12 +17,33 @@
 body {
   margin: 0;
   background:
-    radial-gradient(ellipse at 50% 39%, #1b1829 0, transparent 42%), var(--bg);
+    radial-gradient(ellipse at 50% 0%, #55308080 0%, transparent 48%),
+    radial-gradient(ellipse at 12% 70%, #087d9630 0%, transparent 38%),
+    linear-gradient(#8d74ff0a 1px, transparent 1px),
+    linear-gradient(90deg, #8d74ff0a 1px, transparent 1px),
+    var(--bg);
+  background-attachment: fixed;
+  background-size: auto, auto, 32px 32px, 32px 32px, auto;
   color: var(--text);
   font-family: "Space Grotesk", sans-serif;
   min-height: 100vh;
 }
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+  opacity: 0.14;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0 3px,
+    #000 4px
+  );
+}
 .shell {
+  position: relative;
+  z-index: 1;
   max-width: 1180px;
   margin: auto;
   padding: 26px 34px 22px;
@@ -34,22 +56,27 @@ body {
   color: #aaa8b6;
   letter-spacing: 0.4px;
 }
-.live-indicator {
-  width: 7px;
-  height: 7px;
-  display: inline-block;
-  border-radius: 50%;
-  background: var(--green);
-  box-shadow: 0 0 10px #a4f27b60;
-}
 .intro {
   padding: 15px 0 12px;
+  text-align: center;
+}
+.intro::after {
+  content: "";
+  display: block;
+  width: 92px;
+  height: 3px;
+  margin: 11px auto 0;
+  background: linear-gradient(90deg, var(--cyan), var(--purple), #ff70c8);
+  box-shadow: 0 0 10px #b276ff90;
 }
 h1 {
-  font-size: 36px;
-  line-height: 1;
+  color: #ddcaff;
+  font-family: "Press Start 2P", monospace;
+  font-size: 24px;
+  line-height: 1.5;
   margin: 0;
-  letter-spacing: -1.5px;
+  letter-spacing: 0;
+  text-shadow: 0 0 8px #bc84ff90, 0 0 26px #9b56ff55;
 }
 .game-instructions {
   max-width: 805px;
@@ -60,8 +87,9 @@ h1 {
   align-items: center;
   gap: 14px;
   border: 1px solid var(--stroke);
-  border-radius: 10px;
-  background: linear-gradient(145deg, #1a1922, #16161e);
+  border-radius: 4px;
+  background: linear-gradient(145deg, #17152a, #10101c);
+  box-shadow: inset 0 0 0 1px #ffffff08, 0 0 24px #8a61ff12;
 }
 .landing-hint {
   max-width: 805px;
@@ -76,13 +104,15 @@ h1 {
   width: 12px;
   height: 12px;
   margin: 0 7px -2px 0;
-  border: 1px solid #a687ff;
-  border-radius: 3px;
-  background: #a687ff26;
+  border: 1px solid var(--purple);
+  border-radius: 1px;
+  background: #c38aff26;
+  box-shadow: 0 0 8px #c38aff55;
 }
 .instruction-goal h2 {
   margin: 0 0 4px;
-  font-size: 13px;
+  color: var(--amber);
+  font: 9px/1.6 "Press Start 2P", monospace;
 }
 .instruction-goal p {
   margin: 0;
@@ -118,27 +148,36 @@ h1 {
   gap: 12px;
 }
 .panel {
-  background: linear-gradient(145deg, #1a1922, #16161e);
+  background: linear-gradient(145deg, #17152a, #10101c);
   border: 1px solid var(--stroke);
-  border-radius: 10px;
+  border-radius: 4px;
   padding: 15px;
+  box-shadow: inset 0 0 0 1px #ffffff06, 0 0 20px #8a61ff10;
 }
 .panel-label {
-  font:
-    9px "DM Mono",
-    monospace;
+  font: 7px "Press Start 2P", monospace;
   letter-spacing: 1.35px;
-  color: #9895a4;
+  color: var(--cyan);
   margin-bottom: 12px;
 }
 .score {
-  font-size: 29px;
-  font-weight: 600;
-  letter-spacing: 1px;
+  display: block;
+  padding: 11px 8px;
+  border: 1px solid #31515b;
+  border-radius: 2px;
+  background: #070b10;
+  color: var(--amber);
+  font: 13px/1.6 "Press Start 2P", monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  text-align: right;
+  text-shadow: 0 0 5px #ffc85790, 0 0 14px #ffc85745;
+  box-shadow: inset 0 0 14px #55eaff12, 0 0 10px #55eaff0c;
 }
 .score-rule {
   height: 1px;
-  background: #34313e;
+  background: #352b5c;
+  box-shadow: 0 0 6px #a277ff45;
   margin: 13px 0 10px;
 }
 .stat-row {
@@ -151,8 +190,11 @@ h1 {
     monospace;
 }
 .stat-row strong {
-  color: var(--text);
+  color: var(--cyan);
+  font: 8px "Press Start 2P", monospace;
+  font-variant-numeric: tabular-nums;
   font-weight: 500;
+  text-shadow: 0 0 7px #55eaff70;
 }
 .preview-grid {
   width: 112px;
@@ -168,7 +210,7 @@ h1 {
   width: 17px;
   height: 14px;
   margin: 1px;
-  border-radius: 3px;
+  border-radius: 1px;
 }
 .preview-cell.filled {
   background: var(--piece-color);
@@ -182,21 +224,26 @@ kbd {
     monospace;
   min-width: 23px;
   text-align: center;
-  border: 1px solid #3a3846;
+  border: 1px solid #514077;
   border-bottom-width: 2px;
-  border-radius: 4px;
+  border-radius: 2px;
   padding: 4px 5px;
-  color: #dedbe6;
-  background: #22212b;
+  color: #e4d5ff;
+  background: #1a1730;
+  box-shadow: 0 2px 0 #090812, 0 0 8px #9e72ff16;
 }
 /* Playfield cells and in-game overlay. */
 .board-wrap {
   position: relative;
-  border: 1px solid #383342;
-  border-radius: 9px;
-  background: #121119;
+  border: 1px solid #7960b3;
+  border-radius: 5px;
+  background: #0c0b17;
   padding: 9px;
-  box-shadow: 0 14px 50px #0004;
+  box-shadow:
+    0 0 0 3px #080811,
+    0 0 0 4px #4d3c78,
+    0 0 26px #9c68ff38,
+    0 18px 50px #0008;
 }
 .board-head {
   height: 19px;
@@ -206,10 +253,11 @@ kbd {
   align-items: center;
   font-size: 9px;
 }
-.live-indicator {
-  width: 6px;
-  height: 6px;
-  margin-right: 5px;
+.board-head #elapsed {
+  color: var(--amber);
+  font: 7px "Press Start 2P", monospace;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 7px #ffc85770;
 }
 .board {
   position: relative;
@@ -218,22 +266,24 @@ kbd {
   display: grid;
   grid-template-columns: repeat(10, minmax(0, 1fr));
   grid-template-rows: repeat(20, minmax(0, 1fr));
-  gap: 3px;
-  background: #0d0d13;
+  gap: 2px;
+  background: #080811;
   padding: 5px;
-  border-radius: 5px;
+  border: 1px solid #292343;
+  border-radius: 2px;
 }
 .board-cell {
   aspect-ratio: 1;
-  border-radius: 3px;
-  background: #1a1922;
+  border-radius: 1px;
+  background: #151424;
   box-shadow: inset 0 0 0 1px #ffffff04;
 }
 .board-cell.filled {
   background: var(--piece-color);
   box-shadow:
-    inset 0 0 0 1px #ffffff38,
-    0 2px 6px #0006;
+    inset 0 0 0 1px #ffffff70,
+    inset 0 -3px 0 #0003,
+    0 0 8px color-mix(in srgb, var(--piece-color) 48%, transparent);
 }
 .board-cell.ghost {
   background: color-mix(in srgb, var(--piece-color) 16%, transparent);
@@ -315,7 +365,8 @@ kbd {
   margin-bottom: 9px;
 }
 .overlay-card h2 {
-  font-size: 19px;
+  color: var(--amber);
+  font: 10px/1.7 "Press Start 2P", monospace;
   margin: 0 0 7px;
 }
 .overlay-card p {
@@ -326,20 +377,20 @@ kbd {
   line-height: 1.6;
 }
 .primary-button {
-  background: var(--purple);
-  color: #181323;
+  background: var(--amber);
+  color: #1c1508;
   border: 0;
-  border-radius: 6px;
+  border-radius: 2px;
   padding: 12px 17px;
   font:
     700 10px "DM Mono",
     monospace;
   letter-spacing: 0.7px;
   cursor: pointer;
-  box-shadow: 0 6px 18px #a687ff2b;
+  box-shadow: 0 3px 0 #80521b, 0 0 18px #ffc85738;
 }
 .primary-button:hover {
-  background: #b59cff;
+  background: #ffdb87;
   transform: translateY(-1px);
 }
 .primary-button:disabled {
@@ -347,27 +398,19 @@ kbd {
   cursor: wait;
   transform: none;
 }
-/* Session and score details in the side panels. */
-.session-state {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 11px;
-  margin-bottom: 15px;
-}
-.state-dot {
-  height: 7px;
-  width: 7px;
-  border-radius: 50%;
-  background: #666;
-}
-.state-dot.active {
-  background: var(--green);
-  box-shadow: 0 0 9px #a4f27b70;
-}
+/* Local high score. */
 .best-score {
-  font-size: 26px;
-  font-weight: 600;
+  display: block;
+  padding: 9px 6px;
+  border: 1px solid #31515b;
+  border-radius: 2px;
+  background: #070b10;
+  color: var(--amber);
+  font: 11px/1.6 "Press Start 2P", monospace;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  text-shadow: 0 0 5px #ffc85790, 0 0 14px #ffc85745;
+  box-shadow: inset 0 0 14px #55eaff12;
 }
 .muted-small {
   font-size: 10px;
@@ -424,7 +467,7 @@ kbd {
     grid-template-columns: minmax(0, 1fr);
   }
   h1 {
-    font-size: 37px;
+    font-size: 17px;
   }
   .board {
     gap: 2px;
@@ -434,6 +477,6 @@ kbd {
     padding: 12px;
   }
   .score {
-    font-size: 24px;
+    font-size: 11px;
   }
 }

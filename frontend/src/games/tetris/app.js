@@ -38,7 +38,7 @@
     I: "#55d9e9",
     O: "#f2d15c",
     T: "#b38cff",
-    S: "#72dc8e",
+    S: "#65dfcf",
     Z: "#f07883",
     J: "#68a6fa",
     L: "#f2a35d",
@@ -109,11 +109,6 @@
     getElement("game-state-label").textContent = label;
   }
 
-  function setSessionStatus(message, active = false) {
-    getElement("session-label").textContent = message;
-    getElement("session-dot").classList.toggle("active", active);
-  }
-
   function showOverlay(title, message, buttonLabel, onClick, disabled = false) {
     getElement("overlay-title").textContent = title;
     getElement("overlay-copy").textContent = message;
@@ -162,9 +157,7 @@
   async function startGame() {
     if (game.status === "creating") return;
     setGameStatus("creating", "CONNECTING");
-    getElement("connection-label").textContent = "Connecting…";
     getElement("start-button").disabled = true;
-    setSessionStatus("Creating session…");
 
     try {
       const response = await requestApi("/games/");
@@ -182,15 +175,9 @@
       if (!session.id || session.seed === undefined)
         throw new Error("Unexpected session response.");
       game.session = session;
-      getElement("session-id").textContent = session.id;
-      getElement("session-seed").textContent = session.seed;
-      getElement("connection-label").textContent = "Session connected";
-      setSessionStatus("Session active", true);
       initializeGame(session.seed);
     } catch (error) {
       setGameStatus("error", "CONNECTION ERROR");
-      getElement("connection-label").textContent = "Connection error";
-      setSessionStatus("Could not start session");
       showOverlay(
         "Could not start game",
         error.message,
@@ -217,7 +204,6 @@
     setGameStatus("playing", "IN GAME");
     spawnPiece();
 
-    getElement("connection-label").textContent = "Playing";
     renderGame();
     getElement("overlay").classList.add("hidden");
     addKeyboardListener();
@@ -515,7 +501,6 @@
     localStorage.setItem("arcade-tetris-best", best);
     getElement("best-score").textContent = String(best).padStart(6, "0");
     renderGame();
-    setSessionStatus("Verifying run…", true);
     showOverlay(
       "Run complete",
       "Replaying your input log on the server…",
@@ -527,7 +512,6 @@
     try {
       await submitRun();
       setGameStatus("verified", "VERIFIED");
-      setSessionStatus("Run verified", true);
       showOverlay(
         "Run verified",
         `Authoritative score: ${game.verifiedScore}. The server replay matched your run.`,
@@ -537,12 +521,10 @@
     } catch (error) {
       if (error.status === 400 || error.status === 422) {
         setGameStatus("rejected", "RUN REJECTED");
-        setSessionStatus("Run rejected");
         showOverlay("Run rejected", error.message, "PLAY AGAIN", startGame);
         return;
       }
       setGameStatus("submit-error", "VERIFICATION ERROR");
-      setSessionStatus("Verification unavailable");
       showOverlay(
         "Could not verify run",
         `${error.message} Your exact completed run is saved for a safe retry.`,
@@ -586,7 +568,6 @@
       game.submitted = false;
       await submitRun();
       setGameStatus("verified", "VERIFIED");
-      setSessionStatus("Run verified", true);
       showOverlay(
         "Run verified",
         `Authoritative score: ${game.verifiedScore}. The server replay matched your run.`,
@@ -596,7 +577,6 @@
     } catch (error) {
       if (error.status === 400 || error.status === 422) {
         setGameStatus("rejected", "RUN REJECTED");
-        setSessionStatus("Run rejected");
         showOverlay("Run rejected", error.message, "PLAY AGAIN", startGame);
       } else {
         showOverlay(
@@ -613,9 +593,6 @@
     localStorage.getItem("arcade-tetris-best") || 0,
   ).padStart(6, "0");
   getElement("start-button").onclick = startGame;
-  getElement("connection-label").textContent = API_BASE
-    ? `API ${API_BASE}`
-    : "API same origin";
   document.addEventListener("visibilitychange", () => {
     // Pause when hidden so background time does not advance the local board.
     if (document.hidden && game.status === "playing") pauseGame();
