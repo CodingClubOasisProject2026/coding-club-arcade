@@ -11,8 +11,8 @@ const SOUND_STORAGE_KEY = 'minesweeper.soundEnabled'
 
 const DIFFICULTIES: { key: Difficulty; label: string; cols: number; rows: number; mines: number }[] = [
   { key: 'beginner', label: 'Beginner', cols: 9, rows: 9, mines: 10 },
-  { key: 'intermediate', label: 'Intermediate', cols: 16, rows: 16, mines: 40 },
-  { key: 'expert', label: 'Expert', cols: 30, rows: 16, mines: 99 },
+  { key: 'intermediate', label: 'Intermediate', cols: 11, rows: 11, mines: 19 },
+  { key: 'expert', label: 'Expert', cols: 13, rows: 13, mines: 35 },
 ]
 
 function MineGlyph({ exploded, defused }: { exploded?: boolean; defused?: boolean }) {
