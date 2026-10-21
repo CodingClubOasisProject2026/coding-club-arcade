@@ -403,29 +403,98 @@
   color: #efc9ff;
 }
 
-.tile.flag::after {
-  content: '⚑';
-  font-size: 65cqh;
-}
-
-.tile.flag.wrong::after {
-  content: '×';
-  color: #ff9595;
-}
-
+.tile.flag::after,
+.tile.flag.wrong::after,
 .tile.mine::after,
 .tile.boom::after {
-  content: '✹';
-  font-size: 68cqh;
-  color: #ffb6a8;
+  content: none !important;
+}
+
+.tile-icon {
+  width: 78%;
+  height: 78%;
+  display: block;
+  pointer-events: none;
+  overflow: visible;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45));
+}
+
+.tile-icon-mine {
+  animation: msMinePopIn 0.26s cubic-bezier(0.18, 0.89, 0.32, 1.28) both;
+}
+
+.tile-icon-mine.is-defused {
+  filter: drop-shadow(0 0 5px rgba(74, 222, 128, 0.6));
+}
+
+.tile-icon-boom {
+  width: 92%;
+  height: 92%;
+  animation: msMineBlastIn 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28) both;
+  filter: drop-shadow(0 0 10px rgba(255, 75, 43, 0.85));
+}
+
+.tile-icon-flag {
+  width: 82%;
+  height: 82%;
+  animation: msFlagDropIn 0.22s cubic-bezier(0.18, 0.89, 0.32, 1.28) both;
+}
+
+.tile-icon-flag.is-wrong {
+  filter: drop-shadow(0 0 6px rgba(255, 34, 68, 0.7));
 }
 
 .ms-page .tile.boom {
-  background: #a64743;
+  border-color: #ff9466 !important;
+  background: radial-gradient(circle at 50% 50%, #8a242c 0%, #46141b 68%, #24090e 100%) !important;
+  box-shadow: 0 0 16px rgba(255, 60, 40, 0.7), inset 0 0 8px rgba(255, 200, 50, 0.45) !important;
+  z-index: 2;
 }
 
 .ms-page .tile.mine {
-  background: #422a30;
+  border-color: #5a303e !important;
+  background: radial-gradient(circle at 45% 45%, #2c1a24 0%, #150f18 100%) !important;
+}
+
+.ms-page .tile.defused {
+  border-color: #387050 !important;
+  background: radial-gradient(circle at 45% 45%, #183324 0%, #0d1e15 100%) !important;
+}
+
+@keyframes msMinePopIn {
+  from {
+    transform: scale(0.35);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes msMineBlastIn {
+  0% {
+    transform: scale(0.3) rotate(-18deg);
+    opacity: 0.4;
+  }
+  50% {
+    transform: scale(1.28) rotate(10deg);
+  }
+  100% {
+    transform: scale(1) rotate(0);
+    opacity: 1;
+  }
+}
+
+@keyframes msFlagDropIn {
+  from {
+    transform: translateY(-5px) scale(0.65);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
 }
 
 .ms-progress-section {
@@ -1534,7 +1603,9 @@
     inset 0 2px 1px #ffc5b945, inset 4px 0 8px #ffffff08, inset -5px -3px 8px #0005;
   animation: msConsoleBoot .55s cubic-bezier(.16, 1, .3, 1) both;
 }
-.ms-cabinet-card::before, .ms-cabinet-card::after {
+
+.ms-cabinet-card::before,
+.ms-cabinet-card::after {
   content: '';
   position: absolute;
   bottom: 6px;
@@ -1546,14 +1617,34 @@
   box-shadow: inset 0 1px 2px #ffffff30, 0 1px #ffcfca20;
   pointer-events: none;
 }
-.ms-cabinet-card::before { left: 12px; }
-.ms-cabinet-card::after { right: 16px; }
+
+.ms-cabinet-card::before {
+  left: 12px;
+}
+
+.ms-cabinet-card::after {
+  right: 16px;
+}
+
 .ms-board-viewport {
   position: relative;
   border-radius: 16px;
   background: radial-gradient(ellipse at 50% 0, #29374980, transparent 75%), #0b111c;
   box-shadow: 0 0 0 1px #b57577, 0 3px 0 #f1b7b21a, inset 0 4px 12px #000b;
 }
+
+.ms-board-viewport::before {
+  content: '';
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: .22;
+  background: repeating-linear-gradient(0deg, transparent 0 3px, #ffffff08 3px 4px);
+  mix-blend-mode: screen;
+}
+
 .ms-board-viewport::after {
   content: '';
   position: absolute;
@@ -1563,8 +1654,32 @@
   background: linear-gradient(135deg, #ffffff04, transparent 35%);
   box-shadow: inset 0 0 20px #0003;
 }
-.ms-hud-panel { border-bottom: 2px solid #a96c6e; }
-.ms-smiley-btn { transition: transform .12s, filter .12s, box-shadow .12s; }
+
+.ms-screen-label {
+  position: absolute;
+  z-index: 3;
+  top: 8px;
+  left: 11px;
+  color: #e9a9a99c;
+  font-size: 6px;
+  font-weight: 700;
+  letter-spacing: .18em;
+  pointer-events: none;
+}
+
+.ms-board-plate {
+  position: relative;
+  z-index: 1;
+}
+
+.ms-hud-panel {
+  border-bottom: 2px solid #a96c6e;
+}
+
+.ms-smiley-btn {
+  transition: transform .12s, filter .12s, box-shadow .12s;
+}
+
 .ms-mode-switch {
   gap: 18px;
   justify-content: center;
@@ -1574,6 +1689,7 @@
   border-radius: 18px;
   box-shadow: inset 0 2px 6px #200f1c50, 0 1px #ffcfca15;
 }
+
 .ms-mode-switch .mode-btn {
   flex: 1;
   display: flex;
@@ -1589,6 +1705,7 @@
   letter-spacing: .12em;
   text-transform: uppercase;
 }
+
 .ms-action-key {
   display: grid;
   place-items: center;
@@ -1602,35 +1719,370 @@
   font: italic 700 20px system-ui, sans-serif;
   transition: transform .12s, box-shadow .12s, background .18s;
 }
-.mode-btn.active .ms-action-key { background: linear-gradient(135deg, #ffd3c3, #df8d85); color: #542837; }
-.mode-btn:hover .ms-action-key { filter: brightness(1.12); }
-.mode-btn:active .ms-action-key { transform: translateY(3px); box-shadow: 0 1px 0 #170f1b, inset 0 1px #ffffff24; }
-.ms-console-signature { grid-area: result; min-height: 0; overflow: hidden; align-self: stretch; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: #e6b0b66b; user-select: none; }
-.ms-console-signature strong { font: italic 900 36px/1 system-ui, sans-serif; letter-spacing: -2px; text-shadow: 0 1px #ffcbca20, 0 -1px #30151f; }
-.ms-console-signature strong span { color: #29162155; }
-.ms-console-signature > span:not(.ms-cartridge-slot):not(.ms-console-grip) { font-size: 7px; letter-spacing: .12em; }
-.ms-cartridge-slot { width: 90px; height: 5px; border-radius: 5px; background: #25151f; box-shadow: inset 0 2px 2px #0008, 0 1px #ffceca26; }
-.ms-console-grip { display: flex; flex-direction: column; gap: 4px; width: 70%; }
-.ms-console-grip i { height: 3px; border-radius: 3px; background: #351b2640; box-shadow: 0 1px #ffceca12; }
-.ms-console-speaker i { height: 22px; width: 4px; background: #20131e; box-shadow: 1px 1px #f6b5ae35, inset 1px 0 #000; }
-.ms-console-power i { animation: msPowerGlow 3s ease-in-out infinite; }
-.is-loading .ms-console-power i { animation: msPowerGlow .65s ease-in-out infinite; }
-.ms-page .tile.open { animation: msTileReveal .2s ease-out; }
-.ms-page .tile.flag::after { animation: msFlagPlace .22s cubic-bezier(.2, 1.5, .5, 1); }
-.screen-shake .ms-cabinet-card { animation: msConsoleImpact .35s ease-out; }
-.is-victory .ms-board-viewport { animation: msVictoryGlow .8s ease-out 2; }
-@keyframes msConsoleBoot { from { opacity: 0; transform: translateY(12px) scale(.985); } to { opacity: 1; transform: none; } }
-@keyframes msPowerGlow { 0%, 100% { box-shadow: 0 0 4px #ff887180; } 50% { box-shadow: 0 0 10px #ffad8b; } }
-@keyframes msTileReveal { from { opacity: .4; filter: brightness(1.7); } to { opacity: 1; filter: brightness(1); } }
-@keyframes msFlagPlace { from { transform: translateY(-4px) scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
-@keyframes msConsoleImpact { 20%, 60% { transform: translateX(-3px); } 40%, 80% { transform: translateX(3px); } 100% { transform: none; } }
-@keyframes msVictoryGlow { 50% { box-shadow: 0 0 0 1px #d6baff, 0 0 18px #d6baff55; } }
-@media (max-width: 700px) and (orientation: portrait), (max-height: 600px) {
-  .ms-console-signature { display: none; }
-  .ms-mode-switch { padding: 3px 8px; gap: 12px; }
-  .ms-mode-switch .mode-btn { flex-direction: row; justify-content: center; gap: 8px; padding: 2px; }
-  .ms-action-key { width: 30px; height: 30px; font-size: 15px; }
-  .ms-console-speaker i { height: 15px; }
+
+.mode-btn.active .ms-action-key {
+  background: linear-gradient(135deg, #ffd3c3, #df8d85);
+  color: #542837;
+}
+
+.mode-btn:hover .ms-action-key {
+  filter: brightness(1.12);
+}
+
+.mode-btn:active .ms-action-key {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #170f1b, inset 0 1px #ffffff24;
+}
+
+.ms-console-signature {
+  grid-area: result;
+  min-height: 0;
+  overflow: hidden;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #e6b0b66b;
+  user-select: none;
+}
+
+.ms-console-signature strong {
+  font: italic 900 36px/1 system-ui, sans-serif;
+  letter-spacing: -2px;
+  text-shadow: 0 1px #ffcbca20, 0 -1px #30151f;
+}
+
+.ms-console-signature strong span {
+  color: #29162155;
+}
+
+.ms-console-signature>span:not(.ms-cartridge-slot):not(.ms-console-grip) {
+  font-size: 7px;
+  letter-spacing: .12em;
+}
+
+.ms-cartridge-slot {
+  width: 90px;
+  height: 5px;
+  border-radius: 5px;
+  background: #25151f;
+  box-shadow: inset 0 2px 2px #0008, 0 1px #ffceca26;
+}
+
+.ms-console-grip {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 70%;
+}
+
+.ms-console-grip i {
+  height: 3px;
+  border-radius: 3px;
+  background: #351b2640;
+  box-shadow: 0 1px #ffceca12;
+}
+
+.ms-console-speaker i {
+  height: 22px;
+  width: 4px;
+  background: #20131e;
+  box-shadow: 1px 1px #f6b5ae35, inset 1px 0 #000;
+}
+
+.ms-session-badge {
+  position: relative;
+  overflow: hidden;
+  border-color: #e8aaa24d;
+  background: linear-gradient(135deg, #3b1d29, #241923);
+  box-shadow: inset 0 1px #ffffff12, 0 1px #210f18;
+}
+
+.ms-session-badge::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 20%, #ffffff19 47%, transparent 65%);
+  transform: translateX(-120%);
+  animation: msBadgeSweep 5s ease-in-out infinite;
+}
+
+.ms-progress {
+  position: relative;
+  overflow: hidden;
+  height: 6px;
+  background: #2a1721;
+  box-shadow: inset 0 1px 3px #0009, 0 1px #f6c0b01c;
+}
+
+.ms-progress span {
+  position: relative;
+  background: linear-gradient(90deg, #f08e82, #ffd3bc);
+  box-shadow: 0 0 9px #f69b8080;
+}
+
+.ms-progress span::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, #ffffff80 48%, transparent 65%);
+  transform: translateX(-120%);
+  animation: msProgressSweep 2.7s ease-in-out infinite;
+}
+
+.ms-smiley-btn.glow {
+  animation: msRestartPulse 1.6s ease-in-out infinite;
+}
+
+.ms-page .tile:not(.open):not(.flag) {
+  box-shadow: inset 0 1px #ffffff14, inset 0 -2px #11101a88, 0 1px #0004;
+}
+
+.ms-page .tile:hover:not(.open):not(.flag) {
+  transform: translateY(-1px);
+}
+
+.ms-console-power i {
+  animation: msPowerGlow 3s ease-in-out infinite;
+}
+
+.is-loading .ms-console-power i {
+  animation: msPowerGlow .65s ease-in-out infinite;
+}
+
+.ms-page .tile.open {
+  animation: msTileReveal .2s ease-out;
+}
+
+.ms-page .tile.flag::after {
+  animation: msFlagPlace .22s cubic-bezier(.2, 1.5, .5, 1);
+}
+
+.screen-shake .ms-cabinet-card {
+  animation: msConsoleImpact .35s ease-out;
+}
+
+.is-victory .ms-board-viewport {
+  animation: msVictoryGlow .8s ease-out 2;
+}
+
+@keyframes msConsoleBoot {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes msPowerGlow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 4px #ff887180;
+  }
+
+  50% {
+    box-shadow: 0 0 10px #ffad8b;
+  }
+}
+
+@keyframes msTileReveal {
+  from {
+    opacity: .4;
+    filter: brightness(1.7);
+  }
+
+  to {
+    opacity: 1;
+    filter: brightness(1);
+  }
+}
+
+@keyframes msFlagPlace {
+  from {
+    transform: translateY(-4px) scale(.6);
+    opacity: 0;
+  }
+
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@keyframes msConsoleImpact {
+
+  20%,
+  60% {
+    transform: translateX(-3px);
+  }
+
+  40%,
+  80% {
+    transform: translateX(3px);
+  }
+
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes msVictoryGlow {
+  50% {
+    box-shadow: 0 0 0 1px #d6baff, 0 0 18px #d6baff55;
+  }
+}
+
+@keyframes msBadgeSweep {
+
+  20%,
+  100% {
+    transform: translateX(130%);
+  }
+}
+
+@keyframes msProgressSweep {
+
+  0%,
+  30% {
+    transform: translateX(-120%);
+  }
+
+  75%,
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+@keyframes msRestartPulse {
+  50% {
+    filter: brightness(1.15);
+    box-shadow: 0 4px 0 #170f1b, 0 0 0 5px #ffb0a330;
+  }
+}
+
+/* Orientation prompt uses the same molded-console palette. */
+.ms-rotate-overlay { background: #100a10d9; }
+.ms-rotate-card {
+  border-color: #ba7776;
+  background: linear-gradient(145deg, #572d39, #281923);
+  box-shadow: 0 28px 70px #000b, inset 0 1px #ffd4cc35;
+}
+.ms-rotate-badge {
+  color: #ffd2c7;
+  background: #ffae9c16;
+  border-color: #ffae9c4d;
+}
+.ms-rotate-icon-wrap {
+  color: #ffc4b5;
+  background: radial-gradient(circle, #ff9f8b28, #ff9f8b08);
+  border-color: #ffb7a152;
+}
+.ms-rotate-desc strong { color: #ffc4b5; }
+.ms-btn-rotate-primary {
+  background: linear-gradient(#ffd1c4, #e99187);
+  color: #4a2430;
+  box-shadow: 0 4px 0 #7b424a, 0 7px 16px #0005;
+}
+.ms-btn-rotate-secondary { border-color: #dfaaa539; color: #e3c0c0; }
+.ms-btn-rotate-secondary:hover { background: #ffffff0d; }
+
+/* High-contrast game display: hidden cells read as physical red keycaps. */
+.ms-board-plate {
+  padding: 8px;
+  background: linear-gradient(145deg, #080d15, #1b1018);
+  box-shadow: inset 0 0 0 1px #7c41494f, inset 0 5px 14px #000c, 0 0 0 1px #f7aaa526;
+}
+.ms-page .tile {
+  overflow: hidden;
+  border: 1px solid #b86668;
+  border-bottom: 3px solid #51262f;
+  border-radius: 5px;
+  background: linear-gradient(145deg, #e6857f 0%, #be595c 45%, #873942 100%);
+  box-shadow: inset 1px 1px #ffe0d466, inset -1px -1px #55212d80, 0 2px 0 #1d111a;
+}
+.ms-page .tile:not(.open):not(.flag)::before {
+  content: '';
+  width: 24%;
+  height: 24%;
+  border-radius: 50%;
+  background: #ffd7c7;
+  box-shadow: 0 0 0 2px #802f3d, 0 1px 1px #ffffff80;
+  opacity: .72;
+}
+.ms-page .tile:hover:not(.open):not(.flag) {
+  border-color: #ffe1d3;
+  background: linear-gradient(145deg, #ffaaa0, #d46364 50%, #a5424c);
+  box-shadow: inset 1px 1px #fff5e880, inset -1px -1px #55212d80, 0 2px 0 #1d111a, 0 0 12px #ef867060;
+}
+.ms-page .tile:active:not(.open) {
+  transform: translateY(2px) !important;
+  border-bottom-width: 1px;
+  filter: brightness(.96);
+}
+.ms-page .tile.open {
+  border: 1px solid #31405a;
+  border-bottom-width: 1px;
+  background: radial-gradient(circle at 40% 35%, #2b3a54, #182131 75%);
+  box-shadow: inset 0 1px 4px #0009, 0 1px #ffffff0c;
+}
+.n-digit {
+  font-weight: 800;
+  text-shadow: 0 1px 1px #000b, 0 0 7px currentColor;
+}
+.n1 .n-digit { color: #75baff; }
+.n2 .n-digit { color: #7ee6a8; }
+.n3 .n-digit { color: #ff8f82; }
+.n4 .n-digit { color: #d0aeff; }
+.n5 .n-digit { color: #ffcb7b; }
+.n6 .n-digit { color: #72e5e1; }
+.n7 .n-digit { color: #fff0a6; }
+.n8 .n-digit { color: #d9e5fa; }
+.ms-page .tile.flag {
+  border-color: #ffd291;
+  border-bottom-color: #81502d;
+  background: linear-gradient(145deg, #e3a353, #bb743b 55%, #794124);
+  box-shadow: inset 1px 1px #ffe9bd73, inset -1px -1px #5a2b1a90, 0 2px 0 #1d111a;
+}
+.tile.flag::after {
+  content: none !important;
+}
+.ms-page .tile.mine { border-color: #5a303e; background: radial-gradient(circle, #381f2a, #1a111a); }
+.ms-page .tile.boom { border-color: #ff9466; background: radial-gradient(circle, #8a242c, #46141b 68%, #24090e); }
+
+@media (max-width: 700px) and (orientation: portrait),
+(max-height: 600px) {
+  .ms-console-signature {
+    display: none;
+  }
+
+  .ms-mode-switch {
+    padding: 3px 8px;
+    gap: 12px;
+  }
+
+  .ms-mode-switch .mode-btn {
+    flex-direction: row;
+    justify-content: center;
+    gap: 8px;
+    padding: 2px;
+  }
+
+  .ms-action-key {
+    width: 30px;
+    height: 30px;
+    font-size: 15px;
+  }
+
+  .ms-console-speaker i {
+    height: 15px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

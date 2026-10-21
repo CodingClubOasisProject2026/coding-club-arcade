@@ -15,6 +15,104 @@ const DIFFICULTIES: { key: Difficulty; label: string; cols: number; rows: number
   { key: 'expert', label: 'Expert', cols: 30, rows: 16, mines: 99 },
 ]
 
+function MineGlyph({ exploded, defused }: { exploded?: boolean; defused?: boolean }) {
+  if (exploded) {
+    return (
+      <svg viewBox="0 0 24 24" className="tile-icon tile-icon-boom" aria-hidden="true">
+        <circle cx="12" cy="12" r="10.5" fill="none" stroke="#ff3838" strokeWidth="1.2" strokeDasharray="3 1.5" opacity="0.85" />
+        <path
+          d="M12 1.5l2.2 4.6 4.8-1.6-1.6 4.8 4.6 2.2-4.6 2.2 1.6 4.8-4.8-1.6-2.2 4.6-2.2-4.6-4.8 1.6 1.6-4.8-4.6-2.2 4.6-2.2-1.6-4.8 4.8 1.6z"
+          fill="#ff4b2b"
+        />
+        <path
+          d="M12 4l1.6 3.4 3.7-1.2-1.2 3.7 3.4 1.6-3.4 1.6 1.2 3.7-3.7-1.2-1.6 3.4-1.6-3.4-3.7 1.2 1.2-3.7-3.4-1.6 3.4-1.6-1.2-3.7 3.7 1.2z"
+          fill="#ffaa00"
+        />
+        <circle cx="12" cy="12" r="5.2" fill="#fff599" />
+        <circle cx="12" cy="12" r="3.2" fill="#ffffff" />
+        <circle cx="6.5" cy="7" r="1.1" fill="#2b0e14" />
+        <circle cx="17.5" cy="6.5" r="1" fill="#2b0e14" />
+        <circle cx="16.5" cy="17" r="1.2" fill="#2b0e14" />
+        <circle cx="7" cy="16.5" r="0.9" fill="#2b0e14" />
+      </svg>
+    )
+  }
+
+  const spikeColor = defused ? '#4ade80' : '#8892b0'
+  const capColor = defused ? '#86efac' : '#ff4d6d'
+  const diodeColor = defused ? '#22c55e' : '#ff2a4d'
+
+  return (
+    <svg viewBox="0 0 24 24" className={`tile-icon tile-icon-mine ${defused ? 'is-defused' : ''}`} aria-hidden="true">
+      {/* 8 Radial Contact Spikes */}
+      <line x1="12" y1="2" x2="12" y2="22" stroke={spikeColor} strokeWidth="2.2" strokeLinecap="round" />
+      <line x1="2" y1="12" x2="22" y2="12" stroke={spikeColor} strokeWidth="2.2" strokeLinecap="round" />
+      <line x1="4.9" y1="4.9" x2="19.1" y2="19.1" stroke={spikeColor} strokeWidth="2.2" strokeLinecap="round" />
+      <line x1="4.9" y1="19.1" x2="19.1" y2="4.9" stroke={spikeColor} strokeWidth="2.2" strokeLinecap="round" />
+
+      {/* Contact horn caps */}
+      <circle cx="12" cy="2.2" r="1.3" fill={capColor} />
+      <circle cx="12" cy="21.8" r="1.3" fill={capColor} />
+      <circle cx="2.2" cy="12" r="1.3" fill={capColor} />
+      <circle cx="21.8" cy="12" r="1.3" fill={capColor} />
+      <circle cx="5.1" cy="5.1" r="1.3" fill={capColor} />
+      <circle cx="18.9" cy="18.9" r="1.3" fill={capColor} />
+      <circle cx="5.1" cy="18.9" r="1.3" fill={capColor} />
+      <circle cx="18.9" cy="5.1" r="1.3" fill={capColor} />
+
+      {/* Main Mine Sphere */}
+      <circle
+        cx="12"
+        cy="12"
+        r="6.8"
+        fill={defused ? '#13281e' : '#1b202e'}
+        stroke={defused ? '#22c55e' : '#48536e'}
+        strokeWidth="1.2"
+      />
+
+      {/* Inner depth circle */}
+      <circle cx="12" cy="12" r="5.4" fill={defused ? '#193f2c' : '#272f44'} />
+
+      {/* Specular Glint Highlight */}
+      <ellipse
+        cx="9.8"
+        cy="9.2"
+        rx="2"
+        ry="1.1"
+        transform="rotate(-30 9.8 9.2)"
+        fill="#ffffff"
+        opacity={defused ? 0.7 : 0.55}
+      />
+
+      {/* Center Detonator Diode */}
+      <circle cx="12" cy="12" r="1.8" fill={diodeColor} />
+      <circle cx="11.4" cy="11.4" r="0.6" fill="#ffffff" opacity="0.85" />
+    </svg>
+  )
+}
+
+function FlagGlyph({ isWrong }: { isWrong?: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" className={`tile-icon tile-icon-flag ${isWrong ? 'is-wrong' : ''}`} aria-hidden="true">
+      {/* Stand Base */}
+      <path d="M5 20.5h14v1.5H5z" fill="#7886a4" />
+      <path d="M7 19h10v1.5H7z" fill="#9aa8c6" />
+      {/* Pole */}
+      <line x1="11.5" y1="3" x2="11.5" y2="19" stroke="#ccd7ed" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="11.5" cy="3" r="1.2" fill="#ffd166" />
+      {/* Triangular flag pennant */}
+      <path d="M11.5 4.5L3.5 8.8l8 4.3z" fill="#ff385c" />
+      <path d="M11.5 4.5L3.5 8.8l8 0z" fill="#ff6b85" opacity="0.45" />
+      {isWrong && (
+        <g stroke="#ff2244" strokeWidth="2.8" strokeLinecap="round">
+          <line x1="4" y1="4" x2="20" y2="20" />
+          <line x1="20" y1="4" x2="4" y2="20" />
+        </g>
+      )}
+    </svg>
+  )
+}
+
 // ---------------------------------------------------------
 // Sound Effects Engine
 // ---------------------------------------------------------
@@ -164,6 +262,7 @@ export default function Minesweeper() {
   const [elapsed, setElapsed] = useState(0)
   const [totalClicks, setTotalClicks] = useState(0)
   const [boardSpace, setBoardSpace] = useState({ width: 0, height: 0 })
+  const [showLandscapePrompt, setShowLandscapePrompt] = useState(false)
 
   const lossDialogRef = useRef<HTMLDialogElement | null>(null)
   const pending = useRef(false)
@@ -262,6 +361,24 @@ export default function Minesweeper() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [difficulty])
 
+  useEffect(() => {
+    const needsLandscape = difficulty === 'intermediate' || difficulty === 'expert'
+    setShowLandscapePrompt(needsLandscape && window.matchMedia('(max-width: 700px) and (orientation: portrait)').matches)
+  }, [difficulty])
+
+  useEffect(() => {
+    const closeOnLandscape = () => {
+      if (window.matchMedia('(orientation: landscape)').matches) setShowLandscapePrompt(false)
+    }
+
+    window.addEventListener('orientationchange', closeOnLandscape)
+    window.addEventListener('resize', closeOnLandscape)
+    return () => {
+      window.removeEventListener('orientationchange', closeOnLandscape)
+      window.removeEventListener('resize', closeOnLandscape)
+    }
+  }, [])
+
   // Native modal handles focus trapping, Escape, and focus restoration.
   useEffect(() => {
     const dialog = lossDialogRef.current
@@ -337,10 +454,10 @@ export default function Minesweeper() {
             setGame((g) =>
               g
                 ? {
-                    ...g,
-                    flagged: Array.from(flaggedSet),
-                    mines_left: mine_count - flaggedSet.size,
-                  }
+                  ...g,
+                  flagged: Array.from(flaggedSet),
+                  mines_left: mine_count - flaggedSet.size,
+                }
                 : null,
             )
             return
@@ -369,7 +486,7 @@ export default function Minesweeper() {
             }
             for (let i = candidates.length - 1; i > 0; i--) {
               const j = Math.floor(Math.random() * (i + 1))
-              ;[candidates[i], candidates[j]] = [candidates[j], candidates[i]]
+                ;[candidates[i], candidates[j]] = [candidates[j], candidates[i]]
             }
 
             const placed = new Set(candidates.slice(0, mine_count))
@@ -413,12 +530,12 @@ export default function Minesweeper() {
               setGame((g) =>
                 g
                   ? {
-                      ...g,
-                      status: 'lost',
-                      mines: Array.from(currentMines!),
-                      exploded: hitMines,
-                      finishedAt: new Date().toISOString(),
-                    }
+                    ...g,
+                    status: 'lost',
+                    mines: Array.from(currentMines!),
+                    exploded: hitMines,
+                    finishedAt: new Date().toISOString(),
+                  }
                   : null,
               )
               return
@@ -449,14 +566,14 @@ export default function Minesweeper() {
             setGame((g) =>
               g
                 ? {
-                    ...g,
-                    mines: Array.from(currentMines!),
-                    move_count: g.move_count + 1,
-                    cells: allOpened,
-                    status: won ? 'won' : 'in_progress',
-                    score: won ? Math.max(100, 1000 - g.move_count * 2) : 0,
-                    finishedAt: won ? new Date().toISOString() : null,
-                  }
+                  ...g,
+                  mines: Array.from(currentMines!),
+                  move_count: g.move_count + 1,
+                  cells: allOpened,
+                  status: won ? 'won' : 'in_progress',
+                  score: won ? Math.max(100, 1000 - g.move_count * 2) : 0,
+                  finishedAt: won ? new Date().toISOString() : null,
+                }
                 : null,
             )
             return
@@ -473,12 +590,12 @@ export default function Minesweeper() {
             setGame((g) =>
               g
                 ? {
-                    ...g,
-                    status: 'lost',
-                    mines: Array.from(currentMines!),
-                    exploded: [index],
-                    finishedAt: new Date().toISOString(),
-                  }
+                  ...g,
+                  status: 'lost',
+                  mines: Array.from(currentMines!),
+                  exploded: [index],
+                  finishedAt: new Date().toISOString(),
+                }
                 : null,
             )
             return
@@ -513,15 +630,15 @@ export default function Minesweeper() {
           setGame((g) =>
             g
               ? {
-                  ...g,
-                  mines: Array.from(currentMines!),
-                  startedAt: g.startedAt || new Date().toISOString(),
-                  move_count: g.move_count + 1,
-                  cells: allOpened,
-                  status: won ? 'won' : 'in_progress',
-                  score: won ? Math.max(100, 1000 - g.move_count * 2) : 0,
-                  finishedAt: won ? new Date().toISOString() : null,
-                }
+                ...g,
+                mines: Array.from(currentMines!),
+                startedAt: g.startedAt || new Date().toISOString(),
+                move_count: g.move_count + 1,
+                cells: allOpened,
+                status: won ? 'won' : 'in_progress',
+                score: won ? Math.max(100, 1000 - g.move_count * 2) : 0,
+                finishedAt: won ? new Date().toISOString() : null,
+              }
               : null,
           )
         } finally {
@@ -545,26 +662,26 @@ export default function Minesweeper() {
         setGame((g) =>
           g
             ? {
-                ...g,
-                status: r.status,
-                move_count: r.move_count,
-                cells: [...g.cells, ...r.cells],
-                flagged: r.flagged,
-                mines_left: r.mines_left,
-                mines: r.mines,
-                exploded: r.exploded,
-                score: r.score,
-                finishedAt: r.status !== 'in_progress' ? new Date().toISOString() : g.finishedAt,
-              }
+              ...g,
+              status: r.status,
+              move_count: r.move_count,
+              cells: [...g.cells, ...r.cells],
+              flagged: r.flagged,
+              mines_left: r.mines_left,
+              mines: r.mines,
+              exploded: r.exploded,
+              score: r.score,
+              finishedAt: r.status !== 'in_progress' ? new Date().toISOString() : g.finishedAt,
+            }
             : null,
         )
 
         if (r.status !== 'in_progress') {
-          getGame(game.id).then(setGame).catch(() => {})
+          getGame(game.id).then(setGame).catch(() => { })
         }
       } catch (e) {
         if (e instanceof ApiError && e.status === 409) {
-          getGame(game.id).then(setGame).catch(() => {})
+          getGame(game.id).then(setGame).catch(() => { })
         }
       } finally {
         pending.current = false
@@ -676,6 +793,18 @@ export default function Minesweeper() {
   const safeCells = cols * rows - (game?.mine_count ?? currentConfig.mines)
   const clearedPercent = Math.round(((view?.opened.size ?? 0) / safeCells) * 100)
 
+  const requestLandscape = async () => {
+    try {
+      if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
+        await document.documentElement.requestFullscreen()
+      }
+      const orientation = screen.orientation as ScreenOrientation & { lock?: (type: string) => Promise<void> }
+      await orientation.lock?.('landscape')
+    } catch {
+      // iOS and some browsers only allow physical rotation.
+    }
+  }
+
   return (
     <div className={`ms-page ${isShaking ? 'screen-shake' : ''}`}>
       <header className="ms-nav">
@@ -732,6 +861,30 @@ export default function Minesweeper() {
         </div>
       )}
 
+      {showLandscapePrompt && (
+        <div className="ms-rotate-overlay" role="dialog" aria-modal="true" aria-labelledby="ms-rotate-heading">
+          <div className="ms-rotate-card">
+            <div className="ms-rotate-badge">Best in landscape</div>
+            <div className="ms-rotate-icon-wrap" aria-hidden="true">
+              <svg className="ms-phone-rotate-anim" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="5" y="2" width="14" height="20" rx="3" ry="3" />
+                <path d="M12 18h.01" />
+              </svg>
+            </div>
+            <h2 id="ms-rotate-heading" className="ms-rotate-title">Turn your console sideways</h2>
+            <p className="ms-rotate-desc"><strong>{currentConfig.label}</strong> uses a wider minefield. Landscape gives each tile more room to play.</p>
+            <div className="ms-rotate-actions">
+              <button type="button" className="ms-btn-rotate-primary" onClick={() => { void requestLandscape() }}>
+                Rotate to landscape
+              </button>
+              <button type="button" className="ms-btn-rotate-secondary" onClick={() => setShowLandscapePrompt(false)}>
+                Continue in portrait
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <main className="ms-main-stage">
         <div className={`ms-cabinet-card ${busy ? 'is-loading' : ''} ${game?.status === 'won' ? 'is-victory' : ''}`}>
           <div className="ms-board-heading">
@@ -762,6 +915,7 @@ export default function Minesweeper() {
 
           {/* Minefield */}
           <div className="ms-board-viewport" ref={boardViewportRef}>
+            <span className="ms-screen-label" aria-hidden="true">MINEFIELD DISPLAY</span>
             {game && view && optimalTileSize > 0 && (
               <div
                 className="ms-board-plate"
@@ -782,8 +936,7 @@ export default function Minesweeper() {
                   const isMine = view.mines.has(i)
                   const isExploded = view.exploded.has(i)
 
-                  // Flag, mine and explosion glyphs are drawn by the stylesheet (::after),
-                  // so they scale with the tile. Only digits are rendered here.
+                  // SVG glyphs scale crisply with optimalTileSize
                   let cls = 'tile'
                   let content: React.ReactNode = null
                   let label = 'Hidden'
@@ -794,14 +947,18 @@ export default function Minesweeper() {
                     label = n ? `${n} adjacent` : 'Empty'
                   } else if (isExploded) {
                     cls += ' open boom'
+                    content = <MineGlyph exploded />
                     label = 'Exploded mine'
                   } else if (isFlag) {
                     const isWrong = game.status === 'lost' && !isMine
                     cls += isWrong ? ' flag wrong' : ' flag'
+                    content = <FlagGlyph isWrong={isWrong} />
                     label = isWrong ? 'Wrong flag' : 'Flagged'
                   } else if (isMine && game.status !== 'in_progress') {
-                    cls += ' open mine'
-                    label = 'Mine'
+                    const isDefused = game.status === 'won'
+                    cls += isDefused ? ' open defused' : ' open mine'
+                    content = <MineGlyph defused={isDefused} />
+                    label = isDefused ? 'Defused mine' : 'Mine'
                   }
 
                   return (
@@ -921,7 +1078,9 @@ export default function Minesweeper() {
       </main>
       <dialog ref={lossDialogRef} className="ms-loss-popup" aria-labelledby="ms-loss-title" aria-describedby="ms-loss-description">
         <button type="button" className="ms-popup-close" aria-label="Close and view board" onClick={() => lossDialogRef.current?.close()}>×</button>
-        <div className="ms-popup-mine" aria-hidden="true">✹</div>
+        <div className="ms-popup-mine" aria-hidden="true">
+          <MineGlyph exploded />
+        </div>
         <span className="ms-eyebrow">GAME OVER</span>
         <h2 id="ms-loss-title">You hit a mine</h2>
         <p id="ms-loss-description">One wrong step. A fresh field awaits.</p>
