@@ -6,8 +6,8 @@ MAX_MOVES = 30_000
 # (width, height, mine_count)
 DIFFICULTIES = {
     "beginner": (9, 9, 10),
-    "intermediate": (16, 16, 40),
-    "expert": (30, 16, 99),
+    "intermediate": (11, 11, 19),
+    "expert": (13, 13, 35),
 }
 
 def neighbors(idx, w, h):
