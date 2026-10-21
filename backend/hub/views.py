@@ -120,5 +120,5 @@ class SessionSubmitView(UpdateAPIView):
         session: Session = serializer.save()
         app.send_task(
             f"{str(session.game.name).lower()}.tasks.calculate_score",
-            args=(str(session.id), actions),
+            args=(session.user_id, str(session.id), actions),  # pyright: ignore[reportAttributeAccessIssue]
         )

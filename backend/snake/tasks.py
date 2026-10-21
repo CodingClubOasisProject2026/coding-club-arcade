@@ -6,7 +6,7 @@ from snake.game_logic import replay_actions
 
 
 @shared_task
-def calculate_score(session_id: str, actions: dict) -> int:
+def calculate_score(user_id: int, session_id: str, actions: dict) -> int:
 
     # Lock the session while processing its score.
     with transaction.atomic():
@@ -15,23 +15,14 @@ def calculate_score(session_id: str, actions: dict) -> int:
                 Session.objects
                 .select_for_update()
                 .select_related("game")
-                .get(id=session_id)
+                .get(id=session_id, user_id=user_id, game__name=GameChoices.SNAKE)
             )
         except Session.DoesNotExist:
             raise ValueError("Session not found")
 
-        if session.game.name != GameChoices.SNAKE:
-            raise ValueError("Session does not belong to Snake")
-
         if session.score is not None:
             return session.score
 
-        game = replay_actions(
-            seed=session.seed,
-            action_log=actions,
-        )
-
-        session.score = game["score"]
-        session.save(update_fields=["score", "updated_at"])
-
+        game = replay_actions(seed=session.seed, action_log=actions)
+        Session.update_score(session_id, user_id, game["score"])
         return game["score"]
