@@ -38,7 +38,7 @@ const games: Game[] = [
     description: 'Keep growing. Keep moving. Stay out of your own way.',
     category: 'REFLEX',
     color: 'var(--c-snake)',
-    ready: false,
+    ready: true,
     art: 'snake',
   },
   {

@@ -4,7 +4,7 @@ import { defineConfig, loadEnv } from 'vite'
 // Backend routes live at the site root (no /api prefix), so they're proxied to the
 // Docker stack (Caddy on :80) during development. Only paths with a trailing slash go
 // to Django, so the React page at /minesweeper isn't swallowed by /minesweeper/<id>/.
-const BACKEND_PATHS = ['accounts', 'me', 'sessions', 'minesweeper', 'leaderboard', 'games', 'admin', 'static', 'wordle']
+const BACKEND_PATHS = ['accounts', 'me', 'sessions', 'minesweeper', 'leaderboard', 'games', 'admin', 'static', 'wordle', 'snake']
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
