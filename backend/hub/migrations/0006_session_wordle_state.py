@@ -3,7 +3,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("hub", "0001_initial"),
+        ("hub", "0005_alter_game_name"),
     ]
 
     operations = [

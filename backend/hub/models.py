@@ -24,7 +24,11 @@ class GameChoices(models.TextChoices):
 
 class Game(models.Model):
     name = models.CharField(choices=GameChoices.choices,  max_length=30, unique=True)
-    ratio = models.DecimalField(default=Decimal("1.0"))
+    ratio = models.DecimalField(
+    max_digits=5,
+    decimal_places=2,
+    default=Decimal("1.0"),
+)
 
     def __str__(self) -> str:
         return self.name

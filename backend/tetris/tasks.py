@@ -4,11 +4,11 @@ from venv import logger
 from celery import shared_task
 from django.contrib.admin import action
 from django.db import transaction
-from backend.hub.models import Session
-from backend.tetris.pieces import PIECE_TYPES, SeededPieceRandomizer, Tetromino
-from backend.tetris.pieces import create_grid, shapes
-from backend.tetris.engine import check_collision, clear_line, lock_tetromino, validate_move
-from backend.tetris.scoring import ScoringSystem
+from hub.models import Session
+from tetris.pieces import PIECE_TYPES, SeededPieceRandomizer, Tetromino
+from tetris.pieces import create_grid, shapes
+from tetris.engine import check_collision, clear_line, lock_tetromino, validate_move
+from tetris.scoring import ScoringSystem
 
 def make_tetromino(piece_type, color, grid_width):
     shape_index = PIECE_TYPES.index(piece_type)

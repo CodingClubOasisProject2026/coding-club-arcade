@@ -18,9 +18,11 @@ function SnakeGame() {
     paused: { title: "Paused", label: "Resume" },
     over: {
       title: game.status === "WON" ? "You won!" : "Game over",
-      label: null, 
+      label: null,
     },
-  }[phase];
+  }[phase === "playing" ? "idle" : phase];
+
+  const visibleOverlay = phase === "playing" ? null : overlay;
 
   return (
     <main className="min-h-[100dvh] bg-slate-900 text-slate-100 flex flex-col items-center gap-3 p-4 select-none touch-manipulation">
