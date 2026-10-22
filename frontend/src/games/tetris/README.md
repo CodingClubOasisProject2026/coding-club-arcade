@@ -21,14 +21,16 @@ cd backend
 python manage.py migrate
 ```
 
-For local Tetris play without Google OAuth, set `ALLOW_TETRIS_GUEST_SESSIONS=true` in `docker/.env` and keep `DEBUG=true`. This creates ticket-free guest sessions for Tetris only. Turn the flag off when OAuth is configured; the backend ignores this bypass whenever `DEBUG` is false.
+Session submission is scoped to the signed-in user. Guest sessions can only submit when the backend's development guest-session option is enabled.
 
-## Session and verification flow
+## Session and task flow
 
 - `GET /games/` resolves the Tetris game ID.
 - `POST /sessions/start/<game_id>/` creates an authenticated, ticket-backed session and returns its ID and seed. The seed is serialized as a decimal string to preserve all 63 bits in JavaScript.
-- The browser derives the same xorshift32, shuffled seven-piece bag from that seed as the backend.
-- `PUT /sessions/submit/<session_id>/` sends `actions: { action_log, duration_ms }`. The ordered log records player inputs and explicit `gravity` ticks with monotonic elapsed milliseconds.
-- A valid terminal replay returns `verified: true` and `authoritative_score`. The UI uses that score for the verified result.
+- The browser uses the same Python `random.Random(seed)` seven-piece shuffle and piece shapes as `tetris.pieces.SeededPieceRandomizer` and `tetris.tasks`.
+- At game over, the browser converts its inputs to the task format and sends `{ actions: [...] }` to `PUT /sessions/submit/<session_id>/`. Movement actions carry a direction; gravity events are sent as `tick`.
+- The Tetris session endpoint returns `202` with a Celery `task_id`. The task replays the actions and saves the score to the session. The UI's score is a local preview; this endpoint does not return a completed task result.
 
-The backend persists the submitted log with the session. Identical retries return the same verified result; a different second submission for that session is rejected.
+The local preview follows `tetris.scoring.ScoringSystem`: 100, 200, 300, or 400 points for clearing 1–4 lines, multiplied by the consecutive-clear count. A lock without a line clear resets that count. Drops and level do not add score.
+
+The backend persists the submitted action list with the session. Identical retries are safe; a different second submission for that session is rejected by the task.

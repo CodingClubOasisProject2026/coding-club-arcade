@@ -1,5 +1,7 @@
 
 class ScoringSystem:
+    """Score cleared lines; multiply successive clears and reset on a dry lock."""
+
     LINE_CLEAR_POINTS = {
         0: 0,
         1: 100,
@@ -21,7 +23,7 @@ class ScoringSystem:
             raise TypeError("lines_cleared must be an integer")
 
         if lines_cleared not in self.LINE_CLEAR_POINTS:
-            raise ValueError("lines_cleared must be between 0 and 10")
+            raise ValueError("lines_cleared must be between 0 and 4")
 
         if lines_cleared == 0:
             self.consecutive_clears = 0

@@ -18,6 +18,8 @@ from tetris.pieces import (
 )
 from tetris.scoring import ScoringSystem
 
+MAX_ACTIONS = 100_000
+
 
 def make_tetromino(piece_type, color, grid_width):
     shape = [row[:] for row in shapes[PIECE_TYPES.index(piece_type)]]
@@ -44,14 +46,19 @@ def _validate_action(action):
 
 @shared_task
 def calculate_score(session_id, actions: list[dict]) -> dict:
-    """Replay client inputs from the session seed and save only the computed score."""
+    """Replay the submitted controls and persist the server-calculated score."""
     if not isinstance(actions, list):
         raise ValueError("actions must be a list.")
+    if len(actions) > MAX_ACTIONS:
+        raise ValueError("actions list is too long.")
     for action in actions:
         _validate_action(action)
 
     with transaction.atomic():
         session = Session.objects.select_for_update().get(id=session_id)
+        if session.tetris_action_log and session.tetris_action_log != actions:
+            raise ValueError("This Tetris session was already submitted with a different action list.")
+
         grid = create_grid()
         randomizer = SeededPieceRandomizer(session.seed)
         scoring = ScoringSystem()
@@ -63,8 +70,7 @@ def calculate_score(session_id, actions: list[dict]) -> dict:
 
         for action in actions:
             if game_over:
-                results.append({"type": action["type"], "accepted": False, "reason": "game_over"})
-                continue
+                raise ValueError("Actions continue after game over.")
 
             action_type = action["type"]
             accepted = True
@@ -116,8 +122,12 @@ def calculate_score(session_id, actions: list[dict]) -> dict:
                 "lines_cleared": lines_cleared,
             })
 
+        if not game_over:
+            raise ValueError("The action list must end in game over.")
+
         session.score = scoring.total_score
-        session.save(update_fields=["score", "updated_at"])
+        session.tetris_action_log = actions
+        session.save(update_fields=["score", "tetris_action_log", "updated_at"])
 
         return {
             "score": scoring.total_score,

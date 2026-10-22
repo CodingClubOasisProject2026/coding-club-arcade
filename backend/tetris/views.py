@@ -3,6 +3,7 @@ import json
 from uuid import UUID
 
 from celery import current_app
+from django.conf import settings
 from django.http import Http404
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
@@ -11,13 +12,11 @@ from hub.models import Session
 
 
 ALLOWED_ACTIONS = {"move", "rotate", "soft_drop", "hard_drop", "tick"}
+TETRIS_GUEST_USERNAME = "local_tetris_guest"
 
 
 @require_POST
 def game_api(request):
-    if not request.user.is_authenticated:
-        return JsonResponse({"error": "Authentication is required."}, status=401)
-
     try:
         data = json.loads(request.body)
     except (json.JSONDecodeError, UnicodeDecodeError):
@@ -65,14 +64,22 @@ def game_api(request):
                 status=400,
             )
 
-    try:
-        Session.objects.get(
-            id=session_uuid,
-            user=request.user,
-            game__name="TETRIS",
-        )
-    except Session.DoesNotExist:
+    session = Session.objects.filter(
+        id=session_uuid,
+        game__name="TETRIS",
+    ).select_related("user").first()
+    if session is None:
         raise Http404("Tetris session not found.")
+
+    if request.user.is_authenticated:
+        if session.user_id != request.user.pk:
+            raise Http404("Tetris session not found.")
+    elif not (
+        settings.DEBUG
+        and getattr(settings, "ALLOW_TETRIS_GUEST_SESSIONS", False)
+        and session.user.username == TETRIS_GUEST_USERNAME
+    ):
+        return JsonResponse({"error": "Authentication is required."}, status=401)
 
     task = current_app.send_task(
         "tetris.tasks.calculate_score",

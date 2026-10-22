@@ -2,15 +2,14 @@
 
 The browser may render and control the game locally, but it must not submit a score or proposed piece coordinates. At the end of a run, submit the ordered input log. The backend reconstructs the seeded pieces, applies each input, checks collisions and rotations, and calculates the score itself.
 
-## Endpoint
+## Submission endpoint
 
-`POST /tetris/api/game/`
+`PUT /sessions/submit/<session_id>/`
 
-The request must be authenticated and use `Content-Type: application/json`. The referenced session must belong to the signed-in user and be a Tetris session.
+Use the session returned by `POST /sessions/start/<game_id>/`. The session must belong to the current user, or be a development guest session when guest sessions are enabled.
 
 ```json
 {
-  "session_id": "<uuid returned when starting the session>",
   "actions": [
     {"type": "move", "direction": "left"},
     {"type": "rotate", "direction": "clockwise"},
@@ -30,17 +29,19 @@ Each action is applied to the server's current piece. A blocked move or rotation
 
 ## Response
 
-The request queues validation and returns HTTP `202`:
+The request queues the action replay in Celery and returns HTTP `202`:
 
 ```json
-{"task_id": "<celery-task-id>", "status": "queued"}
+{"status": "queued", "task_id": "<celery-task-id>"}
 ```
 
 The task saves the backend-calculated score to the session. A client-provided score, coordinates, rotation matrix, or lock flag is not accepted as game state.
 
+`POST /tetris/api/game/` is also available for clients that prefer to include `session_id` in the JSON body. It queues the same Celery task; the web frontend uses the session submission endpoint above.
+
 ## Errors
 
-- `400`: malformed JSON, invalid session ID, or unsupported action format
-- `401`: user is not authenticated
+- `400`: malformed JSON, missing actions list, or unsupported action format
+- `401`: user is not authenticated and guest sessions are disabled
 - `404`: the session does not belong to the user or is not a Tetris session
-- `405`: request method is not `POST`
+- `405`: request method is not `PUT` for `/sessions/submit/` or not `POST` for `/tetris/api/game/`

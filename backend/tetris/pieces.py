@@ -1,5 +1,4 @@
 #game size
-from random import random
 import random
 
 
@@ -53,6 +52,8 @@ def create_grid():
     return [[0 for _ in range(COLUMNS)] for _ in range(ROWS)]
 
 class SeededPieceRandomizer:
+    """Use Python's seeded seven-bag shuffle, mirrored by the browser client."""
+
     def __init__(self, seed: int):
         self.rng = random.Random(seed)
         self.bag: list[tuple[str, tuple[int, int, int]]] = []

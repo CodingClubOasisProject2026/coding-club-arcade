@@ -106,13 +106,16 @@ class SessionSubmitView(UpdateAPIView):
             actions = request.data.get("actions")
             if actions is None:
                 raise ValidationError({"actions": "This field is required."})
-            from tetris.verification import verify_action_log
-
-            try:
-                result = verify_action_log(str(session.id), actions)
-            except ValueError as error:
-                raise ValidationError({"actions": str(error)}) from error
-            return Response(result)
+            if not isinstance(actions, list):
+                raise ValidationError({"actions": "Must be a list of actions."})
+            task = app.send_task(
+                "tetris.tasks.calculate_score",
+                args=(str(session.id), actions),
+            )
+            return Response(
+                {"status": "queued", "task_id": task.id},
+                status=202,
+            )
         return super().update(request, *args, **kwargs)
 
     def perform_update(self, serializer):

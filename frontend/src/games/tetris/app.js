@@ -14,24 +14,24 @@
       [1, 1],
     ],
     T: [
-      [0, 1, 0],
       [1, 1, 1],
+      [0, 1, 0],
     ],
     S: [
-      [0, 1, 1],
-      [1, 1, 0],
+      [1, 1, 1],
+      [1, 0, 0],
     ],
     Z: [
+      [1, 1, 1],
+      [0, 0, 1],
+    ],
+    J: [
       [1, 1, 0],
       [0, 1, 1],
     ],
-    J: [
-      [1, 0, 0],
-      [1, 1, 1],
-    ],
     L: [
-      [0, 0, 1],
-      [1, 1, 1],
+      [0, 1, 1],
+      [1, 1, 0],
     ],
   };
   const PIECE_COLORS = {
@@ -54,6 +54,7 @@
     score: 0,
     lines: 0,
     level: 1,
+    consecutiveClears: 0,
     startedAt: 0,
     durationMs: null,
     gravityTimer: null,
@@ -64,35 +65,91 @@
     actions: [],
     completionPayload: null,
     submitted: false,
+    taskId: null,
     keyHandler: null,
   };
 
   class SeededPieceGenerator {
     constructor(seed) {
-      // Keep only the low 32 bits; the backend applies the same reduction.
-      this.state = Number(BigInt(seed) & 0xffffffffn) >>> 0;
-      if (this.state === 0) this.state = 0x6d2b79f5;
+      // Match random.Random(seed).shuffle() in tetris.pieces.SeededPieceRandomizer.
+      this.state = new Uint32Array(624);
+      let value = BigInt(seed);
+      if (value < 0n) value = -value;
+      const key = [];
+      do {
+        key.push(Number(value & 0xffffffffn));
+        value >>= 32n;
+      } while (value > 0n);
+
+      this.state[0] = 19650218;
+      for (let index = 1; index < 624; index++) {
+        const previous = this.state[index - 1];
+        this.state[index] = (Math.imul(previous ^ (previous >>> 30), 1812433253) + index) >>> 0;
+      }
+      let i = 1;
+      let j = 0;
+      for (let count = Math.max(624, key.length); count > 0; count--) {
+        const previous = this.state[i - 1];
+        const mix = Math.imul(previous ^ (previous >>> 30), 1664525);
+        this.state[i] = ((this.state[i] ^ mix) + key[j] + j) >>> 0;
+        i++;
+        j++;
+        if (i >= 624) {
+          this.state[0] = this.state[623];
+          i = 1;
+        }
+        if (j >= key.length) j = 0;
+      }
+      for (let count = 623; count > 0; count--) {
+        const previous = this.state[i - 1];
+        const mix = Math.imul(previous ^ (previous >>> 30), 1566083941);
+        this.state[i] = ((this.state[i] ^ mix) - i) >>> 0;
+        i++;
+        if (i >= 624) {
+          this.state[0] = this.state[623];
+          i = 1;
+        }
+      }
+      this.state[0] = 0x80000000;
+      this.index = 624;
       this.bag = [];
     }
 
-    random() {
-      this.state ^= this.state << 13;
-      this.state ^= this.state >>> 17;
-      this.state ^= this.state << 5;
-      this.state >>>= 0;
-      return this.state / 0x100000000;
+    nextUint32() {
+      if (this.index >= 624) {
+        for (let i = 0; i < 624; i++) {
+          const y = (this.state[i] & 0x80000000) | (this.state[(i + 1) % 624] & 0x7fffffff);
+          this.state[i] = (this.state[(i + 397) % 624] ^ (y >>> 1) ^ ((y & 1) ? 0x9908b0df : 0)) >>> 0;
+        }
+        this.index = 0;
+      }
+      let y = this.state[this.index++];
+      y ^= y >>> 11;
+      y ^= (y << 7) & 0x9d2c5680;
+      y ^= (y << 15) & 0xefc60000;
+      y ^= y >>> 18;
+      return y >>> 0;
+    }
+
+    below(limit) {
+      const bits = Math.floor(Math.log2(limit)) + 1;
+      while (true) {
+        const value = this.nextUint32() >>> (32 - bits);
+        if (value < limit) return value;
+      }
+    }
+
+    shuffle(items) {
+      for (let index = items.length - 1; index > 0; index--) {
+        const swap = this.below(index + 1);
+        [items[index], items[swap]] = [items[swap], items[index]];
+      }
+      return items;
     }
 
     next() {
       if (this.bag.length === 0) {
-        this.bag = Object.keys(PIECE_SHAPES);
-        for (let index = this.bag.length - 1; index > 0; index--) {
-          const swapIndex = Math.floor(this.random() * (index + 1));
-          [this.bag[index], this.bag[swapIndex]] = [
-            this.bag[swapIndex],
-            this.bag[index],
-          ];
-        }
+        this.bag = this.shuffle(Object.keys(PIECE_SHAPES));
       }
       const type = this.bag.pop();
       return {
@@ -194,9 +251,11 @@
     game.score = 0;
     game.lines = 0;
     game.level = 1;
+    game.consecutiveClears = 0;
     game.actions = [];
     game.completionPayload = null;
     game.submitted = false;
+    game.taskId = null;
     game.durationMs = null;
     game.randomizer = new SeededPieceGenerator(seed);
     game.startedAt = Date.now();
@@ -275,7 +334,6 @@
       let distance = 0;
       while (!collides(game.piece, 0, distance + 1)) distance++;
       game.piece.y += distance;
-      game.score += 2 * distance;
       lockPiece();
     }
     renderGame();
@@ -313,7 +371,8 @@
       game.board.unshift(Array(COLUMNS).fill(null));
     if (cleared) {
       game.lines += cleared;
-      game.score += ([0, 100, 300, 500, 800][cleared] || 1000) * game.level;
+      game.consecutiveClears += 1;
+      game.score += ([0, 100, 200, 300, 400][cleared] || 0) * game.consecutiveClears;
       game.level = Math.floor(game.lines / 10) + 1;
       const boardElement = getElement("board");
       const callout = getElement("clear-callout");
@@ -335,7 +394,7 @@
         () => boardElement.classList.remove("line-clear-effect"),
         700,
       );
-    }
+    } else game.consecutiveClears = 0;
 
     game.piece = null;
     if (game.status === "playing") spawnPiece();
@@ -490,8 +549,14 @@
       game.actions.at(-1)?.at_ms ?? 0,
     );
     game.completionPayload = {
-      action_log: game.actions.map((event) => ({ ...event })),
-      duration_ms: game.durationMs,
+      actions: game.actions.map(({ action }) => {
+        if (action === "left" || action === "right") {
+          return { type: "move", direction: action };
+        }
+        if (action === "gravity") return { type: "tick" };
+        if (action === "rotate") return { type: "rotate", direction: "clockwise" };
+        return { type: action };
+      }),
     };
 
     const best = Math.max(
@@ -503,18 +568,18 @@
     renderGame();
     showOverlay(
       "Run complete",
-      "Replaying your input log on the server…",
-      "VERIFYING",
+      "Sending your action list to the backend validator…",
+      "SUBMITTING",
       () => {},
       true,
     );
 
     try {
       await submitRun();
-      setGameStatus("verified", "VERIFIED");
+      setGameStatus("queued", "QUEUED FOR VALIDATION");
       showOverlay(
-        "Run verified",
-        `Authoritative score: ${game.verifiedScore}. The server replay matched your run.`,
+        "Run queued",
+        `Your action list was accepted for backend validation. Task: ${game.taskId || "queued"}. Your displayed score follows the local scoring preview.`,
         "PLAY AGAIN",
         startGame,
       );
@@ -524,11 +589,11 @@
         showOverlay("Run rejected", error.message, "PLAY AGAIN", startGame);
         return;
       }
-      setGameStatus("submit-error", "VERIFICATION ERROR");
+      setGameStatus("submit-error", "SUBMISSION ERROR");
       showOverlay(
-        "Could not verify run",
-        `${error.message} Your exact completed run is saved for a safe retry.`,
-        "RETRY VERIFICATION",
+        "Could not submit run",
+        `${error.message} Your completed action list is available for retry.`,
+        "RETRY SUBMISSION",
         retrySubmission,
       );
     }
@@ -542,35 +607,29 @@
       `/sessions/submit/${game.session.id}/`,
       "PUT",
       {
-        actions: game.completionPayload,
+        actions: game.completionPayload.actions,
       },
     );
-    if (result.verified !== true || result.authoritative_score == null) {
-      throw new Error(
-        "The server did not return a verified authoritative score.",
-      );
-    }
+    if (result.status !== "queued" || !result.task_id) throw new Error("The backend did not queue the Tetris validation task.");
     game.submitted = true;
-    game.verifiedScore = result.authoritative_score;
-    game.score = result.authoritative_score;
-    renderGame();
+    game.taskId = result.task_id;
   }
 
   async function retrySubmission() {
     showOverlay(
-      "Verifying…",
-      "Retrying the saved action log.",
-      "VERIFYING",
+      "Submitting…",
+      "Retrying the saved action list.",
+      "SUBMITTING",
       () => {},
       true,
     );
     try {
       game.submitted = false;
       await submitRun();
-      setGameStatus("verified", "VERIFIED");
+      setGameStatus("queued", "QUEUED FOR VALIDATION");
       showOverlay(
-        "Run verified",
-        `Authoritative score: ${game.verifiedScore}. The server replay matched your run.`,
+        "Run queued",
+        `Your action list was accepted for backend validation. Task: ${game.taskId || "queued"}.`,
         "PLAY AGAIN",
         startGame,
       );
@@ -580,9 +639,9 @@
         showOverlay("Run rejected", error.message, "PLAY AGAIN", startGame);
       } else {
         showOverlay(
-          "Still unable to verify",
+          "Still unable to submit",
           error.message,
-          "RETRY VERIFICATION",
+          "RETRY SUBMISSION",
           retrySubmission,
         );
       }
