@@ -13,7 +13,7 @@
         file_server
     }
 
-    @backend path /admin/* /accounts/* /me/* /leaderboard/* /games/* /sessions/* /minesweeper/* /snake/* /tetris/* /wordle/*
+    @backend path /admin/* /accounts/* /me/* /leaderboard/* /games/* /sessions/* /minesweeper/* /pacman/* /snake/* /tetris/* /wordle/*
     handle @backend {
         reverse_proxy web:8000
     }

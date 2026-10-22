@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 
-type ArtworkType = 'mine' | 'wordle' | 'snake' | 'tetris'
+type ArtworkType = 'mine' | 'wordle' | 'snake' | 'tetris' | 'pacman'
 
 type Game = {
   name: string
@@ -50,6 +50,15 @@ const games: Game[] = [
     ready: true,
     art: 'tetris',
   },
+  {
+    name: 'Pac-Man',
+    path: '/pacman',
+    description: 'Clear the maze. Dodge the ghosts. Chase the high score.',
+    category: 'CHASE',
+    color: 'var(--c-pacman)',
+    ready: true,
+    art: 'pacman',
+  },
 ]
 
 const patterns: Record<Exclude<ArtworkType, 'wordle'>, string[]> = {
@@ -61,6 +70,15 @@ const patterns: Record<Exclude<ArtworkType, 'wordle'>, string[]> = {
     '0011100',
     '0101010',
     '0001000',
+  ],
+  pacman: [
+    '0011100',
+    '0111110',
+    '1111100',
+    '1111000',
+    '1111100',
+    '0111110',
+    '0011100',
   ],
   snake: [
     '0000000',

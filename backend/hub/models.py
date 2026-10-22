@@ -17,9 +17,11 @@ class CustomUser(AbstractUser):
 
 class GameChoices(models.TextChoices):
     MINESWEEPER = "MINESWEEPER"
+    PACMAN = "PACMAN"
     SNAKE = "SNAKE"
     TETRIS = "TETRIS"
     WORDLE = "WORDLE"
+    FLAPPY_BIRD = "FLAPPY_BIRD"
 
 
 class Game(models.Model):
@@ -45,8 +47,9 @@ class Session(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    def update_score(self, session_id, user_id, score):
-        self.__class__.objects.filter(id=session_id, user_id=user_id).update(score=score)
+    @classmethod
+    def update_score(cls, session_id: str, user_id: int, score: int) -> int:
+        return cls.objects.filter(id=session_id, user_id=user_id).update(score=score)
 
     def __str__(self):
         return str(f'Session: {self.id}')

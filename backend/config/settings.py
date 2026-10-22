@@ -49,14 +49,18 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TASK_QUEUES = (
+    Queue('pacman'),
     Queue('snake'),
     Queue('tetris'),
     Queue('wordle'),
+    Queue('flappy_bird'),
 )
 CELERY_TASK_ROUTES = {
+    'pacman.tasks.*': {'queue': 'pacman'},
     'snake.tasks.*': {'queue': 'snake'},
     'tetris.tasks.*': {'queue': 'tetris'},
     'wordle.tasks.*': {'queue': 'wordle'},
+    'flappy_bird.tasks.*': {'queue': 'flappy_bird'},
 }
 CELERY_TASK_ACKS_LATE = True
 CELERY_TASK_REJECT_ON_WORKER_LOST = True
@@ -73,9 +77,11 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'hub',
     'minesweeper',
+    'pacman',
     'snake',
     'tetris',
     'wordle',
+    'flappy_bird',
     'rest_framework',
     'allauth',
     'allauth.account',
