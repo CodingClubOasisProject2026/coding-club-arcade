@@ -2,7 +2,8 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hub.models import GameChoices, Session
@@ -16,7 +17,7 @@ def _finish(game, result):
     game.status = result
     game.finishedAt = timezone.now()
     game.score = score(game)
-    Session.objects.filter(id=game.pk).update(score=game.score, updated_at=game.finishedAt)
+    Session.update_score(game.pk, game.session.user_id, game.score)
 
 
 def _state(game):
@@ -43,12 +44,15 @@ def _state(game):
 
 
 @api_view(["POST"])
+@permission_classes([IsAuthenticated])
 def start_game(request, game_id):
     serializer = StartSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     width, height, mine_count = DIFFICULTIES[serializer.validated_data["difficulty"]]
 
-    session = get_object_or_404(Session, id=game_id, game__name=GameChoices.MINESWEEPER)
+    session = get_object_or_404(
+        Session, id=game_id, user=request.user, game__name=GameChoices.MINESWEEPER
+    )
     game, created = Game.objects.get_or_create(
         session=session,
         defaults={"width": width, "height": height, "mine_count": mine_count},
@@ -60,12 +64,14 @@ def start_game(request, game_id):
 
 
 @api_view(["GET"])
+@permission_classes([IsAuthenticated])
 def game_state(request, game_id):
-    game = get_object_or_404(Game, pk=game_id)
+    game = get_object_or_404(Game, pk=game_id, session__user=request.user)
     return Response(_state(game))
 
 
 @api_view(["POST"])
+@permission_classes([IsAuthenticated])
 def play_move(request, game_id):
     serializer = MoveSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
@@ -73,7 +79,9 @@ def play_move(request, game_id):
 
     with transaction.atomic():
         game = get_object_or_404(
-            Game.objects.select_related("session").select_for_update(of=("self",)), pk=game_id
+            Game.objects.select_related("session").select_for_update(of=("self",)),
+            pk=game_id,
+            session__user=request.user,
         )
 
         if game.status != Game.Status.IN_PROGRESS:

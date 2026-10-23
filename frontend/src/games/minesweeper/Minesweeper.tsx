@@ -281,6 +281,10 @@ export default function Minesweeper() {
   const didLongPress = useRef(false)
   const boardViewportRef = useRef<HTMLDivElement | null>(null)
   const touchStartPos = useRef<{ x: number; y: number } | null>(null)
+  // Used when resuming a saved game after a refresh.
+  const difficultyRef = useRef(difficulty)
+  const skipNextResetRef = useRef(false)
+  const sessionStartedRef = useRef(false)
   const isTouchDragging = useRef(false)
 
   const { me, refresh } = useAuth()
@@ -309,11 +313,12 @@ export default function Minesweeper() {
     }
   }, [game?.startedAt, localStart])
 
-  // Local game fallback
-  const startLocalGame = useCallback(() => {
+  // A blank board. 'pending' boards have no session yet (the ticket is spent on
+  // the first reveal); 'local' boards are practice games that never hit the API.
+  const blankBoard = useCallback((kind: 'pending' | 'local'): GameState => {
     const config = currentConfig
-    const localGame: GameState = {
-      id: `local-${Date.now()}`,
+    return {
+      id: `${kind}-${Date.now()}`,
       width: config.cols,
       height: config.rows,
       mine_count: config.mines,
@@ -328,16 +333,22 @@ export default function Minesweeper() {
       exploded: [],
       score: 0,
     }
-    setGame(localGame)
+  }, [currentConfig])
+
+  // Reset to a blank board. No session is created and no ticket is spent until
+  // the player reveals their first tile (see move()).
+  const start = useCallback(() => {
+    if (pending.current) return
+    setError(null)
+    setGame(blankBoard('pending'))
     setLocalStart(null)
     setElapsed(0)
     setTotalClicks(0)
     audio.playClick()
-  }, [currentConfig])
+  }, [blankBoard])
 
-  // Start new game
-  const start = useCallback(async () => {
-    setError(null)
+  // Spends a ticket and creates the server game. Falls back to practice mode.
+  const createSession = useCallback(async (): Promise<GameState> => {
     setBusy(true)
     try {
       const g = await newGame(difficulty)
@@ -346,39 +357,105 @@ export default function Minesweeper() {
       } catch {
         // ignore
       }
-      setGame(g)
-      setLocalStart(null)
-      setElapsed(0)
-      setTotalClicks(0)
-      audio.playClick()
+      return g
     } catch (e) {
-      startLocalGame()
       if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
         setError('Practice mode. Sign in to record leaderboard scores.')
       } else if (e instanceof ApiError && e.status === 400) {
         setError('No tickets left. You are playing in practice mode.')
       }
+      return blankBoard('local')
     } finally {
       setBusy(false)
       refresh()
     }
-  }, [difficulty, refresh, startLocalGame])
+  }, [blankBoard, difficulty, refresh])
 
-  // Start a fresh game on mount and whenever the difficulty changes.
+  // Show a blank board on mount and whenever the difficulty changes.
   // (Calling start() from the pill's onClick would use the previous difficulty,
   // because the callback closes over the old value.)
   useEffect(() => {
+    difficultyRef.current = difficulty
     setZoom(1)
     setDismissedRotatePrompt(false)
     if (boardViewportRef.current) {
       boardViewportRef.current.scrollLeft = 0
       boardViewportRef.current.scrollTop = 0
     }
+    // Resuming a saved game switches the difficulty to match it; don't wipe that board.
+    if (skipNextResetRef.current) {
+      skipNextResetRef.current = false
+      return
+    }
     start()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [difficulty])
 
+  // Resume a ranked game that was in progress before a refresh.
+  useEffect(() => {
+    let savedId: string | null = null
+    try {
+      savedId = localStorage.getItem(CURRENT_GAME_KEY)
+    } catch {
+      // ignore
+    }
+    if (!savedId) return
+    const forget = () => {
+      try {
+        localStorage.removeItem(CURRENT_GAME_KEY)
+      } catch {
+        // ignore
+      }
+    }
+    let cancelled = false
+    getGame(savedId)
+      .then((g) => {
+        if (cancelled) return
+        if (g.status !== 'in_progress') {
+          forget()
+          return
+        }
+        // The player already started a new game while this was loading.
+        if (pending.current || sessionStartedRef.current) return
+        const config = DIFFICULTIES.find(
+          (d) => d.cols === g.width && d.rows === g.height && d.mines === g.mine_count,
+        )
+        if (!config) {
+          forget()
+          return
+        }
+        if (config.key !== difficultyRef.current) {
+          skipNextResetRef.current = true
+          setDifficulty(config.key)
+        }
+        setGame(g)
+        setLocalStart(null)
+        setTotalClicks(g.move_count)
+        setError(null)
+      })
+      .catch((e) => {
+        // Gone, or not this user's game (signed out, other account). Network
+        // errors keep the id so the next load can try again.
+        if (!cancelled && e instanceof ApiError && [401, 403, 404].includes(e.status)) forget()
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   // Win/Loss Audio triggers
+  // A finished ranked game has nothing to resume.
+  const gameId = game?.id
+  const gameStatus = game?.status
+  useEffect(() => {
+    if (!gameId || gameStatus === 'in_progress') return
+    try {
+      if (localStorage.getItem(CURRENT_GAME_KEY) === gameId) localStorage.removeItem(CURRENT_GAME_KEY)
+    } catch {
+      // ignore
+    }
+  }, [gameId, gameStatus])
+
   useEffect(() => {
     if (game?.status === 'won') {
       audio.playWin()
@@ -418,6 +495,9 @@ export default function Minesweeper() {
   const move = useCallback(
     async (type: MoveType, index: number) => {
       if (!game || game.status !== 'in_progress' || pending.current) return
+      const isPending = game.id.startsWith('pending-')
+      // Nothing to flag or chord before the first reveal.
+      if (isPending && type !== 'reveal') return
       pending.current = true
       setTotalClicks((c) => c + 1)
 
@@ -425,14 +505,22 @@ export default function Minesweeper() {
         navigator.vibrate(type === 'flag' ? 20 : 10)
       }
 
+      // First reveal on a fresh board: this is where the ticket is spent.
+      let current = game
+      if (isPending) {
+        sessionStartedRef.current = true
+        current = await createSession()
+        setGame(current)
+      }
+
       // Local practice mode
-      if (game.id.startsWith('local-')) {
+      if (current.id.startsWith('local-')) {
         try {
-          const { width, height, mine_count } = game
+          const { width, height, mine_count } = current
           const totalCells = width * height
-          let currentMines = game.mines ? new Set(game.mines) : null
-          const openedMap = new Map(game.cells)
-          const flaggedSet = new Set(game.flagged)
+          let currentMines = current.mines ? new Set(current.mines) : null
+          const openedMap = new Map(current.cells)
+          const flaggedSet = new Set(current.flagged)
 
           if (type === 'flag') {
             if (openedMap.has(index)) return
@@ -554,7 +642,7 @@ export default function Minesweeper() {
               }
             }
 
-            const allOpened = [...game.cells, ...newlyOpened]
+            const allOpened = [...current.cells, ...newlyOpened]
             const won = allOpened.length === totalCells - mine_count
             setGame((g) =>
               g
@@ -615,7 +703,7 @@ export default function Minesweeper() {
             }
           }
 
-          const allOpened = [...game.cells, ...newlyOpened]
+          const allOpened = [...current.cells, ...newlyOpened]
           const won = allOpened.length === totalCells - mine_count
           const count = newlyOpened.length > 0 ? newlyOpened[0][1] : 0
           audio.playReveal(count, newlyOpened.length > 1 || isFirst)
@@ -642,8 +730,8 @@ export default function Minesweeper() {
 
       // Backend Hub Mode
       try {
-        const r = await playMove(game.id, game.move_count, type, index, game.width)
-        if (type !== 'flag' && !game.startedAt && localStart === null) setLocalStart(Date.now())
+        const r = await playMove(current.id, current.move_count, type, index, current.width)
+        if (type !== 'flag' && !current.startedAt && localStart === null) setLocalStart(Date.now())
 
         if (type === 'flag') {
           audio.playFlag(r.flagged.includes(index))
@@ -670,17 +758,17 @@ export default function Minesweeper() {
         )
 
         if (r.status !== 'in_progress') {
-          getGame(game.id).then(setGame).catch(() => { })
+          getGame(current.id).then(setGame).catch(() => { })
         }
       } catch (e) {
         if (e instanceof ApiError && e.status === 409) {
-          getGame(game.id).then(setGame).catch(() => { })
+          getGame(current.id).then(setGame).catch(() => { })
         }
       } finally {
         pending.current = false
       }
     },
-    [game, localStart],
+    [game, localStart, createSession],
   )
 
   const view = useMemo(() => {
@@ -830,6 +918,7 @@ export default function Minesweeper() {
               aria-checked={difficulty === d.key}
               className={`ms-diff-pill ${difficulty === d.key ? 'active' : ''}`}
               onClick={() => setDifficulty(d.key)}
+              disabled={busy}
             >
               <span className="diff-full">{d.label}</span>
               <span className="diff-short">

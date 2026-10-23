@@ -17,46 +17,68 @@ const isWall = (x: number, y: number) => {
   return MAZE[y][x] === '#'
 }
 
-/** Draw wall outlines once; walls only show edges that face open space. */
+/**
+ * Add every wall tile to one path, so neighbouring tiles merge into one continuous shape.
+ * Each tile is drawn as four quadrants. A quadrant stops `inset` short of a side that
+ * faces open space and runs to the tile edge on a side touching another wall. When both
+ * sides touch walls but the diagonal tile is open, the corner is notched so the inside
+ * corner lines up with the neighbouring walls.
+ */
+function wallPath(ctx: CanvasRenderingContext2D, inset: number) {
+  const half = TILE / 2
+  ctx.beginPath()
+  for (let y = 0; y < ROWS; y += 1) {
+    for (let x = 0; x < COLS; x += 1) {
+      if (MAZE[y][x] !== '#') continue
+      const cx = x * TILE + half
+      const cy = y * TILE + half
+      for (const sx of [-1, 1]) {
+        for (const sy of [-1, 1]) {
+          const h = isWall(x + sx, y)
+          const v = isWall(x, y + sy)
+          const d = isWall(x + sx, y + sy)
+          const quad = (reachX: number, reachY: number) => {
+            const ex = cx + sx * reachX
+            const ey = cy + sy * reachY
+            ctx.rect(Math.min(cx, ex), Math.min(cy, ey), Math.abs(ex - cx), Math.abs(ey - cy))
+          }
+          if (h && v && !d) {
+            quad(half, half - inset)
+            quad(half - inset, half)
+          } else {
+            quad(h ? half : half - inset, v ? half : half - inset)
+          }
+        }
+      }
+    }
+  }
+}
+
+const WALL_EDGE = 4 // distance from the tile edge to the outside of the outline
+const WALL_LINE = 2 // outline thickness
+
+/** Draw the walls once: a single outline per wall block, with no overlapping strokes. */
 export function renderMaze(scale: number): HTMLCanvasElement {
   const canvas = document.createElement('canvas')
   canvas.width = WIDTH * scale
   canvas.height = HEIGHT * scale
   const ctx = canvas.getContext('2d')!
   ctx.scale(scale, scale)
-  ctx.strokeStyle = WALL
-  ctx.lineWidth = 2
-  ctx.lineCap = 'round'
-  const inset = 5
+
+  // Fill the outer shape, then cut out a smaller copy so only the outline is left.
+  ctx.fillStyle = WALL
+  wallPath(ctx, WALL_EDGE)
+  ctx.fill()
+  ctx.globalCompositeOperation = 'destination-out'
+  wallPath(ctx, WALL_EDGE + WALL_LINE)
+  ctx.fill()
+  ctx.globalCompositeOperation = 'source-over'
+
+  // Ghost house door.
+  ctx.fillStyle = '#ffb8ff'
   for (let y = 0; y < ROWS; y += 1) {
     for (let x = 0; x < COLS; x += 1) {
-      const tile = MAZE[y][x]
-      if (tile === '-') {
-        ctx.fillStyle = '#ffb8ff'
-        ctx.fillRect(x * TILE, y * TILE + TILE / 2 - 1, TILE, 3)
-        continue
-      }
-      if (tile !== '#') continue
-      const left = x * TILE
-      const top = y * TILE
-      ctx.beginPath()
-      if (!isWall(x, y - 1)) {
-        ctx.moveTo(left, top + inset)
-        ctx.lineTo(left + TILE, top + inset)
-      }
-      if (!isWall(x, y + 1)) {
-        ctx.moveTo(left, top + TILE - inset)
-        ctx.lineTo(left + TILE, top + TILE - inset)
-      }
-      if (!isWall(x - 1, y)) {
-        ctx.moveTo(left + inset, top)
-        ctx.lineTo(left + inset, top + TILE)
-      }
-      if (!isWall(x + 1, y)) {
-        ctx.moveTo(left + TILE - inset, top)
-        ctx.lineTo(left + TILE - inset, top + TILE)
-      }
-      ctx.stroke()
+      if (MAZE[y][x] === '-') ctx.fillRect(x * TILE, y * TILE + TILE / 2 - 1, TILE, 3)
     }
   }
   return canvas

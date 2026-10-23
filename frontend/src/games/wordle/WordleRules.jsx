@@ -27,7 +27,7 @@ const PENALTIES = [
 ];
 
 // Rules + penalties, shared by the "before you start" pop-up and the "?" button.
-export function RulesContent() {
+export function RulesContent({ hideSolveTime = false }) {
     return (
         <>
             <div className="rule-facts">
@@ -47,7 +47,7 @@ export function RulesContent() {
                         <tr key={row.label}>
                             <th scope="row">{row.label}{row.note && <small>{row.note}</small>}</th>
                             <td className="pts">+{row.points}</td>
-                            <td className="secs">+{row.seconds}s</td>
+                            <td className="secs">{hideSolveTime && row.note ? '—' : `+${row.seconds}s`}</td>
                         </tr>
                     ))}
                 </tbody>
