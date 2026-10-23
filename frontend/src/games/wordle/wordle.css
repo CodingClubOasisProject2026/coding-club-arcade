@@ -1368,6 +1368,134 @@
   }
 }
 
+/* ---------- laptop / desktop game layout ---------- */
+/* On phones .play-layout and .game are transparent wrappers, so the mobile layout is unchanged. */
+.play-layout,
+.play-layout .game,
+.play-layout .stats {
+  display: contents;
+}
+
+@media (min-width: 1024px) {
+  .app-shell:not(.landing) {
+    width: 100%;
+    padding: 0 0 24px;
+    --tile: max(48px, min(calc((100vh - 330px) / 6), calc((50vw - 120px) / 5)));
+  }
+
+  .app-shell:not(.landing) .topbar {
+    padding: 16px 32px;
+  }
+
+  .play-layout {
+    display: grid;
+    flex: 1;
+    width: 100%;
+    padding: 0 32px;
+    gap: 0 24px;
+    align-content: start;
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, .75fr) minmax(0, .75fr);
+    grid-template-rows: auto auto auto 1fr auto auto;
+    grid-template-areas:
+      "solved time    score"
+      "board  bar     bar"
+      "board  message message"
+      "board  keys    keys"
+      "board  submit  submit"
+      "reveal .       .";
+  }
+
+  .play-layout .stats>div {
+    margin-top: 18px;
+    padding: 18px 8px;
+  }
+
+  .play-layout .stats strong {
+    font-size: 26px;
+  }
+
+  .play-layout .stats span {
+    font-size: 11px;
+  }
+
+  .play-layout .stat-solved {
+    grid-area: solved;
+  }
+
+  .play-layout .stat-time {
+    grid-area: time;
+  }
+
+  .play-layout .stat-score {
+    grid-area: score;
+  }
+
+  .play-layout .healthbar {
+    grid-area: bar;
+    align-self: center;
+    height: 8px;
+    margin: 18px 0 8px;
+  }
+
+  .play-layout .board {
+    grid-area: board;
+    align-self: start;
+    justify-content: center;
+    gap: 10px;
+    margin: 18px 0 12px;
+    padding: 24px 16px;
+  }
+
+  .play-layout .guess-row {
+    grid-template-columns: repeat(5, var(--tile));
+    gap: 10px;
+  }
+
+  .play-layout .tile {
+    width: var(--tile);
+    height: var(--tile);
+    font-size: calc(var(--tile) * .38);
+  }
+
+  .play-layout .reveal {
+    grid-area: reveal;
+  }
+
+  .play-layout .message {
+    grid-area: message;
+    align-self: center;
+    margin: 4px 0 8px;
+    font-size: 14px;
+  }
+
+  .play-layout .keyboard {
+    grid-area: keys;
+    align-self: end;
+    gap: 10px;
+    margin-top: 0;
+  }
+
+  .play-layout .keyboard-row {
+    gap: 8px;
+  }
+
+  .play-layout .key {
+    height: clamp(52px, 8vh, 78px);
+    font-size: 18px;
+  }
+
+  .play-layout .key-special {
+    font-size: 12px;
+  }
+
+  .play-layout .submit-button {
+    grid-area: submit;
+    margin-top: 14px;
+    padding: 18px;
+    font-size: 14px;
+  }
+}
+
 /* ---------- respect "reduce motion" ---------- */
 @media (prefers-reduced-motion: reduce) {
 

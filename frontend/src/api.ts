@@ -82,7 +82,11 @@ type Paginated<T> = { results: T[] }
 export async function hubGameId(name: string, fallback: number): Promise<number> {
   try {
     const games = await api<Paginated<HubGame>>('/games/')
-    return games.results.find((g) => g.name === name)?.id ?? fallback
+    return (
+      games.results.find(
+        (g) => g.name.toUpperCase() === name.toUpperCase()
+      )?.id ?? fallback
+    )
   } catch {
     return fallback
   }

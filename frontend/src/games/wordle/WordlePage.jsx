@@ -600,7 +600,7 @@ function Wordle({ launch, onReplay, onHome }) {
           <code className="launch-example">/play/wordle/?session_id=&lt;uuid&gt;&amp;seed=&lt;seed&gt;</code>
         </section>
       ) : (
-        <>
+        <div className="play-layout">
           <section className="stats" aria-label="Game statistics">
             <div className="stat-time"><span>Time</span><strong className={timeLeft <= 15 ? 'time-low' : ''}>{timerText}</strong>{popupsFor('time')}</div>
             <div className="stat-score"><span>Score</span><strong className="bump" key={score}>{score}</strong>{popupsFor('score')}</div>
@@ -678,7 +678,7 @@ function Wordle({ launch, onReplay, onHome }) {
               {sending ? 'Checking…' : 'Submit guess'}
             </button>
           </section>
-        </>
+        </div>
       )}
 
       {/* The "?" button: the same rules, mid-game */}
