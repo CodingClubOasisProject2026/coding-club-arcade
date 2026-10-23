@@ -1,6 +1,6 @@
 # Coding Club Arcade
 
-A Django-based gaming platform with leaderboards for Minesweeper, Snake, Tetris, and Wordle. Users can play games, track scores through game sessions, and compete on leaderboards. The backend uses Celery with dedicated queues for each game, PostgreSQL for data, and RabbitMQ for task processing.
+A Django-based gaming platform with leaderboards for Minesweeper, Snake, Tetris, Wordle, Pac-Man, and Flappy Bird. Users can play games, track scores through game sessions, and compete on leaderboards. The backend uses Celery with dedicated queues for each game, PostgreSQL for data, and RabbitMQ for task processing.
 
 ## Running the Project
 
