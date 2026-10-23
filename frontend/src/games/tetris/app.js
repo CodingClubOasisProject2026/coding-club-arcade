@@ -381,8 +381,11 @@
     if (!piece) return;
 
     if (piece.type === "B") {
-      for (let y = Math.max(0, piece.y - 1); y < Math.min(ROWS, piece.y + 2); y++) {
-        for (let x = Math.max(0, piece.x - 1); x < Math.min(COLUMNS, piece.x + 2); x++) {
+      const blastStartX =
+        piece.x === COLUMNS - 1 ? piece.x : Math.max(0, piece.x - 1);
+      const blastEndX = Math.min(COLUMNS, piece.x + 1);
+      for (let y = Math.max(0, piece.y); y < Math.min(ROWS, piece.y + 2); y++) {
+        for (let x = blastStartX; x < blastEndX; x++) {
           game.board[y][x] = null;
         }
       }

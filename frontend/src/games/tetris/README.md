@@ -28,9 +28,15 @@ Session submission is scoped to the signed-in user.
 - `GET /games/` resolves the Tetris game ID.
 - `POST /sessions/start/<game_id>/` creates an authenticated, ticket-backed session and returns its ID and seed. The seed is serialized as a decimal string to preserve all 63 bits in JavaScript.
 - The browser and backend use the same seeded shuffle: seven regular pieces per bag, with a bomb added to a bag after a randomly chosen two to four regular bags. A bomb is a one-cell falling piece and follows the same gravity, move, and drop controls.
+<<<<<<< Updated upstream
 - When a bomb lands, it clears the 3×3 area centered on its cell (clipped to the board edges), then each column falls to fill gaps. It does not lock or award points directly. Any complete lines created by the blast clear and score as usual.
 - At game over, the browser sends `{ actions: "TTLRCTH..." }` to `PUT /sessions/submit/<session_id>/`. Each character is one input: `T` gravity tick, `L`/`R` move, `C` rotate clockwise, `c` rotate counterclockwise, `S` soft drop, `H` hard drop. No timing is sent.
 - The hub queues the Tetris `calculate_score` Celery task and returns the updated session. The task replays the actions and saves the score to the session with `Session.update_score`. The UI's score is a local preview; this endpoint does not return a completed task result.
+=======
+- When a bomb lands, it clears a 2×2 area starting at its cell (clipped to the board edges, so it clears 1×2 against a side edge), then each column falls to fill gaps. It does not lock or award points directly. Any complete lines created by the blast clear and score as usual.
+- At game over, the browser converts its inputs to the task format and sends `{ actions: [...] }` to `PUT /sessions/submit/<session_id>/`. Movement actions carry a direction; gravity events are sent as `tick`.
+- The hub queues the Tetris `calculate_score` Celery task and returns the updated session. The task replays the actions and saves the score to the session. The UI's score is a local preview; this endpoint does not return a completed task result.
+>>>>>>> Stashed changes
 
 The local preview follows `tetris.scoring.ScoringSystem`: 100, 200, 300, or 400 points for clearing 1–4 lines, multiplied by the consecutive-clear count. A lock without a line clear resets that count. Drops and level do not add score.
 

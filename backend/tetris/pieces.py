@@ -61,7 +61,7 @@ class SeededPieceRandomizer:
     def __init__(self, seed: int):
         self.rng = random.Random(seed)
         self.bag: list[tuple[str, tuple[int, int, int]]] = []
-        self.bags_until_bomb = self.rng.randint(2, 4)
+        self.bags_until_bomb = self.rng.randint(2,4)
 
     def next_piece(self) -> tuple[str, tuple[int, int, int]]:
         if not self.bag:

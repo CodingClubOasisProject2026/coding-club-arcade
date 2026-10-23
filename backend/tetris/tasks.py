@@ -49,9 +49,13 @@ def make_tetromino(piece_type, color, grid_width):
 def resolve_piece(grid, tetromino):
     """Land a piece, applying a bomb blast before gravity and line clearing."""
     if tetromino.piece_type == "B":
-        center_x, center_y = tetromino.x, tetromino.y
-        for y in range(max(0, center_y - 1), min(len(grid), center_y + 2)):
-            for x in range(max(0, center_x - 1), min(len(grid[0]), center_x + 2)):
+        # Clear a 2x2 area around the bomb; at either side edge it is 1x2.
+        if tetromino.x == 0 or tetromino.x == len(grid[0]) - 1:
+            blast_columns = (tetromino.x,)
+        else:
+            blast_columns = (tetromino.x - 1, tetromino.x)
+        for y in range(tetromino.y, min(len(grid), tetromino.y + 2)):
+            for x in blast_columns:
                 grid[y][x] = 0
         for x in range(len(grid[0])):
             remaining = [grid[y][x] for y in range(len(grid)) if grid[y][x]]
