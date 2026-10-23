@@ -1,5 +1,8 @@
-import random
+"""Flappy Bird rules, used by the Celery task to replay and verify a run.
 
+frontend/src/games/flappy_bird/engine.ts is a line-for-line port of this file.
+Any rule change must be made in both, or verified scores will diverge.
+"""
 
 WORLD_WIDTH = 480
 WORLD_HEIGHT = 640
@@ -15,28 +18,46 @@ FLAP_VELOCITY = -7_000
 MAX_FALL_SPEED = 9_000
 MAX_TICKS = 100_000
 
+# The xorshift32 state has to match the frontend engine exactly.
+INITIAL_PIPE_X = (600 * SCALE, 860 * SCALE, 1_120 * SCALE)
+GAP_MIN = 170
+GAP_MAX = 470
+
+
+def seed_to_rng(seed):
+    value = int(seed) & 0xFFFFFFFF
+    return value or 0x6D2B79F5
+
+
+def next_random(game):
+    x = game["rng"]
+    x ^= (x << 13) & 0xFFFFFFFF
+    x ^= x >> 17
+    x ^= (x << 5) & 0xFFFFFFFF
+    x &= 0xFFFFFFFF
+    game["rng"] = x
+    return x
+
 
 def create_game(seed):
-    rng = random.Random(seed)
-    pipes = [
-        _create_pipe(x, rng)
-        for x in (600 * SCALE, 860 * SCALE, 1_120 * SCALE)
-    ]
-    return {
+    game = {
         "bird_y": WORLD_HEIGHT * SCALE // 2,
         "velocity": 0,
-        "pipes": pipes,
+        "pipes": [],
         "score": 0,
         "status": "ACTIVE",
         "tick": 0,
-        "rng": rng,
+        "rng": seed_to_rng(seed),
     }
+    game["pipes"] = [_create_pipe(x, game) for x in INITIAL_PIPE_X]
+    return game
 
 
-def _create_pipe(x, rng):
+def _create_pipe(x, game):
+    gap_top = GAP_MIN + next_random(game) % (GAP_MAX - GAP_MIN + 1)
     return {
         "x": x,
-        "gap_top": rng.randint(170, 470) * SCALE - PIPE_GAP // 2,
+        "gap_top": gap_top * SCALE - PIPE_GAP // 2,
         "scored": False,
     }
 
@@ -61,7 +82,7 @@ def step_game(game, flap=False):
         game["pipes"].append(
             _create_pipe(
                 game["pipes"][-1]["x"] + PIPE_SPACING,
-                game["rng"],
+                game,
             )
         )
 

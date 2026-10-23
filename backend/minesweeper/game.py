@@ -1,6 +1,6 @@
 import random 
 
-# Stays under the PositiveSmallIntegerField limit (32767) for move_count.
+# Caps how long a single game can run.
 MAX_MOVES = 30_000
 
 # (width, height, mine_count)

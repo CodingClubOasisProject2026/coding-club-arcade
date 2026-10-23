@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 
-type ArtworkType = 'mine' | 'wordle' | 'snake' | 'tetris' | 'pacman'
+type ArtworkType = 'mine' | 'wordle' | 'snake' | 'tetris' | 'pacman' | 'flappy'
 
 type Game = {
   name: string
@@ -59,8 +59,18 @@ const games: Game[] = [
     ready: true,
     art: 'pacman',
   },
+  {
+    name: 'Flappy Bird',
+    path: '/flappy',
+    description: 'Tap to fly. Thread the pipes. One wrong tilt and it is over.',
+    category: 'REFLEX',
+    color: 'var(--c-flappy, #facc15)',
+    ready: true,
+    art: 'flappy',
+  },
 ]
 
+// 3. Add the 7x7 pixel art pattern for Flappy Bird
 const patterns: Record<Exclude<ArtworkType, 'wordle'>, string[]> = {
   mine: [
     '0001000',
@@ -97,6 +107,15 @@ const patterns: Record<Exclude<ArtworkType, 'wordle'>, string[]> = {
     '1000011',
     '1100111',
     '1111111',
+  ],
+  flappy: [
+    '0000000',
+    '0111000',
+    '1111100',
+    '1110110',
+    '1111100',
+    '0111000',
+    '0000000',
   ],
 }
 

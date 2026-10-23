@@ -18,6 +18,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      valkey:
+        condition: service_started
   db:
     image: postgres:17-alpine
     env_file:
@@ -29,6 +31,14 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    restart: unless-stopped
+  valkey:
+    image: valkey/valkey:8-alpine
+    command: valkey-server --appendonly yes
+    ulimits:
+      memlock: -1
+    volumes:
+      - valkey_data:/data
     restart: unless-stopped
   celery:
     build:
@@ -48,6 +58,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      valkey:
+        condition: service_started
   rabbitmq:
     image: rabbitmq:3.12-alpine
     env_file:
@@ -55,8 +67,8 @@ services:
     volumes:
       - rabbitmq_prod_data:/var/lib/rabbitmq
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 5s
+      test: ["CMD-SHELL", "nc -z localhost 5672"]
+      interval: 10s
       timeout: 5s
       retries: 12
     restart: unless-stopped
@@ -84,3 +96,4 @@ volumes:
   caddy_data:
   caddy_config:
   rabbitmq_prod_data:
+  valkey_data:

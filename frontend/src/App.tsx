@@ -8,6 +8,7 @@ import Pacman from './games/pacman/Pacman'
 import TetrisPage from './games/tetris/TetrisPage'
 import WordlePage from './games/wordle/WordlePage.jsx'
 import Snake from './games/snake/Snake'
+import Flappy from './games/flappy_bird/flappy' // Imported Flappy Bird
 import Leaderboard from './pages/leaderboard'
 import Hub from './pages/Hub'
 
@@ -63,6 +64,7 @@ export default function App() {
   const isPacman = location.pathname.replace(/\/+$/, '') === '/pacman'
   const isSnake = location.pathname.replace(/\/+$/, '') === '/snake'
   const isTetris = location.pathname.replace(/\/+$/, '') === '/tetris'
+  const isFlappy = location.pathname.replace(/\/+$/, '') === '/flappy' // Added Flappy Bird path check
 
   if (isWordle) {
     return (
@@ -114,6 +116,17 @@ export default function App() {
     )
   }
 
+  // Added Flappy Bird routing block
+  if (isFlappy) {
+    return (
+      <AuthProvider>
+        <Routes>
+          <Route path="/flappy" element={<Flappy />} />
+        </Routes>
+      </AuthProvider>
+    )
+  }
+
   return (
     <AuthProvider>
       <div className="arcade-shell">
@@ -153,4 +166,4 @@ export default function App() {
       </div>
     </AuthProvider>
   )
-}
+} 
