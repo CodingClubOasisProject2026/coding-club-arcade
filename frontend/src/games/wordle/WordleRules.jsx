@@ -26,6 +26,33 @@ const PENALTIES = [
     'Leaving mid-game abandons this attempt.',
 ];
 
+// Modal dialog wrapper used by the landing page and game page pop-ups.
+// Uses the existing .overlay / .modal CSS classes from wordle.css.
+export function ArcadeDialog({ children, labelledBy, onClose }) {
+    const handleBackdropClick = (e) => {
+        if (e.target === e.currentTarget) onClose();
+    };
+    const handleKeyDown = (e) => {
+        if (e.key === 'Escape') onClose();
+    };
+    return (
+        <div
+            className="overlay"
+            onClick={handleBackdropClick}
+            onKeyDown={handleKeyDown}
+        >
+            <section
+                className="modal"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={labelledBy}
+            >
+                {children}
+            </section>
+        </div>
+    );
+}
+
 // Rules + penalties, shared by the "before you start" pop-up and the "?" button.
 export function RulesContent({ hideSolveTime = false }) {
     return (
