@@ -56,6 +56,5 @@ def calculate_score(user_id, session_id, actions) -> dict | None:
             status=PacmanRun.Status.VERIFIED,
             score=score,
         )
-        session.score = score
-        session.save(update_fields=["score", "updated_at"])
+        Session.update_score(session_id, user_id, score)
         return {"status": PacmanRun.Status.VERIFIED, "score": score}

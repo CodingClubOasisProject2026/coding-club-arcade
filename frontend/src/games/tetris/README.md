@@ -21,7 +21,7 @@ cd backend
 python manage.py migrate
 ```
 
-Session submission is scoped to the signed-in user. Guest sessions can only submit when the backend's development guest-session option is enabled.
+Session submission is scoped to the signed-in user.
 
 ## Session and task flow
 
@@ -30,7 +30,7 @@ Session submission is scoped to the signed-in user. Guest sessions can only subm
 - The browser and backend use the same seeded shuffle: seven regular pieces per bag, with a bomb added to a bag after a randomly chosen two to four regular bags. A bomb is a one-cell falling piece and follows the same gravity, move, and drop controls.
 - When a bomb lands, it clears the 3×3 area centered on its cell (clipped to the board edges), then each column falls to fill gaps. It does not lock or award points directly. Any complete lines created by the blast clear and score as usual.
 - At game over, the browser converts its inputs to the task format and sends `{ actions: [...] }` to `PUT /sessions/submit/<session_id>/`. Movement actions carry a direction; gravity events are sent as `tick`.
-- The Tetris session endpoint returns `202` with a Celery `task_id`. The task replays the actions and saves the score to the session. The UI's score is a local preview; this endpoint does not return a completed task result.
+- The hub queues the Tetris `calculate_score` Celery task and returns the updated session. The task replays the actions and saves the score to the session. The UI's score is a local preview; this endpoint does not return a completed task result.
 
 The local preview follows `tetris.scoring.ScoringSystem`: 100, 200, 300, or 400 points for clearing 1–4 lines, multiplied by the consecutive-clear count. A lock without a line clear resets that count. Drops and level do not add score.
 

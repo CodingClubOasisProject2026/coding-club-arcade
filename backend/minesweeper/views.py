@@ -17,7 +17,7 @@ def _finish(game, result):
     game.status = result
     game.finishedAt = timezone.now()
     game.score = score(game)
-    Session.objects.filter(id=game.pk).update(score=game.score, updated_at=game.finishedAt)
+    Session.update_score(game.pk, game.session.user_id, game.score)
 
 
 def _state(game):

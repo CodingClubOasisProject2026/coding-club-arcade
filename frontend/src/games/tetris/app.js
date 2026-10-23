@@ -67,7 +67,6 @@
     actions: [],
     completionPayload: null,
     submitted: false,
-    taskId: null,
     keyHandler: null,
   };
 
@@ -265,7 +264,6 @@
     game.actions = [];
     game.completionPayload = null;
     game.submitted = false;
-    game.taskId = null;
     game.durationMs = null;
     game.randomizer = new SeededPieceGenerator(seed);
     game.startedAt = Date.now();
@@ -601,8 +599,8 @@
       await submitRun();
       setGameStatus("queued", "QUEUED FOR VALIDATION");
       showOverlay(
-        "Run queued",
-        `Your action list was accepted for backend validation. Task: ${game.taskId || "queued"}. Your displayed score follows the local scoring preview.`,
+        "Run submitted",
+        "Your action list was accepted for backend validation. Your displayed score follows the local scoring preview.",
         "PLAY AGAIN",
         startGame,
       );
@@ -633,9 +631,8 @@
         actions: game.completionPayload.actions,
       },
     );
-    if (result.status !== "queued" || !result.task_id) throw new Error("The backend did not queue the Tetris validation task.");
+    if (!result?.id) throw new Error("The backend did not accept the Tetris action list.");
     game.submitted = true;
-    game.taskId = result.task_id;
   }
 
   async function retrySubmission() {
@@ -651,8 +648,8 @@
       await submitRun();
       setGameStatus("queued", "QUEUED FOR VALIDATION");
       showOverlay(
-        "Run queued",
-        `Your action list was accepted for backend validation. Task: ${game.taskId || "queued"}.`,
+        "Run submitted",
+        "Your action list was accepted for backend validation.",
         "PLAY AGAIN",
         startGame,
       );

@@ -1,7 +1,7 @@
 from celery import shared_task
 from django.db import transaction
 
-from hub.models import Session
+from hub.models import GameChoices, Session
 from tetris.engine import (
     check_collision,
     clear_line,
@@ -60,7 +60,7 @@ def _validate_action(action):
 
 
 @shared_task
-def calculate_score(session_id, actions: list[dict]) -> dict:
+def calculate_score(user_id: int, session_id: str, actions: list[dict]) -> dict | None:
     """Replay the submitted controls and persist the server-calculated score."""
     if not isinstance(actions, list):
         raise ValueError("actions must be a list.")
@@ -70,9 +70,17 @@ def calculate_score(session_id, actions: list[dict]) -> dict:
         _validate_action(action)
 
     with transaction.atomic():
-        session = Session.objects.select_for_update().get(id=session_id)
-        if session.tetris_action_log and session.tetris_action_log != actions:
-            raise ValueError("This Tetris session was already submitted with a different action list.")
+        session = (
+            Session.objects.select_for_update()
+            .filter(
+                pk=session_id,
+                user_id=user_id,
+                game__name=GameChoices.TETRIS,
+            )
+            .first()
+        )
+        if session is None:
+            return None
 
         grid = create_grid()
         randomizer = SeededPieceRandomizer(session.seed)
@@ -138,9 +146,7 @@ def calculate_score(session_id, actions: list[dict]) -> dict:
         if not game_over:
             raise ValueError("The action list must end in game over.")
 
-        session.score = scoring.total_score
-        session.tetris_action_log = actions
-        session.save(update_fields=["score", "tetris_action_log", "updated_at"])
+        Session.update_score(session_id, user_id, scoring.total_score)
 
         return {
             "score": scoring.total_score,

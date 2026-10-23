@@ -38,6 +38,5 @@ def calculate_score(user_id: int, session_id: str, actions: dict) -> int | None:
             logger.warning("Rejected snake run %s: %s", session_id, error)
             return None
 
-        session.score = game["score"]
-        session.save(update_fields=["score", "updated_at"])
+        Session.update_score(session_id, user_id, game["score"])
         return game["score"]
