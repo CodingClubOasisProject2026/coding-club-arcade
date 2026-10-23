@@ -38,54 +38,17 @@ Not tested: Postgres-specific behaviour, a real Celery worker or RabbitMQ, Docke
 
 ## 🟠 High
 
-### H1. Players can't see when a Snake or Tetris run is rejected, and Tetris never shows a verified score
-- **Snake:** when a run is rejected, [backend/snake/tasks.py:37-39](backend/snake/tasks.py#L37-L39) only logs a warning. Nothing is saved, so [backend/snake/views.py:18-21](backend/snake/views.py#L18-L21) keeps answering `"pending"`, and the game shows "STILL VERIFYING" forever ([Snake.tsx:139-148](frontend/src/games/snake/Snake.tsx#L139-L148)).
-- **Tetris:** there is no status endpoint. After submitting, the player only sees "Run queued" and a task id ([app.js:607-618](frontend/src/games/tetris/app.js#L607-L618)). A rejected run raises `ValueError` inside the Celery task, so it shows up only in the worker logs.
-- **Fix:** save rejected results the way Pac-Man does with `PacmanRun` (a status and a reason), and return them from a status endpoint. Add a status endpoint for Tetris and poll it from `app.js`.
-
-### H2. Flappy Bird is half-removed but can still be started and ranked
-- **Where:** [backend/config/settings.py](backend/config/settings.py) (still installed, with its queue and route), [backend/hub/models.py:24](backend/hub/models.py#L24) and [seed_games.py](backend/hub/management/commands/seed_games.py).
-- **Problem:** only the URLs were removed. `/games/` still lists Flappy Bird, `/sessions/start/` still spends a ticket on it, and submits are scored and counted on the leaderboard, even though there is no frontend.
-- **Cost:** pipes are never removed, so a long replay takes about 16 s of CPU while holding a row lock ([flappy_bird/game_logic.py:54-75](backend/flappy_bird/game_logic.py#L54-L75)).
-- **Fix:** remove it from `GameChoices` and from seeding, or block starting sessions for it.
-
-### H3. Wordle's answer list wraps after 50 words, and the game never ends
-- **Where:** [backend/wordle/engine.py:82](backend/wordle/engine.py#L82) and [backend/wordle/views.py:65](backend/wordle/views.py#L65).
-- **Problem:** the answer is `answers[word_idx % len(answers)]`, so word 51 is word 1 again. The status is never set to `LOST` or `CLEARED`, which means the frontend's lost and cleared branches never run.
-- **Fix:** set `CLEARED` at the end of the list and stop using modulo.
-
-### H4. Wordle scoring pays more for stalling than for solving
-- **Where:** [backend/wordle/engine.py:85-92](backend/wordle/engine.py#L85-L92) and [backend/wordle/views.py:221-227](backend/wordle/views.py#L221-L227).
-- **Problem:** every green tile pays 5 points and 5 seconds on every guess, including greens that were already known.
-- **Example:** five guesses with the same 4 greens earn 100 points and 100 seconds, while solving immediately earns 55. A fast typist never runs out of time.
-- **Fix:** only reward greens that are new for that word, or give the time bonus only when a word is solved.
-
-### H5. Insecure defaults: DEBUG on and a committed SECRET_KEY
-- **Where:** [backend/config/settings.py:26-30](backend/config/settings.py#L26-L30) and [docker/.env.example](docker/.env.example).
-- **Problem:**
-  - `DEBUG` defaults to `true`, and `.env.example` also ships `DEBUG=true`.
-  - `SECRET_KEY` falls back to a key committed in the repo, which is enough to forge session cookies.
-  - `WORDLE_ANSWER_KEY` falls back to `SECRET_KEY` and isn't in `.env.example`.
-- **Debug side effect:** DEBUG also turns on Tetris guest mode, and the `local_tetris_guest` user then shows up on the leaderboard.
-- **Fix:** default `DEBUG=false`, raise `ImproperlyConfigured` when the keys are missing in production, and add `WORDLE_ANSWER_KEY` to `.env.example`.
 
 ### H6. On Postgres, players with no score sort to the top of the leaderboard
 - **Where:** [backend/hub/views.py:29](backend/hub/views.py#L29).
 - **Problem:** `order_by("-score")` puts NULLs first on Postgres, so new users and anyone whose runs are still pending appear above real players. Staff and the guest user are listed too.
 - **Fix:** use `F("score").desc(nulls_last=True)` or filter out null scores, and exclude staff and the guest user.
 
-### H7. The tetris app has a pending migration
-- **Problem:** `models.py` is empty, but `0001_initial` creates `Player` and `Score`. `makemigrations --check` fails, which breaks any CI check, and the stale tables stay in production.
-- **Fix:** run `makemigrations tetris`, which creates `0002_remove_score_player_delete_player_delete_score`.
 
-### H8. Minesweeper spends a ticket on page load, on every difficulty change and on every R press
-- **Where:** [frontend/src/games/minesweeper/Minesweeper.tsx:366-378,397-398](frontend/src/games/minesweeper/Minesweeper.tsx#L366-L378).
-- **Problems:**
-  - `useEffect(start, [difficulty])` creates a ticketed session as soon as the page mounts.
-  - StrictMode runs that effect twice in dev, which spends 2 tickets.
-  - The R key handler doesn't check modifiers, so Cmd/Ctrl+R (reload) also restarts the game.
-  - `CURRENT_GAME_KEY` is saved to localStorage but never read, so a refresh can't resume the game.
-- **Fix:** start a session only on an explicit Start or first click, ignore keys pressed with modifiers, confirm before abandoning a game, and resume from the saved key.
+### ~~H8. Minesweeper spends a ticket on page load, on every difficulty change and on every R press~~ ✅ Fixed
+- Resets now show a blank board. The ticket is spent, and the server game created, on the first tile reveal.
+- A refresh resumes the saved game if it's still in progress, including its difficulty, board and timer.
+- **Left over (Low):** R, the smiley and changing difficulty abandon a ranked game without asking first. A refresh brings the game back, but there's no warning before it's abandoned.
 
 ---
 
