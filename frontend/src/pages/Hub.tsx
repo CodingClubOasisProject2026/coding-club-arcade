@@ -1,7 +1,8 @@
 import type { CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 
-type ArtworkType = 'mine' | 'wordle' | 'snake' | 'tetris' | 'pacman'
+// 1. Add 'flappy' to the ArtworkType union
+type ArtworkType = 'mine' | 'wordle' | 'snake' | 'tetris' | 'pacman' | 'flappy'
 
 type Game = {
   name: string
@@ -59,8 +60,19 @@ const games: Game[] = [
     ready: true,
     art: 'pacman',
   },
+  // 2. Add the Flappy Bird game object
+  {
+    name: 'Flappy Bird',
+    path: '/flappy',
+    description: 'Tap to fly. Navigate the gaps. Avoid the pipes.',
+    category: 'ARCADE',
+    color: 'var(--c-flappy, #facc15)', // Fallback to yellow if CSS var is missing
+    ready: true,
+    art: 'flappy',
+  },
 ]
 
+// 3. Add the 7x7 pixel art pattern for Flappy Bird
 const patterns: Record<Exclude<ArtworkType, 'wordle'>, string[]> = {
   mine: [
     '0001000',
@@ -97,6 +109,15 @@ const patterns: Record<Exclude<ArtworkType, 'wordle'>, string[]> = {
     '1000011',
     '1100111',
     '1111111',
+  ],
+  flappy: [
+    '0000000',
+    '0011100',
+    '0110110',
+    '0111111',
+    '0111000',
+    '0011100',
+    '0000000',
   ],
 }
 
