@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './wordle.css';
 import { HUB_URL, MAX_ATTEMPTS, MISS_PENALTY_SECONDS, START_SECONDS, RulesContent } from './WordleRules';
 import Landing from './WordleLanding';
-import { api, hubGameId, startHubSession } from '../../api';
+import { api, csrfToken, hubGameId, startHubSession } from '../../api';
 import { useAuth } from '../../auth';
 
 const WORD_LENGTH = 5;
@@ -71,9 +71,14 @@ function readTally(sessionId) {
 const signed = (value) => `${value > 0 ? '+' : value < 0 ? '−' : ''}${Math.abs(value)}`;
 
 async function postWordle(path, payload) {
+  const token = csrfToken();
   const response = await fetch(`/wordle/${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'X-CSRFToken': token } : {}),
+    },
+    credentials: 'same-origin',
     body: JSON.stringify(payload),
   });
   const data = await response.json().catch(() => ({}));
@@ -203,6 +208,7 @@ function Tile({ letter = '', mark, cursor = false }) {
 
 function Wordle({ launch, onReplay, onHome }) {
   const { sessionId, seed } = launch;
+  const pageToken = useRef(crypto.randomUUID()).current;
   const validLaunch = isValidLaunch(sessionId, seed);
 
   const [snapshot, setSnapshot] = useState(null);
@@ -308,19 +314,19 @@ function Wordle({ launch, onReplay, onHome }) {
     let cancelled = false;
     setLoading(true);
     setError('');
-    postWordle('initialize', { session_id: sessionId, seed })
+    postWordle('initialize', { session_id: sessionId, seed, page_token: pageToken })
       .then((data) => {
         if (!cancelled) showApiState(data);
       })
       .catch((cause) => { if (!cancelled) setError(cause.message); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [retryCount, seed, sessionId, showApiState, validLaunch]);
+  }, [pageToken, retryCount, seed, sessionId, showApiState, validLaunch]);
 
   useEffect(() => {
     if (!gameOver || !validLaunch || !snapshot || scoreSubmitted.current) return;
     scoreSubmitted.current = true;
-    api(`/sessions/submit/${sessionId}/`, { method: 'PUT', body: { actions: {} } })
+    api(`/sessions/submit/${sessionId}/`, { method: 'PUT', body: { actions: { guesses: snapshot.actions || [] } } })
       .catch((cause) => {
         scoreSubmitted.current = false;
         setError(`Could not submit your score: ${cause.message}`);
@@ -352,7 +358,7 @@ function Wordle({ launch, onReplay, onHome }) {
     let cancelled = false;
     let timer;
     const check = () => {
-      postWordle('initialize', { session_id: sessionId, seed })
+      postWordle('initialize', { session_id: sessionId, seed, page_token: pageToken })
         .then((data) => {
           if (cancelled) return;
           if (data?.game_status && data.game_status !== 'in_progress') showApiState(data);
@@ -362,7 +368,7 @@ function Wordle({ launch, onReplay, onHome }) {
     };
     check();
     return () => { cancelled = true; window.clearTimeout(timer); };
-  }, [clockExpired, ended, seed, sessionId, showApiState, snapshot?.game_status]);
+  }, [clockExpired, ended, pageToken, seed, sessionId, showApiState, snapshot?.game_status]);
 
   // Warn before closing / reloading the tab while a game is live.
   useEffect(() => {
@@ -412,9 +418,11 @@ function Wordle({ launch, onReplay, onHome }) {
     const scoreBefore = snapshot?.score ?? 0;
     const previousRows = snapshot?.board || [];
     try {
-      const data = await postWordle('guess', {
+      const wordNumber = snapshot?.word_number || 1;
+      const data = await postWordle(`guess/${wordNumber}`, {
         session_id: sessionId,
         seed,
+        page_token: pageToken,
         guess: draft,
       });
       // Compare with the clock as it was *before* this reply updates it.
@@ -440,7 +448,7 @@ function Wordle({ launch, onReplay, onHome }) {
     } finally {
       setSending(false);
     }
-  }, [active, deadline, draft, recordChange, seed, sending, sessionId, showApiState, snapshot, triggerShake]);
+  }, [active, deadline, draft, pageToken, recordChange, seed, sending, sessionId, showApiState, snapshot, triggerShake]);
 
   const pressKey = useCallback((key) => {
     if (!active || sending) return;
@@ -515,7 +523,7 @@ function Wordle({ launch, onReplay, onHome }) {
     setEndOpen(false);
     setEnded(true);
     try {
-      const data = await postWordle('finish', { session_id: sessionId, seed });
+      const data = await postWordle('finish', { session_id: sessionId, seed, page_token: pageToken });
       if (data?.game_status) {
         showApiState(data);
         if (data.answer) setNotice(`Game ended. The word was ${String(data.answer).toUpperCase()}.`);
