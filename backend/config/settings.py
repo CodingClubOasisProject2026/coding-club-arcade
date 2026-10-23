@@ -156,6 +156,9 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
+# Long game replays (up to 100k events) exceed Django's 2.5 MB default.
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10 MB
+
 
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
