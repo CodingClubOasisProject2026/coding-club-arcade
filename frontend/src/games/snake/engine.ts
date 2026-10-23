@@ -132,6 +132,16 @@ export function step(game: GameState, direction: SnakeDirection): GameState {
   return game
 }
 
+/**
+ * One game tick as the player sees it: records a direction change in the log
+ * (on the tick it takes effect, matching the backend replay), then steps.
+ */
+export function advance(game: GameState, direction: SnakeDirection, actions: ActionLog['actions']): GameState {
+  if (game.status !== 'ACTIVE') return game
+  if (direction !== game.direction) actions.push({ tick: game.tick + 1, direction })
+  return step(game, direction)
+}
+
 /** Static board shown before the first run starts. */
 export function createPreviewGame(): GameState {
   const game = createGame(1)

@@ -87,6 +87,23 @@
   text-align: center;
 }
 
+.snake-notice {
+  max-width: 90vw;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 2px solid #000;
+  background: #1e3a8a;
+  color: #eff6ff;
+  padding: 8px 12px;
+  font-size: 10px;
+  line-height: 1.5;
+  z-index: 10;
+  text-align: center;
+}
+
 /* Dungeon Backdrop */
 .dg-root {
   position: fixed;

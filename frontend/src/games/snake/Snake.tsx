@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { ApiError } from '../../api'
 import { useAuth } from '../../auth'
+import GoogleSignIn from '../../GoogleSignIn'
 import Board from './Board'
 import DungeonBackdrop from './DungeonBackdrop'
 import DPad from './DPad'
 import { runStatus, startRun, submitRun } from './api'
 import {
+  advance,
   createGame,
   createPreviewGame,
   OPP,
-  step,
   tickDelayMs,
   type ActionLog,
   type GameState,
@@ -38,13 +40,19 @@ const KEY_TO_DIR: Record<string, SnakeDirection> = {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
-type Submission = 'idle' | 'sending' | 'verified' | 'pending' | 'error'
+type Submission = 'idle' | 'practice' | 'sending' | 'verified' | 'pending' | 'error'
+
+function randomSeed() {
+  const words = crypto.getRandomValues(new Uint32Array(2))
+  return (BigInt(words[0]) << 32n) | BigInt(words[1])
+}
 
 export default function Snake() {
   const { me, refresh } = useAuth()
   const [game, setGame] = useState<GameState>(createPreviewGame)
   const [phase, setPhase] = useState<'idle' | 'playing' | 'paused' | 'over'>('idle')
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
   const [finalScore, setFinalScore] = useState<number | null>(null)
   const [submission, setSubmission] = useState<Submission>('idle')
   const [busy, setBusy] = useState(false)
@@ -65,23 +73,34 @@ export default function Snake() {
     if (busy) return
     setBusy(true)
     setError(null)
+    setNotice(null)
     setFinalScore(null)
     setSubmission('idle')
+    let seed: string | number | bigint
     try {
       const session = await startRun()
       sessionRef.current = session.id
-      gameRef.current = createGame(session.seed)
-      actionsRef.current = []
-      queueRef.current = []
-      paint()
-      setPhase('playing')
+      seed = session.seed
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to start Snake game')
-      setPhase('idle')
+      // No ranked run available: play a local practice game that is never submitted.
+      sessionRef.current = null
+      seed = randomSeed()
+      if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+        setNotice('PRACTICE MODE. SIGN IN TO POST SCORES.')
+      } else if (err instanceof ApiError && err.status === 400) {
+        setNotice('NO TICKETS LEFT. PLAYING IN PRACTICE MODE.')
+      } else {
+        setNotice('COULD NOT REACH THE ARCADE. PLAYING IN PRACTICE MODE.')
+      }
     } finally {
       setBusy(false)
       refresh()
     }
+    gameRef.current = createGame(seed)
+    actionsRef.current = []
+    queueRef.current = []
+    paint()
+    setPhase('playing')
   }, [busy, paint, refresh])
 
   const togglePause = useCallback(() => {
@@ -104,7 +123,10 @@ export default function Snake() {
   const finish = useCallback(async () => {
     const sessionId = sessionRef.current
     const g = gameRef.current
-    if (!sessionId) return
+    if (!sessionId) {
+      setSubmission('practice')
+      return
+    }
     sessionRef.current = null
     const log: ActionLog = {
       actions: actionsRef.current,
@@ -136,11 +158,7 @@ export default function Snake() {
     let timer = 0
     const tick = () => {
       const g = gameRef.current
-      const dir = queueRef.current.shift() ?? g.direction
-      if (dir !== g.direction) {
-        actionsRef.current.push({ tick: g.tick + 1, direction: dir })
-      }
-      step(g, dir)
+      advance(g, queueRef.current.shift() ?? g.direction, actionsRef.current)
       paint()
       if (g.status !== 'ACTIVE') {
         setPhase('over')
@@ -226,6 +244,12 @@ export default function Snake() {
       <h1 className="snake-title">SNAKE</h1>
 
       {error && <div className="snake-error">{error}</div>}
+      {notice && (
+        <div className="snake-notice" role="status">
+          <span>{notice}</span>
+          {!me?.authenticated && <GoogleSignIn />}
+        </div>
+      )}
 
       <div
         style={{ position: 'relative', touchAction: 'none' }}
@@ -242,6 +266,7 @@ export default function Snake() {
             {phase === 'over' && (
               <p style={{ margin: 0, fontSize: '13px' }}>
                 FINAL SCORE: {finalScore ?? game.score}
+                {submission === 'practice' && ' · PRACTICE, NOT SUBMITTED'}
                 {submission === 'sending' && ' · VERIFYING...'}
                 {submission === 'verified' && ' · VERIFIED'}
                 {submission === 'pending' && ' · STILL VERIFYING'}
