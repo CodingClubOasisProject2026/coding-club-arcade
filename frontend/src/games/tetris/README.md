@@ -27,7 +27,8 @@ Session submission is scoped to the signed-in user. Guest sessions can only subm
 
 - `GET /games/` resolves the Tetris game ID.
 - `POST /sessions/start/<game_id>/` creates an authenticated, ticket-backed session and returns its ID and seed. The seed is serialized as a decimal string to preserve all 63 bits in JavaScript.
-- The browser uses the same Python `random.Random(seed)` seven-piece shuffle and piece shapes as `tetris.pieces.SeededPieceRandomizer` and `tetris.tasks`.
+- The browser and backend use the same seeded shuffle: seven regular pieces per bag, with a bomb added to a bag after a randomly chosen two to four regular bags. A bomb is a one-cell falling piece and follows the same gravity, move, and drop controls.
+- When a bomb lands, it clears the 3×3 area centered on its cell (clipped to the board edges), then each column falls to fill gaps. It does not lock or award points directly. Any complete lines created by the blast clear and score as usual.
 - At game over, the browser converts its inputs to the task format and sends `{ actions: [...] }` to `PUT /sessions/submit/<session_id>/`. Movement actions carry a direction; gravity events are sent as `tick`.
 - The Tetris session endpoint returns `202` with a Celery `task_id`. The task replays the actions and saves the score to the session. The UI's score is a local preview; this endpoint does not return a completed task result.
 

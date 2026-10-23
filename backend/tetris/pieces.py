@@ -45,31 +45,42 @@ shapes = [
 
 # Tetromino colors
 COLORS = (CYAN, YELLOW, MAGENTA, RED, GREEN, BLUE, ORANGE)
-PIECE_TYPES = ("I", "O", "T", "S", "Z", "J", "L")
+PIECE_TYPES = ("I", "O", "T", "S", "Z", "J", "L", "B")
+PIECE_SHAPES = dict(zip(PIECE_TYPES[:7], shapes))
+PIECE_SHAPES["B"] = [[1]]
+PIECE_COLORS = dict(zip(PIECE_TYPES[:7], COLORS))
+PIECE_COLORS["B"] = (35, 35, 45)
 
 
 def create_grid():
     return [[0 for _ in range(COLUMNS)] for _ in range(ROWS)]
 
 class SeededPieceRandomizer:
-    """Use Python's seeded seven-bag shuffle, mirrored by the browser client."""
+    """Shuffle seven-piece bags and add one bomb every two to four bags."""
 
     def __init__(self, seed: int):
         self.rng = random.Random(seed)
         self.bag: list[tuple[str, tuple[int, int, int]]] = []
+        self.bags_until_bomb = self.rng.randint(2, 4)
 
     def next_piece(self) -> tuple[str, tuple[int, int, int]]:
         if not self.bag:
-            self.bag = list(zip(PIECE_TYPES, COLORS))
+            self.bag = list(zip(PIECE_TYPES[:7], COLORS))
+            if self.bags_until_bomb == 0:
+                self.bag.append(("B", PIECE_COLORS["B"]))
+                self.bags_until_bomb = self.rng.randint(2, 4)
+            else:
+                self.bags_until_bomb -= 1
             self.rng.shuffle(self.bag)
 
         return self.bag.pop()
 
 class Tetromino:
-    def __init__(self, shape, color, x, y):
+    def __init__(self, shape, color, x, y, piece_type=None):
         self.shape = shape
         self.color = color
         self.x = x
         self.y = y
+        self.piece_type = piece_type
 
 

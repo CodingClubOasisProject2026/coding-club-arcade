@@ -33,6 +33,7 @@
       [0, 1, 1],
       [1, 1, 0],
     ],
+    B: [[1]],
   };
   const PIECE_COLORS = {
     I: "#55d9e9",
@@ -42,6 +43,7 @@
     Z: "#f07883",
     J: "#68a6fa",
     L: "#f2a35d",
+    B: "#f45136",
   };
   const getElement = (id) => document.getElementById(id);
 
@@ -71,7 +73,7 @@
 
   class SeededPieceGenerator {
     constructor(seed) {
-      // Match random.Random(seed).shuffle() in tetris.pieces.SeededPieceRandomizer.
+      // Match the seeded Python RNG, bag shuffle, and bomb schedule on the backend.
       this.state = new Uint32Array(624);
       let value = BigInt(seed);
       if (value < 0n) value = -value;
@@ -113,6 +115,7 @@
       this.state[0] = 0x80000000;
       this.index = 624;
       this.bag = [];
+      this.bagsUntilBomb = 2 + this.below(3);
     }
 
     nextUint32() {
@@ -149,7 +152,14 @@
 
     next() {
       if (this.bag.length === 0) {
-        this.bag = this.shuffle(Object.keys(PIECE_SHAPES));
+        this.bag = Object.keys(PIECE_SHAPES).filter((type) => type !== "B");
+        if (this.bagsUntilBomb === 0) {
+          this.bag.push("B");
+          this.bagsUntilBomb = 2 + this.below(3);
+        } else {
+          this.bagsUntilBomb--;
+        }
+        this.shuffle(this.bag);
       }
       const type = this.bag.pop();
       return {
@@ -352,12 +362,24 @@
     const piece = game.piece;
     if (!piece) return;
 
-    piece.shape.forEach((row, y) =>
-      row.forEach((filled, x) => {
-        if (filled && piece.y + y >= 0)
-          game.board[piece.y + y][piece.x + x] = piece.type;
-      }),
-    );
+    if (piece.type === "B") {
+      for (let y = Math.max(0, piece.y - 1); y < Math.min(ROWS, piece.y + 2); y++) {
+        for (let x = Math.max(0, piece.x - 1); x < Math.min(COLUMNS, piece.x + 2); x++) {
+          game.board[y][x] = null;
+        }
+      }
+      for (let x = 0; x < COLUMNS; x++) {
+        const remaining = game.board.map((row) => row[x]).filter(Boolean);
+        for (let y = ROWS - 1; y >= 0; y--) game.board[y][x] = remaining.pop() || null;
+      }
+    } else {
+      piece.shape.forEach((row, y) =>
+        row.forEach((filled, x) => {
+          if (filled && piece.y + y >= 0)
+            game.board[piece.y + y][piece.x + x] = piece.type;
+        }),
+      );
+    }
 
     let cleared = 0;
     game.board = game.board.filter((row) => {
@@ -446,11 +468,11 @@
       row.forEach((type, x) => {
         const cell = document.createElement("div");
         const isGhost = !type && ghostCells.has(y * COLUMNS + x);
-        cell.className = `board-cell${type ? " filled" : isGhost ? " ghost" : ""}`;
+        cell.className = `board-cell${type ? " filled" : isGhost ? " ghost" : ""}${type === "B" || (!type && isGhost && game.piece.type === "B") ? " bomb" : ""}`;
         cell.setAttribute("role", "gridcell");
         cell.setAttribute(
           "aria-label",
-          type ? `${type} block row ${y + 1} column ${x + 1}` : "Empty",
+          type === "B" ? `Bomb row ${y + 1} column ${x + 1}` : type ? `${type} block row ${y + 1} column ${x + 1}` : "Empty",
         );
         if (type) cell.style.setProperty("--piece-color", PIECE_COLORS[type]);
         else if (isGhost) cell.style.setProperty("--piece-color", PIECE_COLORS[game.piece.type]);
@@ -473,6 +495,7 @@
         cell.className = "preview-cell";
         if (game.nextPiece?.shape[y]?.[x]) {
           cell.classList.add("filled");
+          if (game.nextPiece.type === "B") cell.classList.add("bomb");
           cell.style.setProperty(
             "--piece-color",
             PIECE_COLORS[game.nextPiece.type],

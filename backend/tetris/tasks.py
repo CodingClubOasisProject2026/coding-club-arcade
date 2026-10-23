@@ -10,11 +10,10 @@ from tetris.engine import (
     validate_move,
 )
 from tetris.pieces import (
-    PIECE_TYPES,
+    PIECE_SHAPES,
     SeededPieceRandomizer,
     Tetromino,
     create_grid,
-    shapes,
 )
 from tetris.scoring import ScoringSystem
 
@@ -22,9 +21,25 @@ MAX_ACTIONS = 100_000
 
 
 def make_tetromino(piece_type, color, grid_width):
-    shape = [row[:] for row in shapes[PIECE_TYPES.index(piece_type)]]
+    shape = [row[:] for row in PIECE_SHAPES[piece_type]]
     x = (grid_width - len(shape[0])) // 2
-    return Tetromino(shape=shape, color=color, x=x, y=0)
+    return Tetromino(shape=shape, color=color, x=x, y=0, piece_type=piece_type)
+
+
+def resolve_piece(grid, tetromino):
+    """Land a piece, applying a bomb blast before gravity and line clearing."""
+    if tetromino.piece_type == "B":
+        center_x, center_y = tetromino.x, tetromino.y
+        for y in range(max(0, center_y - 1), min(len(grid), center_y + 2)):
+            for x in range(max(0, center_x - 1), min(len(grid[0]), center_x + 2)):
+                grid[y][x] = 0
+        for x in range(len(grid[0])):
+            remaining = [grid[y][x] for y in range(len(grid)) if grid[y][x]]
+            for y in range(len(grid) - 1, -1, -1):
+                grid[y][x] = remaining.pop() if remaining else 0
+    else:
+        lock_tetromino(grid, tetromino)
+    return clear_line(grid)
 
 
 def _validate_action(action):
@@ -94,8 +109,7 @@ def calculate_score(session_id, actions: list[dict]) -> dict:
                     if tetromino.y == old_y:
                         # The active piece has landed; lock it and spawn the next one.
                         resolved_position = (tetromino.x, tetromino.y)
-                        lock_tetromino(grid, tetromino)
-                        grid, lines_cleared = clear_line(grid)
+                        grid, lines_cleared = resolve_piece(grid, tetromino)
                         scoring.register_lines_cleared(lines_cleared)
                         piece_type, color = randomizer.next_piece()
                         tetromino = make_tetromino(piece_type, color, len(grid[0]))
@@ -106,8 +120,7 @@ def calculate_score(session_id, actions: list[dict]) -> dict:
                     tetromino.y += 1
                 tetromino.y -= 1
                 resolved_position = (tetromino.x, tetromino.y)
-                lock_tetromino(grid, tetromino)
-                grid, lines_cleared = clear_line(grid)
+                grid, lines_cleared = resolve_piece(grid, tetromino)
                 scoring.register_lines_cleared(lines_cleared)
                 piece_type, color = randomizer.next_piece()
                 tetromino = make_tetromino(piece_type, color, len(grid[0]))
