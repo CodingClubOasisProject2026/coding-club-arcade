@@ -58,12 +58,12 @@
     level: 1,
     consecutiveClears: 0,
     startedAt: 0,
-    durationMs: null,
     gravityTimer: null,
     clearAnimationTimer: null,
     calloutTimer: null,
     elapsedTimer: null,
     session: null,
+    // One character per action, joined into a string on submit.
     actions: [],
     completionPayload: null,
     submitted: false,
@@ -277,7 +277,6 @@
     game.actions = [];
     game.completionPayload = null;
     game.submitted = false;
-    game.durationMs = null;
     game.randomizer = new SeededPieceGenerator(seed);
     game.startedAt = Date.now();
     game.nextPiece = game.randomizer.next();
@@ -325,10 +324,18 @@
     return shape[0].map((_, index) => shape.map((row) => row[index]).reverse());
   }
 
+  // Must match ACTION_CODES in backend/tetris/tasks.py.
+  const ACTION_CODES = {
+    gravity: "T",
+    left: "L",
+    right: "R",
+    rotate: "C",
+    soft_drop: "S",
+    hard_drop: "H",
+  };
+
   function recordAction(action) {
-    const elapsed = Math.max(0, Date.now() - game.startedAt);
-    const previousTime = game.actions.at(-1)?.at_ms ?? 0;
-    game.actions.push({ action, at_ms: Math.max(elapsed, previousTime) });
+    game.actions.push(ACTION_CODES[action]);
   }
 
   function performAction(action) {
@@ -577,21 +584,7 @@
     setGameStatus("submitting", "RUN COMPLETE");
     stopTimers();
     removeKeyboardListener();
-    game.durationMs = Math.max(
-      0,
-      Date.now() - game.startedAt,
-      game.actions.at(-1)?.at_ms ?? 0,
-    );
-    game.completionPayload = {
-      actions: game.actions.map(({ action }) => {
-        if (action === "left" || action === "right") {
-          return { type: "move", direction: action };
-        }
-        if (action === "gravity") return { type: "tick" };
-        if (action === "rotate") return { type: "rotate", direction: "clockwise" };
-        return { type: action };
-      }),
-    };
+    game.completionPayload = { actions: game.actions.join("") };
 
     const best = Math.max(
       game.score,

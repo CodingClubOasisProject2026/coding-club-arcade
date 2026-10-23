@@ -9,39 +9,32 @@ The browser may render and control the game locally, but it must not submit a sc
 Use the session returned by `POST /sessions/start/<game_id>/`. The session must belong to the current user.
 
 ```json
-{
-  "actions": [
-    {"type": "move", "direction": "left"},
-    {"type": "rotate", "direction": "clockwise"},
-    {"type": "tick"},
-    {"type": "hard_drop"}
-  ]
-}
+{"actions": "TTLLCTTTH"}
 ```
 
-Supported actions:
+`actions` is a string with one character per input, in the order they happened:
 
-- `move` with `direction` `left` or `right`
-- `rotate` with `direction` `clockwise` or `counterclockwise`
-- `soft_drop`, `hard_drop`, and `tick` with no additional fields
+| char | input |
+|---|---|
+| `T` | gravity tick |
+| `L` / `R` | move left / right |
+| `C` / `c` | rotate clockwise / counterclockwise |
+| `S` | soft drop |
+| `H` | hard drop |
 
-Each action is applied to the server's current piece. A blocked move or rotation is rejected in the replay; a drop that reaches the bottom locks the piece, clears lines, and spawns the next seeded piece. Actions after game over are rejected.
+Any other character rejects the run. The string is capped at 100,000 actions. No timing is sent or checked.
+
+Each action is applied to the server's current piece. A blocked move or rotation is ignored; a drop that reaches the bottom locks the piece (or detonates a bomb), clears lines, and spawns the next seeded piece. Actions after game over are rejected.
 
 ## Response
 
-The request queues the action replay in Celery and returns HTTP `200` with the serialized session. The task saves the backend-calculated score to the session. A client-provided score, coordinates, rotation matrix, or lock flag is not accepted as game state.
+The hub's generic submit view queues `tetris.tasks.calculate_score` in Celery and returns HTTP `200` with the serialized session. The task replays the actions and saves the backend-calculated score with `Session.update_score`. A client-provided score, coordinates, rotation matrix, or lock flag is not accepted as game state.
 
-`POST /tetris/api/game/` is also available for clients that prefer to include `session_id` in the JSON body. It queues the same Celery task and returns HTTP `202`:
-
-```json
-{"status": "queued", "task_id": "<celery-task-id>"}
-```
-
-The web frontend uses the session submission endpoint above.
+Each session is scored once. The first valid submission sets the score; later submissions are ignored. An invalid action string (bad characters, actions after game over, or a run that doesn't end in game over) is logged and leaves the score empty.
 
 ## Errors
 
-- `400`: malformed JSON, missing actions list, or unsupported action format
+- `400`: malformed JSON
 - `401`: user is not authenticated
-- `404`: the session does not belong to the user or is not a Tetris session
-- `405`: request method is not `PUT` for `/sessions/submit/` or not `POST` for `/tetris/api/game/`
+- `404`: the session does not belong to the user
+- `405`: request method is not `PUT` or `PATCH`

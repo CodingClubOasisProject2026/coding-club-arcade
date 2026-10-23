@@ -28,10 +28,8 @@ def lock_tetromino(grid, tetromino):
                     raise ValueError("Tetromino position is out of bounds")
 
 
-def validate_move(grid, tetromino, action):
-    direction = action.get("direction")
-
-
+def move_piece(grid, tetromino, direction):
+    """Move the piece one cell if it fits; otherwise leave it where it was."""
     old_x, old_y = tetromino.x, tetromino.y
 
     if direction == "left":

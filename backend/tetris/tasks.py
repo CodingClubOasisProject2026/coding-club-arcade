@@ -1,3 +1,6 @@
+import logging
+import re
+
 from celery import shared_task
 from django.db import transaction
 
@@ -6,8 +9,8 @@ from tetris.engine import (
     check_collision,
     clear_line,
     lock_tetromino,
+    move_piece,
     rotate_tetromino,
-    validate_move,
 )
 from tetris.pieces import (
     PIECE_SHAPES,
@@ -17,7 +20,24 @@ from tetris.pieces import (
 )
 from tetris.scoring import ScoringSystem
 
+logger = logging.getLogger(__name__)
+
 MAX_ACTIONS = 100_000
+
+# One character per action. Must match ACTION_CODES in frontend/src/games/tetris/app.js.
+ACTION_CODES = "TLRCcSH"
+_VALID_ACTIONS = re.compile(f"[{ACTION_CODES}]*")
+_DIRECTIONS = {"L": "left", "R": "right", "C": "clockwise", "c": "counterclockwise"}
+
+
+def validate_actions(actions):
+    """Raise ValueError unless actions is a string of known action codes."""
+    if not isinstance(actions, str):
+        raise ValueError("actions must be a string.")
+    if len(actions) > MAX_ACTIONS:
+        raise ValueError("actions is too long.")
+    if not _VALID_ACTIONS.fullmatch(actions):
+        raise ValueError(f"actions may only contain the characters {ACTION_CODES}.")
 
 
 def make_tetromino(piece_type, color, grid_width):
@@ -42,109 +62,76 @@ def resolve_piece(grid, tetromino):
     return clear_line(grid)
 
 
-def _validate_action(action):
-    if not isinstance(action, dict):
-        raise ValueError("Each action must be a JSON object.")
+def replay(seed, actions):
+    """Replay an action string from a seed. Returns (scoring, game_over)."""
+    validate_actions(actions)
 
-    action_type = action.get("type")
-    if action_type == "move":
-        if action.get("direction") not in ("left", "right"):
-            raise ValueError("move direction must be 'left' or 'right'.")
-    elif action_type == "rotate":
-        if action.get("direction") not in ("clockwise", "counterclockwise"):
-            raise ValueError(
-                "rotate direction must be 'clockwise' or 'counterclockwise'."
-            )
-    elif action_type not in ("soft_drop", "hard_drop", "tick"):
-        raise ValueError("Action type must be move, rotate, soft_drop, hard_drop, or tick.")
+    grid = create_grid()
+    randomizer = SeededPieceRandomizer(seed)
+    scoring = ScoringSystem()
+
+    piece_type, color = randomizer.next_piece()
+    tetromino = make_tetromino(piece_type, color, len(grid[0]))
+    game_over = check_collision(grid, tetromino)
+
+    for code in actions:
+        if game_over:
+            raise ValueError("Actions continue after game over.")
+
+        landed = False
+        if code in "LR":
+            move_piece(grid, tetromino, _DIRECTIONS[code])
+
+        elif code in "Cc":
+            rotate_tetromino(grid, tetromino, _DIRECTIONS[code])
+
+        elif code in "ST":
+            if not check_collision(grid, tetromino):
+                old_y = tetromino.y
+                move_piece(grid, tetromino, "down")
+                # The piece couldn't move down, so it has landed.
+                landed = tetromino.y == old_y
+
+        else:  # "H"
+            while not check_collision(grid, tetromino):
+                tetromino.y += 1
+            tetromino.y -= 1
+            landed = True
+
+        if landed:
+            grid, lines_cleared = resolve_piece(grid, tetromino)
+            scoring.register_lines_cleared(lines_cleared)
+            piece_type, color = randomizer.next_piece()
+            tetromino = make_tetromino(piece_type, color, len(grid[0]))
+            game_over = check_collision(grid, tetromino)
+
+    if not game_over:
+        raise ValueError("The action list must end in game over.")
+
+    return scoring, game_over
 
 
 @shared_task
-def calculate_score(user_id: int, session_id: str, actions: list[dict]) -> dict | None:
-    """Replay the submitted controls and persist the server-calculated score."""
-    if not isinstance(actions, list):
-        raise ValueError("actions must be a list.")
-    if len(actions) > MAX_ACTIONS:
-        raise ValueError("actions list is too long.")
-    for action in actions:
-        _validate_action(action)
-
+def calculate_score(user_id: int, session_id: str, actions: str) -> dict | None:
+    """Replay the submitted controls and store the server-calculated score."""
     with transaction.atomic():
         session = (
             Session.objects.select_for_update()
-            .filter(
-                pk=session_id,
-                user_id=user_id,
-                game__name=GameChoices.TETRIS,
-            )
+            .filter(pk=session_id, user_id=user_id, game__name=GameChoices.TETRIS)
             .first()
         )
         if session is None:
             return None
 
-        grid = create_grid()
-        randomizer = SeededPieceRandomizer(session.seed)
-        scoring = ScoringSystem()
+        # One score per session. Resubmissions never overwrite it.
+        if session.score is not None:
+            return {"score": session.score}
 
-        piece_type, color = randomizer.next_piece()
-        tetromino = make_tetromino(piece_type, color, len(grid[0]))
-        results = []
-        game_over = check_collision(grid, tetromino)
-
-        for action in actions:
-            if game_over:
-                raise ValueError("Actions continue after game over.")
-
-            action_type = action["type"]
-            accepted = True
-            lines_cleared = 0
-            resolved_position = None
-
-            if action_type == "move":
-                old_x, old_y = tetromino.x, tetromino.y
-                validate_move(grid, tetromino, action)
-                accepted = (tetromino.x, tetromino.y) != (old_x, old_y)
-
-            elif action_type == "rotate":
-                accepted = rotate_tetromino(grid, tetromino, action["direction"])
-
-            elif action_type in ("soft_drop", "tick"):
-                if check_collision(grid, tetromino):
-                    accepted = False
-                else:
-                    old_y = tetromino.y
-                    validate_move(grid, tetromino, {"direction": "down"})
-                    if tetromino.y == old_y:
-                        # The active piece has landed; lock it and spawn the next one.
-                        resolved_position = (tetromino.x, tetromino.y)
-                        grid, lines_cleared = resolve_piece(grid, tetromino)
-                        scoring.register_lines_cleared(lines_cleared)
-                        piece_type, color = randomizer.next_piece()
-                        tetromino = make_tetromino(piece_type, color, len(grid[0]))
-                        game_over = check_collision(grid, tetromino)
-
-            elif action_type == "hard_drop":
-                while not check_collision(grid, tetromino):
-                    tetromino.y += 1
-                tetromino.y -= 1
-                resolved_position = (tetromino.x, tetromino.y)
-                grid, lines_cleared = resolve_piece(grid, tetromino)
-                scoring.register_lines_cleared(lines_cleared)
-                piece_type, color = randomizer.next_piece()
-                tetromino = make_tetromino(piece_type, color, len(grid[0]))
-                game_over = check_collision(grid, tetromino)
-
-            result_x, result_y = resolved_position or (tetromino.x, tetromino.y)
-            results.append({
-                "type": action_type,
-                "accepted": accepted,
-                "x": result_x,
-                "y": result_y,
-                "lines_cleared": lines_cleared,
-            })
-
-        if not game_over:
-            raise ValueError("The action list must end in game over.")
+        try:
+            scoring, game_over = replay(session.seed, actions)
+        except ValueError as error:
+            logger.warning("Rejected tetris run %s: %s", session_id, error)
+            return None
 
         Session.update_score(session_id, user_id, scoring.total_score)
 
@@ -152,5 +139,4 @@ def calculate_score(user_id: int, session_id: str, actions: list[dict]) -> dict 
             "score": scoring.total_score,
             "lines_cleared": scoring.total_lines_cleared,
             "game_over": game_over,
-            "results": results,
         }
