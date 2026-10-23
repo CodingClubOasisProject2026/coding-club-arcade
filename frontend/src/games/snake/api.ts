@@ -1,54 +1,23 @@
 import { api, hubGameId, startHubSession } from '../../api'
+import type { ActionLog } from './engine'
 
 const FALLBACK_GAME_ID = 3
 
-export type SnakeDirection = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT'
-
-export type SnakeGameState = {
-  session_id: string
-  board: { width: number; height: number }
-  snake: [number, number][]
-  direction: SnakeDirection
-  apple: [number, number] | null
-  score: number
-  apples_eaten: number
-  status: 'ACTIVE' | 'WON' | 'GAME_OVER' | 'QUIT'
-  game_over: boolean
+/** Starts a ranked run (spends a ticket). Returns the session id and seed. */
+export async function startRun() {
+  return startHubSession(await hubGameId('SNAKE', FALLBACK_GAME_ID))
 }
 
-export type SnakeEndResult = {
-  session_id: string
-  score: number
-  game_over: boolean
-  actions: {
-    initial_direction: SnakeDirection
-    actions: { tick: number; direction: SnakeDirection }[]
-    total_ticks: number
-    end_reason: string
-  }
+/** Hands the log to the hub, which queues snake.tasks.calculate_score. */
+export function submitRun(sessionId: string, log: ActionLog) {
+  return api(`/sessions/submit/${sessionId}/`, { method: 'PATCH', body: { actions: log } })
 }
 
-export async function createSnakeSession(): Promise<string> {
-  const session = await startHubSession(await hubGameId('SNAKE', FALLBACK_GAME_ID))
-  return session.id
+export type RunStatus = {
+  status: 'pending' | 'verified'
+  score: number | null
 }
 
-export async function startSnakeGame(sessionId: string): Promise<SnakeGameState> {
-  return api<SnakeGameState>('/snake/start/', {
-    method: 'POST',
-    body: { session_id: sessionId },
-  })
-}
-
-export async function moveSnake(sessionId: string, action: SnakeDirection): Promise<SnakeGameState> {
-  return api<SnakeGameState>(`/snake/session/${sessionId}/move/`, {
-    method: 'POST',
-    body: { action },
-  })
-}
-
-export async function endSnakeGame(sessionId: string): Promise<SnakeEndResult> {
-  return api<SnakeEndResult>(`/snake/session/${sessionId}/end/`, {
-    method: 'POST',
-  })
+export function runStatus(sessionId: string) {
+  return api<RunStatus>(`/snake/sessions/${sessionId}/`)
 }
