@@ -18,7 +18,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      dragonfly:
+      valkey:
         condition: service_started
   db:
     image: postgres:17-alpine
@@ -32,8 +32,8 @@ services:
       timeout: 5s
       retries: 10
     restart: unless-stopped
-  dragonfly:
-    image: docker.dragonflydb.io/dragonflydb/dragonfly
+  valkey:
+    image: valkey/valkey:8-alpine
     ulimits:
       memlock: -1
     restart: unless-stopped

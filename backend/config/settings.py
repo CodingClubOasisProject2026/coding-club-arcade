@@ -179,7 +179,7 @@ DATABASES = {
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': 'redis://dragonfly:6379/0',
+        'LOCATION': 'redis://valkey:6379/0',
     }
 }
 
