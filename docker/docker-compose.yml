@@ -34,7 +34,6 @@ services:
     restart: unless-stopped
   valkey:
     image: valkey/valkey:8-alpine
-    # Append-only file so in-progress games (e.g. minesweeper) survive restarts.
     command: valkey-server --appendonly yes
     ulimits:
       memlock: -1
@@ -50,7 +49,6 @@ services:
     command: >
       celery -A config worker
         --loglevel=INFO
-        --queues=pacman,snake,tetris,wordle,flappy_bird
         --concurrency=4
         --max-tasks-per-child=200
         --max-memory-per-child=250000
@@ -69,7 +67,6 @@ services:
     volumes:
       - rabbitmq_prod_data:/var/lib/rabbitmq
     healthcheck:
-      # A port check is cheap; rabbitmq-diagnostics boots a full Erlang VM and can hang.
       test: ["CMD-SHELL", "nc -z localhost 5672"]
       interval: 10s
       timeout: 5s
