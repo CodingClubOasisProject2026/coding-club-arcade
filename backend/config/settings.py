@@ -28,7 +28,6 @@ WORDLE_ANSWER_KEY = getenv('WORDLE_ANSWER_KEY', SECRET_KEY)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = getenv('DEBUG', 'true') == 'true'
-ALLOW_TETRIS_GUEST_SESSIONS = getenv('ALLOW_TETRIS_GUEST_SESSIONS', 'false') == 'true'
 
 ALLOWED_HOSTS = [host.strip() for host in getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if host.strip()]
 
@@ -179,8 +178,8 @@ DATABASES = {
 
 CACHES = {
     'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'leaderboard-cache',
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': 'redis://dragonfly:6379/0',
     }
 }
 

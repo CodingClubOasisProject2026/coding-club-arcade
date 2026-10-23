@@ -18,6 +18,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      dragonfly:
+        condition: service_started
   db:
     image: postgres:17-alpine
     env_file:
@@ -29,6 +31,11 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    restart: unless-stopped
+  dragonfly:
+    image: docker.dragonflydb.io/dragonflydb/dragonfly
+    ulimits:
+      memlock: -1
     restart: unless-stopped
   celery:
     build:
