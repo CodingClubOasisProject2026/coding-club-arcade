@@ -390,6 +390,24 @@
         const remaining = game.board.map((row) => row[x]).filter(Boolean);
         for (let y = ROWS - 1; y >= 0; y--) game.board[y][x] = remaining.pop() || null;
       }
+      const boardElement = getElement("board");
+      const callout = getElement("clear-callout");
+      callout.className = "clear-callout";
+      callout.textContent = "💥 BOOM!";
+      void callout.offsetWidth;
+      callout.className = "clear-callout visible count-bomb";
+      clearTimeout(game.calloutTimer);
+      game.calloutTimer = setTimeout(() => {
+        callout.classList.remove("visible");
+      }, 950);
+      boardElement.classList.remove("line-clear-effect");
+      void boardElement.offsetWidth;
+      boardElement.classList.add("line-clear-effect");
+      clearTimeout(game.clearAnimationTimer);
+      game.clearAnimationTimer = setTimeout(
+        () => boardElement.classList.remove("line-clear-effect"),
+        700,
+      );
     } else {
       piece.shape.forEach((row, y) =>
         row.forEach((filled, x) => {
@@ -507,11 +525,27 @@
   function renderNextPiece() {
     const preview = getElement("next-preview");
     preview.replaceChildren();
+    if (!game.nextPiece) return;
+
+    const shape = game.nextPiece.shape;
+    const height = shape.length;
+    const width = shape[0].length;
+    const offsetY = Math.floor((4 - height) / 2);
+    const offsetX = Math.floor((4 - width) / 2);
+
     for (let y = 0; y < 4; y++) {
       for (let x = 0; x < 4; x++) {
         const cell = document.createElement("div");
         cell.className = "preview-cell";
-        if (game.nextPiece?.shape[y]?.[x]) {
+        const shapeY = y - offsetY;
+        const shapeX = x - offsetX;
+        if (
+          shapeY >= 0 &&
+          shapeY < height &&
+          shapeX >= 0 &&
+          shapeX < width &&
+          shape[shapeY][shapeX]
+        ) {
           cell.classList.add("filled");
           if (game.nextPiece.type === "B") cell.classList.add("bomb");
           cell.style.setProperty(
