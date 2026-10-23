@@ -62,8 +62,9 @@ services:
     volumes:
       - rabbitmq_prod_data:/var/lib/rabbitmq
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 5s
+      # A port check is cheap; rabbitmq-diagnostics boots a full Erlang VM and can hang.
+      test: ["CMD-SHELL", "nc -z localhost 5672"]
+      interval: 10s
       timeout: 5s
       retries: 12
     restart: unless-stopped
