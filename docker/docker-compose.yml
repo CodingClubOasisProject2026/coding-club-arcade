@@ -50,6 +50,7 @@ services:
     command: >
       celery -A config worker
         --loglevel=INFO
+        --queues=pacman,snake,tetris,wordle,flappy_bird
         --concurrency=4
         --max-tasks-per-child=200
         --max-memory-per-child=250000
@@ -59,6 +60,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      valkey:
+        condition: service_started
   rabbitmq:
     image: rabbitmq:3.12-alpine
     env_file:
