@@ -1,9 +1,11 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { startRun, submitRun, runStatus, type RunStatus } from './api';
+import { ApiError } from '../../api';
+import { startRun, submitRun, submitRunKeepalive } from './api';
 import {
   SCALE,
+  TICK_MS,
   WORLD_WIDTH,
   WORLD_HEIGHT,
   BIRD_X,
@@ -19,23 +21,42 @@ import './flappy.css';
 
 type Phase = 'menu' | 'starting' | 'playing' | 'over';
 
-type Submission =
-  | { state: 'idle' | 'sending' | 'error' }
-  | { state: 'done'; result: RunStatus };
+type Submission = 'idle' | 'practice' | 'sending' | 'submitted' | 'error';
+
+function randomSeed() {
+  const words = crypto.getRandomValues(new Uint32Array(2));
+  return (BigInt(words[0]) << 32n) | BigInt(words[1]);
+}
+
+type ViewState = {
+  pipes: { x: number; gap_top: number }[];
+  birdY: number;
+  velocity: number;
+};
+
+function viewState(game: GameState): ViewState {
+  return {
+    pipes: game.pipes
+      .filter((pipe) => pipe.x + PIPE_WIDTH > 0 && pipe.x < WORLD_WIDTH)
+      .map((pipe) => ({ x: pipe.x, gap_top: pipe.gap_top })),
+    birdY: game.bird_y,
+    velocity: game.velocity,
+  };
+}
 
 export default function Flappy() {
+  const gameRef = useRef<GameState>(createGame(123));
   const [phase, setPhase] = useState<Phase>('menu');
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
-  const [submission, setSubmission] = useState<Submission>({
-    state: 'idle',
-  });
+  const [submission, setSubmission] = useState<Submission>('idle');
+  const [notice, setNotice] = useState<string | null>(null);
+  // Pipes and bird are rendered from this copy, not from the mutable ref.
+  const [view, setView] = useState<ViewState>(() => viewState(createGame(123)));
 
-  const gameRef = useRef<GameState>(createGame(123));
   const actionsRef = useRef<{ tick: number; action: 'FLAP' }[]>([]);
   const pendingFlap = useRef(false);
   const sessionRef = useRef<string | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   // Load the best score saved in this browser.
   useEffect(() => {
@@ -53,9 +74,13 @@ export default function Flappy() {
     const state = gameRef.current;
     const sessionId = sessionRef.current;
 
-    if (!sessionId) return;
+    if (!sessionId) {
+      setSubmission('practice');
+      return;
+    }
 
-    setSubmission({ state: 'sending' });
+    sessionRef.current = null;
+    setSubmission('sending');
 
     const actionLog: ActionLog = {
       actions: [...actionsRef.current],
@@ -65,21 +90,9 @@ export default function Flappy() {
 
     try {
       await submitRun(sessionId, actionLog);
-
-      for (let i = 0; i < 20; i++) {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-
-        const result = await runStatus(sessionId);
-
-        if (result.status !== 'pending') {
-          setSubmission({ state: 'done', result });
-          return;
-        }
-      }
-
-      setSubmission({ state: 'error' });
+      setSubmission('submitted');
     } catch {
-      setSubmission({ state: 'error' });
+      setSubmission('error');
     }
   }, []);
 
@@ -96,51 +109,51 @@ export default function Flappy() {
     }
   }, [score, highScore]);
 
-  // Main game loop.
+  // Main game loop. The simulation runs at a fixed 60 Hz so a 120 Hz display
+  // cannot make the bird and pipes move twice as fast.
   useEffect(() => {
     if (phase !== 'playing') return;
 
     let raf = 0;
     let active = true;
+    let last = performance.now();
+    let accumulator = 0;
 
-    const frame = () => {
+    const frame = (now: number) => {
       if (!active) return;
 
+      accumulator += Math.min(now - last, 250);
+      last = now;
+
+      let steps = 0;
+      while (accumulator >= TICK_MS && steps < 5) {
+        const state = gameRef.current;
+        let flap = false;
+
+        if (pendingFlap.current) {
+          flap = true;
+
+          actionsRef.current.push({
+            tick: state.tick + 1,
+            action: 'FLAP',
+          });
+
+          pendingFlap.current = false;
+        }
+
+        stepGame(state, flap);
+        accumulator -= TICK_MS;
+        steps += 1;
+
+        if (state.status !== 'ACTIVE') break;
+      }
+
       const state = gameRef.current;
-      let flap = false;
 
-      if (pendingFlap.current) {
-        flap = true;
-
-        actionsRef.current.push({
-          tick: state.tick + 1,
-          action: 'FLAP',
-        });
-
-        pendingFlap.current = false;
+      if (steps > 0) {
+        setView(viewState(state));
+        setScore(state.score);
       }
-
-      stepGame(state, flap);
-
-      // Update the bird without waiting for a React render.
-      const bird = containerRef.current?.querySelector(
-        '.fb-bird',
-      ) as HTMLElement | null;
-
-      if (bird) {
-        bird.style.top = `${
-          ((state.bird_y - BIRD_RADIUS) / WORLD_HEIGHT) * 100
-        }%`;
-
-        const rotation = Math.max(
-          -30,
-          Math.min(85, (state.velocity / SCALE) * 4),
-        );
-
-        bird.style.transform = `rotate(${rotation}deg)`;
-      }
-
-      setScore(state.score);
 
       if (state.status === 'GAME_OVER') {
         active = false;
@@ -160,27 +173,36 @@ export default function Flappy() {
     };
   }, [phase, finish]);
 
-  const start = async () => {
+  const start = useCallback(async () => {
     if (phase === 'starting' || phase === 'playing') return;
 
     setPhase('starting');
-    setSubmission({ state: 'idle' });
+    setSubmission('idle');
+    setNotice(null);
     sessionRef.current = null;
 
     try {
       const session = await startRun();
       sessionRef.current = session.id;
       gameRef.current = createGame(session.seed);
-    } catch {
+    } catch (error) {
       // Allow local play if the server cannot start a session.
-      gameRef.current = createGame(Math.floor(Math.random() * 10000));
+      gameRef.current = createGame(randomSeed());
+      if (error instanceof ApiError && error.status === 400) {
+        setNotice('NO TICKETS LEFT. PLAYING IN PRACTICE MODE.');
+      } else if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+        setNotice('SIGN IN TO POST SCORES. PLAYING IN PRACTICE MODE.');
+      } else {
+        setNotice('COULD NOT REACH THE ARCADE. PLAYING IN PRACTICE MODE.');
+      }
     }
 
     actionsRef.current = [];
     pendingFlap.current = true;
+    setView(viewState(gameRef.current));
     setScore(0);
     setPhase('playing');
-  };
+  }, [phase]);
 
   // Keyboard controls.
   useEffect(() => {
@@ -201,7 +223,27 @@ export default function Flappy() {
     window.addEventListener('keydown', handleKey);
 
     return () => window.removeEventListener('keydown', handleKey);
-  }, [phase]);
+  }, [phase, start]);
+
+  // Leaving mid-run submits a QUIT log so the ticket and played time still count.
+  useEffect(() => {
+    const onHide = () => {
+      const state = gameRef.current;
+      const sessionId = sessionRef.current;
+      if (!sessionId || state.status !== 'ACTIVE') return;
+      sessionRef.current = null;
+      void submitRunKeepalive(sessionId, {
+        actions: [...actionsRef.current],
+        total_ticks: state.tick,
+        end_reason: 'QUIT',
+      });
+    };
+    window.addEventListener('pagehide', onHide);
+    return () => {
+      window.removeEventListener('pagehide', onHide);
+      onHide();
+    };
+  }, []);
 
   const isPlaying = phase === 'playing';
   const isOver = phase === 'over';
@@ -220,12 +262,17 @@ export default function Flappy() {
         </div>
       </header>
 
+      {notice && (
+        <div className="fb-notice" role="status">
+          {notice}
+        </div>
+      )}
+
       <section className="fb-game-shell" aria-label="Flappy Bird game">
         <div
           className={`fb-game-container ${
             isPlaying ? 'fb-is-playing' : ''
           }`}
-          ref={containerRef}
           onPointerDown={() => {
             if (phase === 'playing') {
               pendingFlap.current = true;
@@ -265,7 +312,7 @@ export default function Flappy() {
 
           {/* Moving pipes */}
           <div className="fb-pipes">
-            {gameRef.current.pipes.map((pipe, index) => (
+            {view.pipes.map((pipe, index) => (
               <div className="fb-pipe-pair" key={index}>
                 <div
                   className="fb-pipe fb-pipe-top"
@@ -300,11 +347,13 @@ export default function Flappy() {
             className="fb-bird"
             style={{
               left: `${((BIRD_X - BIRD_RADIUS) / WORLD_WIDTH) * 100}%`,
-              top: `${
-                ((gameRef.current.bird_y - BIRD_RADIUS) / WORLD_HEIGHT) * 100
-              }%`,
+              top: `${((view.birdY - BIRD_RADIUS) / WORLD_HEIGHT) * 100}%`,
               width: `${((BIRD_RADIUS * 2) / WORLD_WIDTH) * 100}%`,
               height: `${((BIRD_RADIUS * 2) / WORLD_HEIGHT) * 100}%`,
+              transform: `rotate(${Math.max(
+                -30,
+                Math.min(85, (view.velocity / SCALE) * 4),
+              )}deg)`,
             }}
           >
             <span className="fb-bird-wing" />
@@ -394,20 +443,20 @@ export default function Flappy() {
                     </button>
 
                     <div className="fb-submission-status" aria-live="polite">
-                      {submission.state === 'sending' && (
-                        <p>Verifying score...</p>
+                      {submission === 'sending' && (
+                        <p>Submitting run...</p>
                       )}
 
-                      {submission.state === 'done' && (
-                        <p>
-                          {submission.result.status === 'verified'
-                            ? 'Score verified!'
-                            : 'Score rejected'}
-                        </p>
+                      {submission === 'submitted' && (
+                        <p>Run submitted.</p>
                       )}
 
-                      {submission.state === 'error' && (
-                        <p>Score verification unavailable.</p>
+                      {submission === 'error' && (
+                        <p>Could not submit this run.</p>
+                      )}
+
+                      {submission === 'practice' && (
+                        <p>Practice run. Not submitted.</p>
                       )}
                     </div>
                   </div>

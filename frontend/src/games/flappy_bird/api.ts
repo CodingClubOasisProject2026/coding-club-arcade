@@ -1,38 +1,29 @@
-// Removed :8000 since your docker .env sets SITE_ADDRESS=:80
-const API_BASE = "/api"; 
+import { api, csrfToken, hubGameId, startHubSession } from '../../api'
+import type { ActionLog } from './engine'
 
-export type RunStatus = 
-  | { status: 'pending'; score: null; reason: string }
-  | { status: 'verified'; score: number; reason: string }
-  | { status: 'rejected'; score: null; reason: string };
+const FALLBACK_GAME_ID = 6
 
-export async function startRun(): Promise<{ id: string; seed: number }> {
-  const res = await fetch(`${API_BASE}/sessions/start/`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ game_id: "flappy_bird" }), // Tells the generic backend which game to load
-  });
-  
-  if (!res.ok) throw new Error("Failed to start session");
-  
-  const data = await res.json();
-  return { id: data.session_id, seed: data.seed }; 
+/** Starts a ranked run (spends a ticket). Returns the session id and seed. */
+export async function startRun() {
+  return startHubSession(await hubGameId('FLAPPY_BIRD', FALLBACK_GAME_ID))
 }
 
-export async function submitRun(sessionId: string, actionLog: any): Promise<void> {
-  const res = await fetch(`${API_BASE}/sessions/submit/`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ session_id: sessionId, log: actionLog }),
-  });
-  
-  if (!res.ok) throw new Error("Failed to submit run");
+/** Hands the log to the hub, which queues flappy_bird.tasks.calculate_score. */
+export function submitRun(sessionId: string, log: ActionLog) {
+  return api(`/sessions/submit/${sessionId}/`, { method: 'PATCH', body: { actions: log } })
 }
 
-export async function runStatus(sessionId: string): Promise<RunStatus> {
-  const res = await fetch(`${API_BASE}/sessions/status/?session_id=${sessionId}`);
-  
-  if (!res.ok) throw new Error("Failed to fetch status");
-  
-  return res.json();
+/** Submit a log while the page is being unloaded, so the run still counts. */
+export function submitRunKeepalive(sessionId: string, log: ActionLog) {
+  return fetch(`/sessions/submit/${sessionId}/`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      'X-CSRFToken': csrfToken() ?? '',
+    },
+    body: JSON.stringify({ actions: log }),
+    credentials: 'same-origin',
+    keepalive: true,
+  })
 }

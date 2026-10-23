@@ -20,7 +20,7 @@ User = get_user_model()
 
 class LeaderboardView(ListAPIView):
     serializer_class = LeaderboardSerializer
-    queryset = User.objects.annotate(score=Sum("sessions__score")).order_by("-score", "username")
+    queryset = User.objects.annotate(score=Sum("sessions__score")).exclude(score__isnull=True).order_by("-score", "username")
 
     @method_decorator(cache_page(10))
     def dispatch(self, request, *args, **kwargs):

@@ -1,3 +1,5 @@
+// Port of backend/flappy_bird/game_logic.py. The backend replays the recorded
+// log with that file to verify the score, so rule changes must be made in both.
 export const SCALE = 1000;
 export const WORLD_WIDTH = 480 * SCALE;
 export const WORLD_HEIGHT = 640 * SCALE;
@@ -11,20 +13,11 @@ export const GRAVITY = 350;
 export const FLAP_VELOCITY = -7000;
 export const MAX_FALL_SPEED = 9000;
 export const MAX_TICKS = 100000;
+export const TICK_MS = 1000 / 60;
 
-// Deterministic RNG (Matches Python's randint bounds)
-function mulberry32(a: number) {
-  return function () {
-    let t = (a += 0x6d2b79f5);
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function randint(rng: () => number, min: number, max: number) {
-  return Math.floor(rng() * (max - min + 1)) + min;
-}
+const INITIAL_PIPE_X = [600 * SCALE, 860 * SCALE, 1120 * SCALE];
+const GAP_MIN = 170;
+const GAP_MAX = 470;
 
 export type Pipe = { x: number; gap_top: number; scored: boolean };
 export type GameState = {
@@ -34,7 +27,7 @@ export type GameState = {
   score: number;
   status: "ACTIVE" | "GAME_OVER" | "QUIT";
   tick: number;
-  rng: () => number;
+  rng: number;
 };
 export type ActionLog = {
   actions: { tick: number; action: "FLAP" }[];
@@ -42,31 +35,43 @@ export type ActionLog = {
   end_reason: "COLLISION" | "QUIT";
 };
 
-function createPipe(x: number, rng: () => number): Pipe {
+// Seeds are 63-bit, so they arrive as strings. Keep the low 32 bits, like seed_to_rng.
+export function seedToRng(seed: string | number | bigint): number {
+  const value = Number(BigInt(seed) & 0xffffffffn);
+  return value === 0 ? 0x6d2b79f5 : value;
+}
+
+// xorshift32, same as next_random in game_logic.py.
+function nextRandom(game: GameState): number {
+  let x = game.rng;
+  x = (x ^ (x << 13)) >>> 0;
+  x = (x ^ (x >>> 17)) >>> 0;
+  x = (x ^ (x << 5)) >>> 0;
+  game.rng = x;
+  return x;
+}
+
+function createPipe(x: number, game: GameState): Pipe {
+  const gapTop = GAP_MIN + (nextRandom(game) % (GAP_MAX - GAP_MIN + 1));
   return {
     x: x,
-    gap_top: randint(rng, 170, 470) * SCALE - Math.floor(PIPE_GAP / 2),
+    gap_top: gapTop * SCALE - Math.floor(PIPE_GAP / 2),
     scored: false,
   };
 }
 
-export function createGame(seed: number): GameState {
-  const rng = mulberry32(seed);
-  const pipes = [
-    createPipe(600 * SCALE, rng),
-    createPipe(860 * SCALE, rng),
-    createPipe(1120 * SCALE, rng),
-  ];
-
-  return {
-    bird_y: Math.floor((WORLD_HEIGHT) / 2),
+export function createGame(seed: string | number | bigint): GameState {
+  const game: GameState = {
+    bird_y: Math.floor(WORLD_HEIGHT / 2),
     velocity: 0,
-    pipes,
+    pipes: [],
     score: 0,
     status: "ACTIVE",
     tick: 0,
-    rng,
+    rng: seedToRng(seed),
   };
+  game.pipes = INITIAL_PIPE_X.map((x) => createPipe(x, game));
+  return game;
 }
 
 function hitsPipe(bird_y: number, pipe: Pipe): boolean {
@@ -99,7 +104,7 @@ export function stepGame(game: GameState, flap: boolean) {
 
   const lastPipe = game.pipes[game.pipes.length - 1];
   if (lastPipe.x <= WORLD_WIDTH) {
-    game.pipes.push(createPipe(lastPipe.x + PIPE_SPACING, game.rng));
+    game.pipes.push(createPipe(lastPipe.x + PIPE_SPACING, game));
   }
 
   game.tick += 1;
