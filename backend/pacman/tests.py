@@ -2,6 +2,7 @@ import copy
 import json
 from datetime import timedelta
 from pathlib import Path
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import SimpleTestCase, TestCase
@@ -93,7 +94,7 @@ class TaskTests(TestCase):
 
     def test_valid_run_is_verified_and_scored(self):
         session = self.make_session()
-        result = calculate_score(str(session.id), self.fixture["log"])
+        result = calculate_score(self.user.pk, str(session.id), self.fixture["log"])
         self.assertEqual(result, {"status": "verified", "score": self.fixture["score"]})
         session.refresh_from_db()
         self.assertEqual(session.score, self.fixture["score"])
@@ -103,7 +104,7 @@ class TaskTests(TestCase):
         session = self.make_session()
         log = copy.deepcopy(self.fixture["log"])
         log["claimed_score"] += 1000
-        result = calculate_score(str(session.id), log)
+        result = calculate_score(self.user.pk, str(session.id), log)
         self.assertEqual(result["status"], "rejected")
         session.refresh_from_db()
         self.assertIsNone(session.score)
@@ -111,24 +112,46 @@ class TaskTests(TestCase):
 
     def test_run_faster_than_real_time_is_rejected(self):
         session = self.make_session(played_seconds=1)
-        result = calculate_score(str(session.id), self.fixture["log"])
+        result = calculate_score(self.user.pk, str(session.id), self.fixture["log"])
         self.assertEqual(result["status"], "rejected")
         self.assertIn("faster", result["reason"])
 
     def test_resubmission_keeps_first_result(self):
         session = self.make_session()
-        calculate_score(str(session.id), self.fixture["log"])
+        calculate_score(self.user.pk, str(session.id), self.fixture["log"])
         forged = copy.deepcopy(self.fixture["log"])
         forged["claimed_score"] = 999999
-        result = calculate_score(str(session.id), forged)
+        result = calculate_score(self.user.pk, str(session.id), forged)
         self.assertEqual(result, {"status": "verified", "score": self.fixture["score"]})
         self.assertEqual(PacmanRun.objects.filter(session=session).count(), 1)
 
     def test_other_game_sessions_are_ignored(self):
         other, _ = Game.objects.get_or_create(name=GameChoices.SNAKE)
         session = Session.objects.create(user=self.user, game=other)
-        self.assertIsNone(calculate_score(str(session.id), self.fixture["log"]))
+        self.assertIsNone(calculate_score(self.user.pk, str(session.id), self.fixture["log"]))
         self.assertFalse(PacmanRun.objects.exists())
+
+    def test_other_users_sessions_are_ignored(self):
+        session = self.make_session()
+        other = get_user_model().objects.create_user(username="other", password="x")
+        self.assertIsNone(calculate_score(other.pk, str(session.id), self.fixture["log"]))
+        self.assertFalse(PacmanRun.objects.exists())
+
+    def test_submit_endpoint_dispatches_args_the_task_accepts(self):
+        # Runs the task with exactly what the hub sends, so a signature mismatch fails here.
+        session = self.make_session()
+        self.client.force_login(self.user)
+        with patch("hub.views.app.send_task") as send_task:
+            response = self.client.patch(
+                f"/sessions/submit/{session.id}/",
+                {"actions": self.fixture["log"]},
+                content_type="application/json",
+            )
+        self.assertEqual(response.status_code, 200)
+        name = send_task.call_args.args[0]
+        self.assertEqual(name, "pacman.tasks.calculate_score")
+        result = calculate_score(*send_task.call_args.kwargs["args"])
+        self.assertEqual(result, {"status": "verified", "score": self.fixture["score"]})
 
 
 class StatusViewTests(TestCase):

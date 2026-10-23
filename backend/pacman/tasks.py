@@ -23,12 +23,12 @@ def verify(session, actions):
 
 
 @shared_task
-def calculate_score(session_id, actions) -> dict | None:
+def calculate_score(user_id, session_id, actions) -> dict | None:
     """Replay a submitted Pac-Man log and record a verified score or a rejection."""
     with transaction.atomic():
         session = (
             Session.objects.select_for_update()
-            .filter(pk=session_id, game__name=GameChoices.PACMAN)
+            .filter(pk=session_id, user_id=user_id, game__name=GameChoices.PACMAN)
             .first()
         )
         if session is None:
