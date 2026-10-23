@@ -170,9 +170,22 @@
     }
   }
 
+  function updateBestScoreDisplay(val) {
+    const text = String(val).padStart(6, "0");
+    const bestEl = getElement("best-score");
+    if (bestEl) bestEl.textContent = text;
+    const navBest = getElement("nav-best-score");
+    if (navBest) navBest.textContent = text;
+  }
+
   function setGameStatus(status, label) {
     game.status = status;
-    getElement("game-state-label").textContent = label;
+    const labelEl = getElement("game-state-label");
+    if (labelEl) labelEl.textContent = label;
+    const badgeEl = getElement("status-badge");
+    if (badgeEl) {
+      badgeEl.className = "board-status-badge status-" + status.toLowerCase();
+    }
   }
 
   function showOverlay(title, message, buttonLabel, onClick, disabled = false) {
@@ -585,7 +598,7 @@
       Number(localStorage.getItem("arcade-tetris-best")) || 0,
     );
     localStorage.setItem("arcade-tetris-best", best);
-    getElement("best-score").textContent = String(best).padStart(6, "0");
+    updateBestScoreDisplay(best);
     renderGame();
     showOverlay(
       "Run complete",
@@ -668,9 +681,7 @@
     }
   }
 
-  getElement("best-score").textContent = String(
-    localStorage.getItem("arcade-tetris-best") || 0,
-  ).padStart(6, "0");
+  updateBestScoreDisplay(localStorage.getItem("arcade-tetris-best") || 0);
   getElement("start-button").onclick = startGame;
   document.addEventListener("visibilitychange", () => {
     // Pause when hidden so background time does not advance the local board.
