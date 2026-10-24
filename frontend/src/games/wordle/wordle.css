@@ -27,6 +27,7 @@
   --on-accent: #07070e;
   --mono: 'IBM Plex Mono', ui-monospace, monospace;
   --pixel: 'Press Start 2P', monospace;
+  --tile: min(14vw, 56px);
 
   width: min(100% - 32px, 520px);
   min-height: 100vh;
@@ -209,6 +210,13 @@
   }
 }
 
+/* ---------- play layout wrapper (stacked on mobile, two columns on desktop) ---------- */
+.play-layout {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
 /* ---------- stats + time bar ---------- */
 .stats {
   display: grid;
@@ -332,13 +340,13 @@
 
 .guess-row {
   display: grid;
-  grid-template-columns: repeat(5, min(14vw, 56px));
+  grid-template-columns: repeat(5, var(--tile));
   gap: 7px;
 }
 
 .tile {
-  width: min(14vw, 56px);
-  height: min(14vw, 56px);
+  width: var(--tile);
+  height: var(--tile);
   display: grid;
   place-items: center;
   border: 1px solid var(--line-hi);
@@ -1837,6 +1845,234 @@
   }
 }
 
+/* ---------- desktop game only; landing and widths below 960px unchanged ---------- */
+@media (min-width: 960px) {
+  .app-shell:not(.landing) {
+    --tile: 64px;
+    width: 100%;
+    padding-bottom: 32px;
+  }
+
+  .app-shell:not(.landing) .topbar {
+    padding-left: 32px;
+    padding-right: 32px;
+  }
+
+  .app-shell:not(.landing) .notice-card {
+    width: min(100% - 64px, 520px);
+    margin: 24px auto;
+  }
+
+  .app-shell:not(.landing) .play-layout {
+    --layout-width: min(calc(100vw - 48px), 1800px);
+    --board-width: max(410px, calc(var(--layout-width) * .44));
+    --board-tile: calc((var(--board-width) - 70px) / 5);
+    --board-tile-height: min(var(--board-tile), clamp(68px, calc((100dvh - 230px) / 6), 120px));
+    --key-size: calc((var(--layout-width) - var(--board-width) - 20px - 32px - 54px) / 10);
+    display: grid;
+    grid-template-columns: var(--board-width) 20px minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: 88px 8px auto auto auto 52px;
+    min-height: calc(var(--board-tile-height) * 6 + 118px);
+    column-gap: 0;
+    row-gap: 12px;
+    flex: 0 0 auto;
+    align-content: start;
+    width: var(--layout-width);
+    margin: 16px auto 0;
+    position: relative;
+    isolation: isolate;
+  }
+
+  .app-shell:not(.landing) .play-layout:not(:has(.reveal)) {
+    grid-template-rows: 88px 8px 0 auto auto 52px;
+  }
+
+  .app-shell:not(.landing) .play-layout:not(:has(.reveal)) .message {
+    margin-top: -12px;
+  }
+
+  /* A subtle arcade cabinet surface behind the controls; no extra markup. */
+  .app-shell:not(.landing) .play-layout::before {
+    content: '';
+    grid-column: 3 / 5;
+    grid-row: 1 / 7;
+    z-index: -1;
+    pointer-events: none;
+    border: 1px solid var(--line);
+    background:
+      radial-gradient(ellipse at top right, rgb(245 194 24 / 5%), transparent 65%),
+      repeating-linear-gradient(0deg, transparent 0 5px, rgb(150 150 174 / 2%) 5px 6px),
+      var(--panel);
+    box-shadow: 5px 5px 0 #030308;
+  }
+
+  .app-shell:not(.landing) .stats,
+  .app-shell:not(.landing) .game {
+    display: contents;
+  }
+
+  .app-shell:not(.landing) .play-layout .stats>div {
+    padding: 15px 12px;
+  }
+
+  .app-shell:not(.landing) .play-layout .stats strong {
+    font-size: clamp(20px, 1.5vw, 27px);
+  }
+
+  /* Anchor the compact badge to the board without sizing the control rows. */
+  .app-shell:not(.landing) .play-layout .stats>.stat-solved {
+    position: absolute;
+    top: 0;
+    left: auto;
+    right: calc(100% - var(--board-width));
+    width: max-content;
+    grid-column: auto;
+    grid-row: auto;
+    align-self: start;
+    justify-self: end;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 10px 14px 0 0;
+    padding: 7px 10px;
+    z-index: 1;
+    border: 1px solid #24536b;
+    background: #101d2b;
+    box-shadow: 2px 2px 0 #05080f;
+  }
+
+  .app-shell:not(.landing) .play-layout .stat-solved strong {
+    font-size: 12px;
+  }
+
+  .app-shell:not(.landing) .play-layout .stat-solved span {
+    color: #9cd8f4;
+  }
+
+  .app-shell:not(.landing) .play-layout .stat-time {
+    grid-column: 3;
+    grid-row: 1;
+    margin: 0 6px 0 0;
+    background: linear-gradient(135deg, #12251e, var(--panel));
+  }
+
+  .app-shell:not(.landing) .play-layout .stat-score {
+    grid-column: 4;
+    grid-row: 1;
+    margin: 0 0 0 6px;
+    background: linear-gradient(135deg, #25210f, var(--panel));
+  }
+
+  .app-shell:not(.landing) .play-layout .board {
+    --tile: var(--board-tile);
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: var(--board-width);
+    grid-column: auto;
+    grid-row: auto;
+    align-content: start;
+    align-self: start;
+    gap: 8px;
+    margin: 0;
+    padding: 52px 18px 22px;
+    border: 1px solid var(--line-hi);
+    border-top: 3px solid var(--accent);
+    background: radial-gradient(ellipse at top left, #1c1c35, var(--panel) 70%);
+    box-shadow: 5px 5px 0 #030308, inset 0 0 28px rgb(0 0 0 / 20%);
+  }
+
+  .app-shell:not(.landing) .play-layout .board .guess-row {
+    gap: 8px;
+  }
+
+  .app-shell:not(.landing) .play-layout .board .tile {
+    height: var(--board-tile-height);
+    font-size: clamp(26px, 2.2vw, 36px);
+    border-radius: 0;
+  }
+
+  .app-shell:not(.landing) .play-layout .board .tile:not([data-mark]) {
+    background: linear-gradient(145deg, #17172b, #0e0e1c);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 4%), 0 3px 0 #06060e;
+  }
+
+  .app-shell:not(.landing) .play-layout .board .tile-cursor {
+    border-color: var(--accent);
+    box-shadow: inset 0 0 16px rgb(245 194 24 / 8%), 0 0 0 1px rgb(245 194 24 / 25%);
+  }
+
+  .app-shell:not(.landing) .play-layout .healthbar {
+    grid-column: 3 / 5;
+    grid-row: 2;
+    height: 8px;
+    margin: 0 16px;
+  }
+
+  .app-shell:not(.landing) .play-layout .reveal {
+    --tile: 48px;
+    grid-column: 3 / 5;
+    grid-row: 3;
+    align-self: center;
+    margin: 4px 18px;
+  }
+
+  .app-shell:not(.landing) .play-layout .message {
+    grid-column: 3 / 5;
+    grid-row: 4;
+    margin: 0 16px;
+    padding: 10px 8px;
+    border: 1px solid var(--line);
+    background: #0a0a15;
+    overflow-wrap: anywhere;
+  }
+
+  .app-shell:not(.landing) .play-layout .keyboard {
+    grid-column: 3 / 5;
+    grid-row: 5;
+    grid-template-rows: repeat(3, var(--key-size));
+    gap: 8px;
+    margin: 0 16px 4px;
+  }
+
+  .app-shell:not(.landing) .play-layout .keyboard-row {
+    gap: 6px;
+  }
+
+  .app-shell:not(.landing) .play-layout .key {
+    flex: 0 0 var(--key-size);
+    width: var(--key-size);
+    height: var(--key-size);
+    min-height: 0;
+    padding: 0;
+    border-radius: 0;
+    font-size: clamp(14px, 1vw, 19px);
+    font-weight: 600;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 8%), 0 3px 0 #05050c;
+  }
+
+  .app-shell:not(.landing) .play-layout .key-special {
+    flex-basis: calc(var(--key-size) * 1.5);
+    width: calc(var(--key-size) * 1.5);
+    font-size: clamp(10px, .8vw, 14px);
+  }
+
+  .app-shell:not(.landing) .play-layout .key:hover:not(:disabled) {
+    box-shadow: inset 0 0 0 1px var(--accent), 0 3px 0 #05050c;
+  }
+
+  .app-shell:not(.landing) .play-layout .submit-button {
+    grid-column: 3 / 5;
+    grid-row: 6;
+    width: calc(100% - 32px);
+    margin: 0 16px;
+    padding: 12px;
+    box-shadow: 0 4px 0 #796010;
+    font-weight: 600;
+    letter-spacing: .12em;
+  }
+}
+
 /* ---------- respect "reduce motion" ---------- */
 @media (prefers-reduced-motion: reduce) {
 
@@ -1891,4 +2127,535 @@
     opacity: 1;
     transform: translate(-50%, -6px);
   }
+}
+
+/* Larger desktop result dialog only; other dialogs and mobile stay unchanged. */
+@media (min-width: 960px) {
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] {
+    --summary-tile: clamp(28px, 4vh, 38px);
+    width: min(760px, calc(100vw - 80px));
+    max-height: calc(100dvh - 48px);
+    padding: 28px 32px;
+    border-top: 3px solid var(--accent);
+    box-shadow: 8px 8px 0 rgb(0 0 0 / 40%);
+    scrollbar-width: thin;
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] h2 {
+    font-size: 22px;
+    margin-bottom: 12px;
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .modal-sub {
+    font-size: 15px;
+    margin-bottom: 20px;
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .result-stats>div {
+    padding: 18px;
+    gap: 10px;
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .result-stats strong {
+    font-size: 34px;
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .result-stats span,
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .summary-head h3,
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .summary-count {
+    font-size: 12px;
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .summary-track {
+    gap: 16px;
+    padding: 4px 2px 12px;
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .summary-card {
+    padding: 14px 16px;
+    gap: 12px;
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .summary-card:only-child {
+    margin-inline: auto;
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .mini-grid,
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .mini-row {
+    gap: 4px;
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .mini-row {
+    grid-template-columns: repeat(5, var(--summary-tile));
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .mini-tile {
+    width: var(--summary-tile);
+    height: var(--summary-tile);
+    font-size: 12px;
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .summary-label {
+    max-width: calc(var(--summary-tile) * 5 + 16px);
+    font-size: 11px;
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .summary-nav button {
+    width: 36px;
+    height: 36px;
+    font-size: 20px;
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .modal-primary {
+    min-height: 54px;
+    padding: 15px 18px;
+    font-size: 15px;
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .modal-link {
+    font-size: 13px;
+    margin-top: 16px;
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .breakdown {
+    padding: 16px 18px;
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .breakdown dl>div {
+    font-size: 14px;
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .breakdown h3,
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .breakdown-time {
+    font-size: 12px;
+  }
+}
+
+/* Scoring is already available through the How to play dialog. */
+.app-shell.landing .lp-scoring {
+  display: none;
+}
+
+@media (min-width: 960px) {
+  .app-shell:not(.landing) .play-layout {
+    --board-tile: clamp(58px, min(calc((100dvh - 230px) / 6), calc((100vw - 180px) / 11)), 120px);
+    --board-tile-height: var(--board-tile);
+    --board-width: calc(var(--board-tile) * 5 + 70px);
+    --layout-width: min(calc(100vw - 48px), calc(var(--board-width) * 2.25 + 20px));
+  }
+
+  /* Height budget belongs to the summary, with only horizontal board browsing. */
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: min(1000px, calc(100vw - 64px));
+    height: min(820px, calc(100dvh - 32px));
+    max-height: calc(100dvh - 32px);
+    padding: 18px 24px;
+    overflow: hidden;
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"]>* {
+    flex-shrink: 0;
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] h2 {
+    margin: 0 150px 6px 0;
+    font-size: 18px;
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .modal-sub {
+    margin: 0 150px 14px 0;
+    font-size: 12px;
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .result-stats {
+    position: absolute;
+    top: 16px;
+    right: 24px;
+    margin: 0;
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .result-stats>div {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border: 1px solid var(--line-hi);
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .result-stats span {
+    font-size: 10px;
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .result-stats strong {
+    font-size: 19px;
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .summary {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0;
+    min-height: 0;
+    margin: 0 0 10px;
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .summary-head {
+    flex: 0 0 auto;
+    margin-bottom: 6px;
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .summary-head h3 {
+    font-size: 10px;
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .summary-nav button {
+    width: 28px;
+    height: 28px;
+    font-size: 17px;
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .summary-track {
+    container-type: size;
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 16px;
+    padding: 2px 2px 12px;
+    align-items: start;
+    overscroll-behavior-x: contain;
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .summary-card {
+    --summary-tile: min(82px, calc((100cqh - 92px) / 6));
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .mini-tile {
+    width: var(--summary-tile);
+    height: var(--summary-tile);
+    font-size: clamp(10px, 2.3cqh, 18px);
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .summary-count,
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .summary-label {
+    font-size: 10px;
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .breakdown {
+    margin: 0 0 8px;
+    padding: 6px 10px;
+    background: transparent;
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .breakdown h3 {
+    margin: 0 0 3px;
+    font-size: 9px;
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .breakdown dl {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 18px;
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .breakdown dl>div {
+    gap: 8px;
+    padding: 0;
+    font-size: 11px;
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .breakdown-time {
+    margin: 4px 0 0;
+    padding-top: 3px;
+    font-size: 10px;
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .modal-primary {
+    min-height: 38px;
+    padding: 8px 14px;
+    font-size: 12px;
+  }
+
+  .app-shell:not(.landing) .modal[aria-labelledby="result-title"] .modal-link {
+    margin-top: 6px;
+    font-size: 11px;
+  }
+
+  /* Desktop landing: one screen, with the rules retained in the ? dialog. */
+  .app-shell.landing {
+    height: 100dvh;
+    min-height: 0;
+    padding-bottom: 0;
+    display: grid;
+    grid-template-rows: 48px minmax(0, 1fr) 32px 26px auto;
+  }
+
+  .app-shell.landing .landing-top {
+    min-height: 0;
+    padding: 8px 0;
+  }
+
+  .app-shell.landing .lp-hero {
+    min-height: 0;
+    padding: 12px 0;
+    gap: 32px;
+  }
+
+  .app-shell.landing .landing-kicker {
+    margin-bottom: 12px;
+  }
+
+  .app-shell.landing .landing-intro h1 {
+    font-size: clamp(32px, 5vw, 64px);
+  }
+
+  .app-shell.landing .landing-lede {
+    margin-top: 12px;
+  }
+
+  .app-shell.landing .lp-stats {
+    margin-top: 16px;
+  }
+
+  .app-shell.landing .lp-stats li {
+    padding: 10px 12px;
+  }
+
+  .app-shell.landing .lp-cta {
+    margin-top: 14px;
+    gap: 8px;
+  }
+
+  .app-shell.landing .landing-play {
+    min-height: 46px;
+  }
+
+  .app-shell.landing .landing-meta {
+    padding: 8px 14px;
+  }
+
+  .app-shell.landing .lp-demo {
+    padding: 10px 14px;
+  }
+
+  .app-shell.landing .lp-timebar {
+    margin: 8px 0 10px;
+  }
+
+  .app-shell.landing .lp-board {
+    width: min(290px, calc((100dvh - 380px) * .75));
+  }
+
+  .app-shell.landing .lp-legend {
+    padding: 8px 10px;
+  }
+
+  .app-shell.landing .lp-ticker-set span {
+    padding-top: 8px;
+    padding-bottom: 8px;
+    font-size: 9px;
+  }
+
+  .app-shell.landing .landing-hint {
+    margin: 0;
+    align-self: center;
+    font-size: 10px;
+  }
+}
+
+/* Desktop composition: continuous arcade backdrop and a compact lower strip. */
+@media (min-width: 960px) {
+  .app-shell.landing {
+    grid-template-rows: 48px minmax(0, 1fr) 26px 36px;
+  }
+
+  .app-shell.landing::before {
+    content: '';
+    position: absolute;
+    inset-block: 48px 0;
+    left: 50%;
+    width: 100vw;
+    transform: translateX(-50%);
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse at 80% 38%, rgb(245 194 24 / 7%), transparent 58%),
+      linear-gradient(rgb(150 150 174 / 7%) 1px, transparent 1px) 0 0 / 40px 40px,
+      linear-gradient(90deg, rgb(150 150 174 / 7%) 1px, transparent 1px) 0 0 / 40px 40px;
+  }
+
+  .app-shell.landing .lp-hero::before {
+    content: none;
+  }
+
+  .app-shell.landing .lp-hero {
+    grid-row: 2;
+    padding: 12px 0 8px;
+    border-bottom: 0;
+  }
+
+  .app-shell.landing .landing-intro h1 {
+    font-size: clamp(40px, 5.2vw, 78px);
+  }
+
+  .app-shell.landing .landing-lede {
+    font-size: 15px;
+    margin-top: 18px;
+  }
+
+  .app-shell.landing .lp-stats {
+    margin-top: 22px;
+  }
+
+  .app-shell.landing .lp-stats li {
+    padding: 14px 12px;
+  }
+
+  .app-shell.landing .lp-stats strong {
+    font-size: 18px;
+  }
+
+  .app-shell.landing .lp-cta {
+    margin-top: 20px;
+  }
+
+  .app-shell.landing .landing-play {
+    min-height: 52px;
+  }
+
+  .app-shell.landing .lp-board {
+    width: min(360px, calc((100dvh - 310px) * .74));
+  }
+
+  .app-shell.landing .landing-hint {
+    grid-row: 3;
+  }
+
+  .app-shell.landing .lp-ticker {
+    grid-row: 4;
+    align-self: stretch;
+  }
+
+  .app-shell.landing .lp-ticker-set span {
+    padding-block: 10px;
+  }
+
+  .app-shell:not(.landing) {
+    background:
+      linear-gradient(90deg, rgb(245 194 24 / 24%), rgb(245 194 24 / 24%)) 20px 110px / 3px calc(100% - 150px) no-repeat,
+      linear-gradient(90deg, rgb(74 222 128 / 20%), rgb(74 222 128 / 20%)) calc(100% - 20px) 110px / 3px calc(100% - 150px) no-repeat,
+      radial-gradient(ellipse at 18% 48%, rgb(245 194 24 / 5%), transparent 48%),
+      radial-gradient(ellipse at 85% 48%, rgb(74 222 128 / 4%), transparent 48%),
+      linear-gradient(rgb(150 150 174 / 5%) 1px, transparent 1px) 0 0 / 40px 40px,
+      linear-gradient(90deg, rgb(150 150 174 / 5%) 1px, transparent 1px) 0 0 / 40px 40px;
+  }
+
+  .app-shell:not(.landing) .topbar {
+    background: #07070e;
+  }
+
+  .app-shell:not(.landing) .play-layout {
+    --layout-width: min(calc(100vw - 80px), calc(var(--board-width) * 2.6 + 20px));
+  }
+}
+
+/* Preserve the one-screen landing layout on shorter desktop windows. */
+@media (min-width: 960px) and (max-height: 700px) {
+  .app-shell.landing .landing-intro h1 {
+    font-size: 44px;
+  }
+
+  .app-shell.landing .landing-lede {
+    font-size: 12px;
+    margin-top: 10px;
+  }
+
+  .app-shell.landing .lp-stats {
+    margin-top: 12px;
+  }
+
+  .app-shell.landing .lp-stats li {
+    padding: 8px 10px;
+  }
+
+  .app-shell.landing .lp-cta {
+    margin-top: 10px;
+  }
+
+  .app-shell.landing .landing-play {
+    min-height: 42px;
+  }
+}
+
+/* Quiet, static landing ribbon. */
+.app-shell.landing .lp-ticker {
+  background: #12121e;
+  color: #9292a7;
+  border-top: 1px solid #29293c;
+  border-bottom: 1px solid #29293c;
+}
+
+.app-shell.landing .lp-ticker-track {
+  animation: none;
+  transform: none;
+  width: 100%;
+  justify-content: center;
+}
+
+.app-shell.landing .lp-ticker-set {
+  width: 100%;
+  justify-content: space-evenly;
+  align-items: center;
+}
+
+.app-shell.landing .lp-ticker-set+.lp-ticker-set {
+  display: none;
+}
+
+.app-shell.landing .lp-ticker-set span {
+  padding: 10px 8px;
+  gap: 12px;
+  font-size: clamp(6px, .65vw, 9px);
+}
+
+.app-shell.landing .lp-ticker-set b {
+  color: #a58a35;
+  opacity: .55;
+}
+
+@media (max-width: 600px) {
+  .app-shell.landing .lp-ticker-set {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .app-shell.landing .lp-ticker-set span {
+    padding: 6px 8px;
+    font-size: 7px;
+  }
+}
+
+/* Full-width footer surface, with text aligned to the landing content. */
+.app-shell.landing .landing-footer {
+  position: relative;
+  border-top: 0;
+  isolation: isolate;
+}
+
+.app-shell.landing .landing-footer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 100vw;
+  transform: translateX(-50%);
+  border-top: 1px solid var(--line);
+  background: rgb(7 7 14 / 55%);
+  z-index: -1;
+  pointer-events: none;
 }

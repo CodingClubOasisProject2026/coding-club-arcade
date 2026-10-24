@@ -6,6 +6,21 @@ import { api, csrfToken, hubGameId, startHubSession } from '../../api';
 import { useAuth } from '../../auth';
 
 const WORD_LENGTH = 5;
+
+// Accepted words are tracked across every board in this game session.
+const normalizeGuess = (word) => String(word || '').trim().toLowerCase();
+
+function readUsedWords(sessionId) {
+  try {
+    const saved = JSON.parse(readStorage(`wordle-used-words-${sessionId}`));
+    return Array.isArray(saved)
+      ? [...new Set(saved.filter((word) => typeof word === 'string').map(normalizeGuess).filter(Boolean))]
+      : [];
+  } catch {
+    return [];
+  }
+}
+
 const KEY_ROWS = ['qwertyuiop', 'asdfghjkl', '↵zxcvbnm⌫'];
 
 const POPUP_MS = 3500;        // how long the floating "+15s" / "-20s" popups stay (keep in sync with the float-up animation in wordle.css)
@@ -237,6 +252,22 @@ function Wordle({ launch, onReplay, onHome }) {
   const leavingRef = useRef(false);
   const popupId = useRef(0);
   const scoreSubmitted = useRef(false);
+  const guessInFlight = useRef(false);
+  const usedWords = useRef(null);
+  if (usedWords.current === null) {
+    usedWords.current = [...new Set([
+      ...readUsedWords(sessionId),
+      ...summary.flatMap((item) => (item.rows || []).map((row) => normalizeGuess(row.word))),
+    ].filter(Boolean))];
+  }
+
+  const rememberWords = useCallback((words) => {
+    usedWords.current = [...new Set([
+      ...usedWords.current,
+      ...words.map(normalizeGuess).filter(Boolean),
+    ])];
+    writeStorage(`wordle-used-words-${sessionId}`, JSON.stringify(usedWords.current));
+  }, [sessionId]);
 
   const clockExpired = deadline !== null && timeLeft <= 0;
   const gameLive = snapshot?.game_status === 'in_progress' && !clockExpired && !ended;
@@ -256,6 +287,7 @@ function Wordle({ launch, onReplay, onHome }) {
   }, []);
 
   const showApiState = useCallback((data) => {
+    rememberWords((data.board || []).map((row) => row.word));
     setSnapshot(data);
     setDraft('');
     const remaining = Math.max(0, data.time_remaining ?? 0);
@@ -275,7 +307,7 @@ function Wordle({ launch, onReplay, onHome }) {
     } else {
       setNotice('');
     }
-  }, []);
+  }, [rememberWords]);
 
   // Works out what a guess changed (points and seconds) from the server's numbers, shows the
   // floating popups and adds it to the running totals used by the score breakdown.
@@ -407,12 +439,19 @@ function Wordle({ launch, onReplay, onHome }) {
   }, [gameOver, resultDelay]);
 
   const submitGuess = useCallback(async () => {
-    if (!active || sending) return;
+    if (!active || sending || guessInFlight.current) return;
     if (draft.length !== WORD_LENGTH) {
       setError('Enter a five-letter word.');
       triggerShake();
       return;
     }
+    if (usedWords.current.includes(normalizeGuess(draft))) {
+      setError('You already used this word in this game. Try a different word.');
+      triggerShake();
+      return;
+    }
+    // Lock immediately, including before React commits the sending state.
+    guessInFlight.current = true;
     setSending(true);
     setError('');
     const scoreBefore = snapshot?.score ?? 0;
@@ -425,6 +464,7 @@ function Wordle({ launch, onReplay, onHome }) {
         page_token: pageToken,
         guess: draft,
       });
+      rememberWords([draft]);
       // Compare with the clock as it was *before* this reply updates it.
       const expectedSeconds = deadline === null ? null : Math.max(0, (deadline - Date.now()) / 1000);
       showApiState(data);
@@ -446,9 +486,10 @@ function Wordle({ launch, onReplay, onHome }) {
       setError(cause.message);
       triggerShake();
     } finally {
+      guessInFlight.current = false;
       setSending(false);
     }
-  }, [active, deadline, draft, pageToken, recordChange, seed, sending, sessionId, showApiState, snapshot, triggerShake]);
+  }, [active, deadline, draft, pageToken, recordChange, rememberWords, seed, sending, sessionId, showApiState, snapshot, triggerShake]);
 
   const pressKey = useCallback((key) => {
     if (!active || sending) return;

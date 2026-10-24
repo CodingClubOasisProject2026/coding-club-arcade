@@ -205,11 +205,6 @@ export default function Landing({ me, onPlay, busy = false, error = '' }) {
 
             <p className="landing-hint">New here? Tap <b>?</b> for how it works.</p>
 
-            <footer className="landing-footer">
-                <span>CODING CLUB · BITS PILANI</span>
-                <span>ONE MORE ROUND?</span>
-            </footer>
-
             {helpOpen && (
                 <div className="overlay">
                     <section className="modal" role="dialog" aria-modal="true" aria-labelledby="landing-help-title">
