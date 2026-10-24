@@ -7,19 +7,8 @@ import { useAuth } from '../../auth';
 
 const WORD_LENGTH = 5;
 
-// Accepted words are tracked across every board in this game session.
+// Repeated guesses are blocked only for the current answer, not later answers.
 const normalizeGuess = (word) => String(word || '').trim().toLowerCase();
-
-function readUsedWords(sessionId) {
-  try {
-    const saved = JSON.parse(readStorage(`wordle-used-words-${sessionId}`));
-    return Array.isArray(saved)
-      ? [...new Set(saved.filter((word) => typeof word === 'string').map(normalizeGuess).filter(Boolean))]
-      : [];
-  } catch {
-    return [];
-  }
-}
 
 const KEY_ROWS = ['qwertyuiop', 'asdfghjkl', '↵zxcvbnm⌫'];
 
@@ -119,7 +108,9 @@ function describeResult(snapshot, timeUp, ended) {
   }
   if (timeUp) {
     const answer = status === 'time_up' && snapshot?.answer ? String(snapshot.answer).toUpperCase() : '';
-    return { title: "Time's up!", sub: answer ? `The word was ${answer}.` : 'The clock ran out.' };
+    return answer
+      ? { title: `Time's Up! The word was ${answer}.`, sub: '' }
+      : { title: "Time's Up!", sub: 'The clock ran out.' };
   }
   return { title: 'Game over', sub: 'This attempt has ended.' };
 }
@@ -253,21 +244,19 @@ function Wordle({ launch, onReplay, onHome }) {
   const popupId = useRef(0);
   const scoreSubmitted = useRef(false);
   const guessInFlight = useRef(false);
-  const usedWords = useRef(null);
-  if (usedWords.current === null) {
-    usedWords.current = [...new Set([
-      ...readUsedWords(sessionId),
-      ...summary.flatMap((item) => (item.rows || []).map((row) => normalizeGuess(row.word))),
-    ].filter(Boolean))];
-  }
+  const currentWordNumber = useRef(null);
+  const usedWords = useRef([]);
 
-  const rememberWords = useCallback((words) => {
+  const rememberWords = useCallback((words, wordNumber) => {
+    if (currentWordNumber.current !== wordNumber) {
+      currentWordNumber.current = wordNumber;
+      usedWords.current = [];
+    }
     usedWords.current = [...new Set([
       ...usedWords.current,
       ...words.map(normalizeGuess).filter(Boolean),
     ])];
-    writeStorage(`wordle-used-words-${sessionId}`, JSON.stringify(usedWords.current));
-  }, [sessionId]);
+  }, []);
 
   const clockExpired = deadline !== null && timeLeft <= 0;
   const gameLive = snapshot?.game_status === 'in_progress' && !clockExpired && !ended;
@@ -287,7 +276,7 @@ function Wordle({ launch, onReplay, onHome }) {
   }, []);
 
   const showApiState = useCallback((data) => {
-    rememberWords((data.board || []).map((row) => row.word));
+    rememberWords((data.board || []).map((row) => row.word), data.word_number);
     setSnapshot(data);
     setDraft('');
     const remaining = Math.max(0, data.time_remaining ?? 0);
@@ -464,7 +453,7 @@ function Wordle({ launch, onReplay, onHome }) {
         page_token: pageToken,
         guess: draft,
       });
-      rememberWords([draft]);
+      rememberWords([draft], wordNumber);
       // Compare with the clock as it was *before* this reply updates it.
       const expectedSeconds = deadline === null ? null : Math.max(0, (deadline - Date.now()) / 1000);
       showApiState(data);
@@ -594,15 +583,16 @@ function Wordle({ launch, onReplay, onHome }) {
   const result = describeResult(snapshot, clockExpired || snapshot?.game_status === 'time_up', ended);
   // Only a server-confirmed "time_up" state carries the answer for the word the player was on.
   // (Earlier states can hold the previous word's answer, so they are never used here.)
-  const revealAnswer = snapshot?.game_status === 'time_up' && snapshot.answer
+  const revealAnswer = (snapshot?.game_status === 'time_up' || snapshot?.missed) && snapshot.answer
     ? String(snapshot.answer).toLowerCase()
     : '';
+  const answerRevealLabel = snapshot?.missed ? 'Word missed. The word was' : "Time's Up! The word was";
 
   const score = snapshot?.score ?? 0;
   // Summary slider: the grid of every word from this game, plus the word in progress when the game ended
   // (its answer comes from the server with "time_up").
   const currentRows = snapshot?.board || []; // the server keeps the unfinished word's rows in its time_up reply too
-  const finalGrid = (ended || timedOut) && (currentRows.length > 0 || revealAnswer)
+  const finalGrid = (ended || timedOut) && currentRows.length > 0
     ? { rows: currentRows, answer: revealAnswer, status: ended ? 'ended' : 'timeup' }
     : null;
   const summaryItems = finalGrid ? [...summary, finalGrid] : summary;
@@ -681,7 +671,7 @@ function Wordle({ launch, onReplay, onHome }) {
 
             {revealAnswer && (
               <div className="reveal" role="status">
-                <span className="reveal-label">Time's up. The word was</span>
+                <span className="reveal-label">{answerRevealLabel}</span>
                 <div className="reveal-tiles">
                   {Array.from(revealAnswer).map((letter, index) => (
                     <div
@@ -789,7 +779,7 @@ function Wordle({ launch, onReplay, onHome }) {
         <div className="overlay">
           <section className="modal" role="dialog" aria-modal="true" aria-labelledby="result-title">
             <h2 id="result-title">{result.title}</h2>
-            <p className="modal-sub">{result.sub}</p>
+            {result.sub && <p className="modal-sub">{result.sub}</p>}
             <div className="result-stats">
               <div><span>Score</span><strong>{score}</strong></div>
             </div>
