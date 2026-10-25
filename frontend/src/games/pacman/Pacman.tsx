@@ -22,12 +22,15 @@ type Submission = { state: 'idle' | 'practice' | 'sending' | 'error' } | { state
 
 const STEP_MS = 1000 / TICKS_PER_SECOND
 const SCALE = 2
+const MAX_LIVES = 3
 const KEYS: Record<string, Dir> = {
   ArrowUp: 'U', ArrowLeft: 'L', ArrowDown: 'D', ArrowRight: 'R',
   w: 'U', a: 'L', s: 'D', d: 'R', W: 'U', A: 'L', S: 'D', D: 'R',
 }
 const POLL_MS = 1000
 const POLL_TRIES = 20
+const BEST_KEY = 'pacman-high-score'
+const pad = (n: number) => String(n).padStart(6, '0')
 
 function randomSeed() {
   const words = crypto.getRandomValues(new Uint32Array(2))
@@ -42,6 +45,7 @@ export default function Pacman() {
   const [hud, setHud] = useState<Hud>({ score: 0, lives: 3, level: 1 })
   const [notice, setNotice] = useState<string | null>(null)
   const [submission, setSubmission] = useState<Submission>({ state: 'idle' })
+  const [best, setBest] = useState<number>(() => Number(localStorage.getItem(BEST_KEY)) || 0)
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const mazeRef = useRef<HTMLCanvasElement | null>(null)
@@ -125,6 +129,11 @@ export default function Pacman() {
           : { score: state.score, lives: state.lives, level: state.level },
       )
       if (state.over) {
+        setBest((b) => {
+          if (state.score <= b) return b
+          localStorage.setItem(BEST_KEY, String(state.score))
+          return state.score
+        })
         setGamePhase('over')
         void finish()
         return
@@ -223,15 +232,57 @@ export default function Pacman() {
     swipeStart.current = null
   }
 
+  const isNewBest = phase === 'over' && hud.score > 0 && hud.score >= best
+  const stateLabel = {
+    menu: 'READY',
+    starting: 'CONNECTING',
+    playing: sessionRef.current ? 'RANKED RUN' : 'PRACTICE',
+    paused: 'PAUSED',
+    over: 'GAME OVER',
+  }[phase]
+
+  // Lives shown as an RPG-style HP bar: green → yellow → red.
+  const hpRatio = Math.max(0, Math.min(hud.lives, MAX_LIVES)) / MAX_LIVES
+  const hpTone = hpRatio > 0.67 ? 'high' : hpRatio > 0.34 ? 'mid' : 'low'
+
+  const lifeIcons = (
+    <span className="pm-lives" aria-label={`${hud.lives} lives`}>
+      {Array.from({ length: MAX_LIVES }, (_, i) => (
+        <i key={i} className={i < hud.lives ? '' : 'is-lost'} />
+      ))}
+    </span>
+  )
+
   return (
     <div className="pm-page">
+      <div className="pm-bg" aria-hidden="true" />
+
       <header className="pm-topbar">
-        <Link to="/" className="pm-back" aria-label="Back to arcade">←</Link>
-        <h1 className="pm-title">Pac-Man</h1>
-        <div className="pm-topbar-right">
-          {signedIn && <span className="pm-tickets" title="Tickets left">🎟️ {me.tickets}</span>}
-        </div>
+        <Link to="/" className="pm-back" aria-label="Back to arcade">
+          ◀ <span className="pm-back-label">ARCADE</span>
+        </Link>
+        <span className={`pm-mode${signedIn ? ' is-ranked' : ''}`}>
+          {signedIn ? `🎟 ${me.tickets} TICKET${me.tickets === 1 ? '' : 'S'}` : 'PRACTICE MODE'}
+        </span>
       </header>
+
+      <section className="pm-intro">
+        <h1 className="pm-title">PAC-MAN</h1>
+        <p className="pm-tagline" aria-hidden="true">★ INSERT COIN ★</p>
+      </section>
+
+      <section className="pm-howto" aria-label="How to play Pac-Man">
+        <div className="pm-howto-goal">
+          <h2>How to play</h2>
+          <p>Clear every dot. Power pellets let you eat the ghosts.</p>
+        </div>
+        <div className="pm-howto-keys" aria-label="Keyboard controls">
+          <span><kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd> Move</span>
+          <span><kbd>WASD</kbd> Move</span>
+          <span><kbd>P</kbd> Pause</span>
+          <span><kbd>ENTER</kbd> Start</span>
+        </div>
+      </section>
 
       {notice && (
         <div className="pm-notice" role="status">
@@ -240,63 +291,133 @@ export default function Pacman() {
         </div>
       )}
 
-      <main className="pm-main">
-        <div className="pm-hud" aria-live="polite">
-          <span>
-            <small>Score</small>
-            <strong>{hud.score}</strong>
-          </span>
-          <span>
-            <small>Level</small>
-            <strong>{hud.level}</strong>
-          </span>
-          <span className="pm-lives" aria-label={`${hud.lives} lives`}>
-            {Array.from({ length: Math.max(0, hud.lives) }, (_, i) => <i key={i} />)}
-          </span>
+      <main className="pm-layout" aria-label="Pac-Man game">
+        {/* Compact stats strip, shown instead of the side panels on narrow screens. */}
+        <div className="pm-strip" aria-hidden="true">
+          <div><small>SCORE</small><strong>{pad(hud.score)}</strong></div>
+          <div><small>BEST</small><strong>{pad(Math.max(best, hud.score))}</strong></div>
+          <div><small>LV</small><strong>{hud.level}</strong></div>
+          <div>{lifeIcons}</div>
         </div>
 
-        <div className="pm-board-slot">
-          <div
-            className="pm-board"
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-            onPointerCancel={onPointerUp}
-          >
-            <canvas ref={canvasRef} width={WIDTH * SCALE} height={HEIGHT * SCALE} aria-label="Pac-Man maze" />
+        <aside className="pm-side pm-side-left">
+          {/* Battle-status box: name, level, HP bar, score. */}
+          <div className="pm-panel pm-status">
+            <div className="pm-status-name">
+              <span>PAC-MAN</span>
+              <span className="pm-status-lv">:L{hud.level}</span>
+            </div>
+            <div className="pm-hp" aria-label={`${hud.lives} of ${MAX_LIVES} lives`}>
+              <span className="pm-hp-tag">HP:</span>
+              <span className="pm-hp-track">
+                <span className={`pm-hp-fill is-${hpTone}`} style={{ width: `${hpRatio * 100}%` }} />
+              </span>
+            </div>
+            <div className="pm-hp-num">{hud.lives}/ {MAX_LIVES}</div>
+            <div className="pm-rule" />
+            <div className="pm-panel-label">SCORE</div>
+            <div className="pm-lcd" aria-live="polite">{pad(hud.score)}</div>
+          </div>
+          <div className="pm-panel">
+            <div className="pm-panel-label">YOUR BEST</div>
+            <div className="pm-lcd pm-lcd-sm">{pad(Math.max(best, hud.score))}</div>
+            <div className="pm-muted">Saved on this device</div>
+          </div>
+        </aside>
 
-            {phase !== 'playing' && (
-              <div className="pm-overlay">
-                {(phase === 'menu' || phase === 'starting') && (
-                  <>
-                    <button type="button" className="pm-btn" onClick={() => void start()} disabled={phase === 'starting'}>
-                      {phase === 'starting' ? 'Starting…' : 'Start'}
-                    </button>
-                    <p>
-                      {signedIn ? 'Ranked runs use 1 ticket.' : 'Sign in to post scores.'}
-                      <br />
-                      Arrows / WASD or swipe to move.
-                    </p>
-                  </>
-                )}
-                {phase === 'paused' && (
-                  <button type="button" className="pm-btn" onClick={() => setGamePhase('playing')}>
-                    Resume
-                  </button>
-                )}
-                {phase === 'over' && (
-                  <>
-                    <p className="pm-final">{hud.score}</p>
-                    <SubmissionStatus submission={submission} />
-                    <button type="button" className="pm-btn" onClick={() => void start()}>
-                      Play again
-                    </button>
-                  </>
+        <div className="pm-board-col">
+          <div className="pm-board-wrap">
+            <div className="pm-board-head">
+              <span className={`pm-state is-${phase}`}>{stateLabel}</span>
+              <span className="pm-head-level">LV {String(hud.level).padStart(2, '0')}</span>
+            </div>
+            <div className="pm-board-slot">
+              <div
+                className="pm-board"
+                onPointerDown={onPointerDown}
+                onPointerMove={onPointerMove}
+                onPointerUp={onPointerUp}
+                onPointerCancel={onPointerUp}
+              >
+                <canvas ref={canvasRef} width={WIDTH * SCALE} height={HEIGHT * SCALE} aria-label="Pac-Man maze" />
+
+                {phase !== 'playing' && (
+                  <div className="pm-overlay">
+                    <div className="pm-card">
+                      {(phase === 'menu' || phase === 'starting') && (
+                        <>
+                          <div className="pm-chase" aria-hidden="true">
+                            <span className="pm-chase-pac" />
+                            <span className="pm-chase-dot" />
+                            <span className="pm-chase-dot" />
+                            <span className="pm-chase-dot" />
+                            <span className="pm-chase-ghost" />
+                          </div>
+                          <h2>A wild BLINKY appeared!</h2>
+                          <p>
+                            {signedIn
+                              ? 'Ranked run. Starting uses 1 ticket.'
+                              : 'Practice run. Sign in to post scores.'}
+                          </p>
+                          <button
+                            type="button"
+                            className="pm-btn"
+                            onClick={() => void start()}
+                            disabled={phase === 'starting'}
+                          >
+                            {phase === 'starting' ? 'STARTING…' : 'START GAME'}
+                          </button>
+                        </>
+                      )}
+                      {phase === 'paused' && (
+                        <>
+                          <div className="pm-card-icon" aria-hidden="true">❚❚</div>
+                          <h2>Game paused</h2>
+                          <p>PAC-MAN is taking a breather.</p>
+                          <button type="button" className="pm-btn" onClick={() => setGamePhase('playing')}>
+                            RESUME
+                          </button>
+                        </>
+                      )}
+                      {phase === 'over' && (
+                        <>
+                          <h2 className="pm-over">PAC-MAN fainted!</h2>
+                          <div className="pm-final">
+                            <small>FINAL SCORE</small>
+                            <strong>{pad(hud.score)}</strong>
+                            {isNewBest && <span className="pm-new-best">★ NEW BEST ★</span>}
+                          </div>
+                          <SubmissionStatus submission={submission} />
+                          <button type="button" className="pm-btn" onClick={() => void start()}>
+                            PLAY AGAIN
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
-            )}
+            </div>
           </div>
         </div>
+
+        <aside className="pm-side pm-side-right">
+          <div className="pm-panel">
+            <div className="pm-panel-label">WILD GHOSTS</div>
+            <ul className="pm-ghosts">
+              <li><i style={{ '--g': '#ff4b4b' } as React.CSSProperties} />Blinky<span>Chaser</span></li>
+              <li><i style={{ '--g': '#ffb8ff' } as React.CSSProperties} />Pinky<span>Ambusher</span></li>
+              <li><i style={{ '--g': '#3ce9ff' } as React.CSSProperties} />Inky<span>Fickle</span></li>
+              <li><i style={{ '--g': '#ffb852' } as React.CSSProperties} />Clyde<span>Shy</span></li>
+            </ul>
+          </div>
+          <div className="pm-panel">
+            <div className="pm-panel-label">POINTS</div>
+            <div className="pm-row"><span><b className="pm-dot" />Dot</span><strong>10</strong></div>
+            <div className="pm-row"><span><b className="pm-pellet" />Pellet</span><strong>50</strong></div>
+            <div className="pm-row"><span><b className="pm-ghost-sm" />Ghost</span><strong>200+</strong></div>
+          </div>
+        </aside>
 
         <div className="pm-dpad" aria-label="Direction pad">
           {(['U', 'L', 'R', 'D'] as Dir[]).map((dir) => (
@@ -313,6 +434,15 @@ export default function Pacman() {
               {{ U: '▲', L: '◀', R: '▶', D: '▼' }[dir]}
             </button>
           ))}
+          <button
+            type="button"
+            className="pm-dpad-pause"
+            aria-label={phase === 'paused' ? 'Resume' : 'Pause'}
+            onClick={togglePause}
+            disabled={phase !== 'playing' && phase !== 'paused'}
+          >
+            {phase === 'paused' ? '▶' : '❚❚'}
+          </button>
         </div>
       </main>
     </div>
@@ -320,12 +450,12 @@ export default function Pacman() {
 }
 
 function SubmissionStatus({ submission }: { submission: Submission }) {
-  if (submission.state === 'practice') return <p>Practice run. Not submitted.</p>
-  if (submission.state === 'sending') return <p>Verifying score…</p>
-  if (submission.state === 'error') return <p className="pm-bad">Could not submit this run.</p>
+  if (submission.state === 'practice') return <p className="pm-status">Practice run. Not submitted.</p>
+  if (submission.state === 'sending') return <p className="pm-status pm-pending">Verifying score…</p>
+  if (submission.state === 'error') return <p className="pm-status pm-bad">Could not submit this run.</p>
   if (submission.state !== 'done') return null
   const { result } = submission
-  if (result.status === 'verified') return <p className="pm-good">Score verified: {result.score}</p>
-  if (result.status === 'rejected') return <p className="pm-bad">Run rejected: {result.reason}</p>
-  return <p>Still verifying. Check the leaderboard shortly.</p>
+  if (result.status === 'verified') return <p className="pm-status pm-good">Score verified: {result.score}</p>
+  if (result.status === 'rejected') return <p className="pm-status pm-bad">Run rejected: {result.reason}</p>
+  return <p className="pm-status pm-pending">Still verifying. Check the leaderboard shortly.</p>
 }
