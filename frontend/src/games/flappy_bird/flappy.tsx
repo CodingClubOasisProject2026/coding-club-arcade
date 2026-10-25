@@ -204,20 +204,24 @@ export default function Flappy() {
     setPhase('playing');
   }, [phase]);
 
-  // Keyboard controls.
+ // Keyboard controls.
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
-      if (event.code !== 'Space' && event.code !== 'ArrowUp') return;
+      if (event.code !== 'Space' && event.code !== 'ArrowUp' && event.code !== 'KeyR') return;
 
       event.preventDefault();
 
       if (event.repeat) return;
 
       if (phase === 'playing') {
-        pendingFlap.current = true;
+        if (event.code === 'Space' || event.code === 'ArrowUp') {
+          pendingFlap.current = true;
+        }
       } else if (phase === 'menu' || phase === 'over') {
-        void start();
-      }
+        if (event.code === 'KeyR') {
+          void start();
+        }
+      } 
     };
 
     window.addEventListener('keydown', handleKey);
@@ -400,40 +404,6 @@ export default function Flappy() {
                         <span className="fb-result-number">{highScore}</span>
                         <span className="fb-result-label">BEST</span>
                       </div>
-
-                      <div className="fb-medal-area">
-                        <div className="fb-medal">
-                          <span />
-                        </div>
-                        <span className="fb-result-label">MEDAL</span>
-                      </div>
-                    </div>
-
-                    <div className="fb-results-side">
-                      <div className="fb-tabs">
-                        <span className="fb-tab fb-tab-active">DAILY</span>
-                        <span className="fb-tab">ALL TIME</span>
-                      </div>
-
-                      <div className="fb-leaderboard-heading">
-                        LEADERBOARD
-                      </div>
-
-                      {[1, 2, 3, 4, 5].map((rank) => (
-                        <div className="fb-rank-row" key={rank}>
-                          <span className={`fb-rank rank-${rank}`}>
-                            {rank}
-                          </span>
-                          <span className="fb-rank-name">---</span>
-                          <span className="fb-rank-score">-</span>
-                        </div>
-                      ))}
-
-                      <div className="fb-player-row">
-                        <span className="fb-rank fb-your-rank">•</span>
-                        <span className="fb-rank-name">YOU</span>
-                        <span className="fb-rank-score">{score}</span>
-                      </div>
                     </div>
                   </div>
 
@@ -492,7 +462,7 @@ export default function Flappy() {
 
       <footer className="fb-footer">
         <span>FLAPPY BIRD</span>
-        <span>CLICK OR PRESS SPACE TO FLAP</span>
+        <span>CLICK OR PRESS R TO FLAP</span>
       </footer>
     </main>
   );
