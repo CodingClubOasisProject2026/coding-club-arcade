@@ -1234,10 +1234,6 @@
     font-size: 24px;
   }
 
-  .ms-telemetry-bar {
-    display: none;
-  }
-
   .ms-progress-label>span {
     display: none;
   }
@@ -1610,5 +1606,172 @@
   .ms-loss-popup::backdrop {
     animation: none !important;
     transition: none !important;
+  }
+}
+
+/* ---------------------------------------------------------
+   10. LIMITS + POWER-UPS
+   --------------------------------------------------------- */
+
+/* Countdown and moves counter warn when nearly out */
+.ms-page .ms-lcd-counter.is-low {
+  animation: msLowPulse 1s ease-in-out infinite;
+}
+
+@keyframes msLowPulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.8); }
+}
+
+.ms-page .telemetry-item.is-low .telemetry-val {
+  color: var(--ms-ember);
+}
+
+/* Power-up slots in the telemetry bar */
+.ms-page .pu-item {
+  gap: 5px;
+  opacity: 0.55;
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.ms-page .pu-item.is-ready {
+  opacity: 1;
+}
+
+.ms-page .pu-item.is-ready .telemetry-val {
+  color: var(--ms-mint);
+}
+
+.ms-page .pu-sonar {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-family: var(--ms-mono);
+  font-size: inherit;
+  border-left: 1px solid var(--ms-line);
+}
+
+.ms-page .pu-sonar:disabled {
+  cursor: default;
+}
+
+.ms-page .pu-sonar.is-ready {
+  cursor: pointer;
+}
+
+.ms-page .pu-sonar.is-ready:hover {
+  background: rgba(95, 217, 160, 0.08);
+}
+
+.ms-page .pu-sonar.is-armed {
+  background: rgba(95, 217, 160, 0.2);
+  box-shadow: inset 0 0 0 1px rgba(95, 217, 160, 0.6);
+}
+
+.ms-page .pu-sonar.is-armed .telemetry-lbl {
+  color: var(--ms-mint);
+}
+
+/* Aiming the sonar */
+.ms-page .ms-board-plate.is-aiming .tile {
+  cursor: crosshair;
+}
+
+.ms-page .ms-board-plate.is-aiming .tile:hover {
+  outline: 2px solid var(--ms-mint);
+  outline-offset: -2px;
+  filter: brightness(1.25);
+}
+
+/* Small icon on a tile where a power-up was (or is) hidden */
+.ms-page .pu-badge {
+  position: absolute;
+  right: 1px;
+  bottom: 0;
+  font-size: 9px;
+  font-size: 34cqh;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.ms-page .tile.missed-powerup .pu-badge {
+  position: static;
+  font-size: 14px;
+  font-size: 52cqh;
+  opacity: 0.6;
+  filter: grayscale(0.6);
+}
+
+/* Mine found by sonar: still hidden, but marked */
+.ms-page .tile.detected {
+  background: linear-gradient(180deg, #2a3d4a, #1d2b36);
+  box-shadow:
+    inset 0 0 0 1px rgba(95, 217, 160, 0.55),
+    0 1px 2px rgba(0, 0, 0, 0.6);
+  cursor: default;
+}
+
+/* Mine blocked by a shield */
+.ms-page .tile.shielded {
+  background: #13281e;
+  box-shadow: inset 0 0 0 1px rgba(95, 217, 160, 0.6);
+}
+
+.ms-page .tile.detected .tile-icon,
+.ms-page .tile.shielded .tile-icon {
+  width: 78%;
+  height: 78%;
+  flex: none;
+}
+
+.ms-page .tile.detected .tile-icon {
+  opacity: 0.85;
+}
+
+/* Pop-up for power-up events, over the top of the board */
+.ms-page .ms-notice {
+  position: absolute;
+  top: 64px;
+  left: 50%;
+  z-index: 5;
+  max-width: calc(100% - 24px);
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-family: var(--ms-sans);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  transform: translateX(-50%);
+  animation: msNoticeIn 0.22s ease-out;
+  box-shadow: 0 8px 20px -6px rgba(0, 0, 0, 0.8);
+}
+
+.ms-page .ms-notice.good {
+  background: #0f2a20;
+  border: 1px solid rgba(95, 217, 160, 0.6);
+  color: var(--ms-mint);
+}
+
+.ms-page .ms-notice.info {
+  background: #10202b;
+  border: 1px solid rgba(108, 178, 255, 0.55);
+  color: #9fd0ff;
+}
+
+@keyframes msNoticeIn {
+  from { opacity: 0; transform: translate(-50%, -6px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ms-page .ms-lcd-counter.is-low,
+  .ms-page .ms-notice {
+    animation: none;
   }
 }

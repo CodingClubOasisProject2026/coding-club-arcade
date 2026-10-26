@@ -5,7 +5,7 @@ from .game import DIFFICULTIES
 class MoveSerializer(serializers.Serializer):
     row = serializers.IntegerField()
     column = serializers.IntegerField()
-    type = serializers.ChoiceField(choices=["reveal", "flag", "chord"])
+    type = serializers.ChoiceField(choices=["reveal", "flag", "chord", "sonar"])
     no = serializers.IntegerField(min_value=0)
 
 

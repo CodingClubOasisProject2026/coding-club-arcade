@@ -3,17 +3,34 @@ import { Link } from 'react-router-dom'
 import { ApiError } from '../../api'
 import { useAuth } from '../../auth'
 import GoogleSignIn from '../../GoogleSignIn'
-import { type Difficulty, type GameState, type MoveType, getGame, newGame, playMove } from './api'
+import { type Difficulty, type EndReason, type GameState, type MoveType, getGame, newGame, playMove } from './api'
+import {
+  DIFFICULTIES,
+  EXTEND_MOVES,
+  EXTEND_SECONDS,
+  type MoveEvents,
+  POWERUP_ICON,
+  POWERUP_NAME,
+  applyResult,
+  blankGame,
+  localExpire,
+  localMove,
+  neighbors,
+} from './engine'
 import './Minesweeper.css'
 
 const CURRENT_GAME_KEY = 'minesweeper.currentGame'
 const SOUND_STORAGE_KEY = 'minesweeper.soundEnabled'
 
-const DIFFICULTIES: { key: Difficulty; label: string; cols: number; rows: number; mines: number }[] = [
-  { key: 'beginner', label: 'Beginner', cols: 9, rows: 9, mines: 10 },
-  { key: 'intermediate', label: 'Intermediate', cols: 11, rows: 11, mines: 19 },
-  { key: 'expert', label: 'Expert', cols: 13, rows: 13, mines: 35 },
-]
+// Countdown turns red at or below this many seconds, and the moves counter at this many moves.
+const LOW_TIME = 10
+const LOW_MOVES = 5
+
+const END_TITLE: Record<EndReason, string> = {
+  mine: 'You hit a mine',
+  time: 'Out of time',
+  moves: 'Out of moves',
+}
 
 function MineGlyph({ exploded, defused }: { exploded?: boolean; defused?: boolean }) {
   if (exploded) {
@@ -221,6 +238,64 @@ class MinesweeperAudio {
     osc.stop(now + 0.45)
   }
 
+  // Rising arpeggio for picking up a power-up.
+  playPowerUp() {
+    const ctx = this.getContext()
+    if (!ctx) return
+    const now = ctx.currentTime
+    ;[660, 880, 1320].forEach((freq, idx) => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = 'square'
+      osc.frequency.setValueAtTime(freq, now + idx * 0.05)
+      gain.gain.setValueAtTime(0.05, now + idx * 0.05)
+      gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.05 + 0.12)
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.start(now + idx * 0.05)
+      osc.stop(now + idx * 0.05 + 0.12)
+    })
+  }
+
+  // Metallic clang when a shield blocks a mine.
+  playShield() {
+    const ctx = this.getContext()
+    if (!ctx) return
+    const now = ctx.currentTime
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.type = 'triangle'
+    osc.frequency.setValueAtTime(220, now)
+    osc.frequency.exponentialRampToValueAtTime(880, now + 0.08)
+    osc.frequency.exponentialRampToValueAtTime(330, now + 0.3)
+    gain.gain.setValueAtTime(0.18, now)
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35)
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    osc.start(now)
+    osc.stop(now + 0.35)
+  }
+
+  // Two sonar pings.
+  playSonar() {
+    const ctx = this.getContext()
+    if (!ctx) return
+    const now = ctx.currentTime
+    ;[0, 0.18].forEach((delay) => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(1400, now + delay)
+      osc.frequency.exponentialRampToValueAtTime(900, now + delay + 0.15)
+      gain.gain.setValueAtTime(0.1, now + delay)
+      gain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.16)
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.start(now + delay)
+      osc.stop(now + delay + 0.16)
+    })
+  }
+
   playWin() {
     const ctx = this.getContext()
     if (!ctx) return
@@ -258,8 +333,10 @@ export default function Minesweeper() {
   const [soundOn, setSoundOn] = useState(() => audio.enabled)
   const [isClickingCell, setIsClickingCell] = useState(false)
   const [isShaking, setIsShaking] = useState(false)
-  const [localStart, setLocalStart] = useState<number | null>(null)
+  const [sonarMode, setSonarMode] = useState(false)
+  const [notice, setNotice] = useState<{ text: string; tone: 'good' | 'info'; id: number } | null>(null)
   const [elapsed, setElapsed] = useState(0)
+  const [nowMs, setNowMs] = useState(() => Date.now())
   const [totalClicks, setTotalClicks] = useState(0)
   const [zoom, setZoom] = useState(1)
   const [dismissedRotatePrompt, setDismissedRotatePrompt] = useState(false)
@@ -294,46 +371,61 @@ export default function Minesweeper() {
     return DIFFICULTIES.find((d) => d.key === difficulty) ?? DIFFICULTIES[0]
   }, [difficulty])
 
-  // Timer loop
+  // Elapsed time, for APM and the result bar.
   useEffect(() => {
-    const isRunning = game?.status === 'in_progress' && (game.startedAt || localStart)
+    const isRunning = game?.status === 'in_progress' && game.startedAt
     if (!isRunning) return
 
-    const startMs = game?.startedAt ? Date.parse(game.startedAt) : localStart || Date.now()
+    const startMs = Date.parse(game.startedAt!)
     const interval = setInterval(() => {
       setElapsed(Math.max(0, Math.floor((Date.now() - startMs) / 1000)))
     }, 250)
 
     return () => clearInterval(interval)
-  }, [game?.status, game?.startedAt, localStart])
+  }, [game?.status, game?.startedAt])
 
   useEffect(() => {
-    if (!game?.startedAt && !localStart) {
+    if (!game?.startedAt) {
       setElapsed(0)
     }
-  }, [game?.startedAt, localStart])
+  }, [game?.startedAt])
+
+  // Countdown. Every board update carries fresh `time_left` (seconds left when
+  // the server answered), so the deadline is rebuilt from it on each update.
+  // Using our own clock for the deadline keeps it right even if the player's
+  // clock disagrees with the server's.
+  const running = game?.status === 'in_progress' && !!game.startedAt && game.time_left !== null
+  const deadline = useMemo(
+    () => (running && game ? Date.now() + game.time_left! * 1000 : null),
+    // Rebuild only when a new board state arrives.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [game],
+  )
+
+  useEffect(() => {
+    if (deadline === null) return
+    setNowMs(Date.now())
+    const interval = setInterval(() => setNowMs(Date.now()), 200)
+    return () => clearInterval(interval)
+  }, [deadline])
+
+  const secondsLeft =
+    deadline !== null
+      ? Math.max(0, (deadline - nowMs) / 1000)
+      : (game?.time_left ?? currentConfig.time)
+
+  const movesLeft = game ? game.moves_left : currentConfig.moves
+
+  // Sonar can be aimed once the board has started and one is in stock.
+  const canSonar = game?.status === 'in_progress' && !!game.startedAt && game.sonars > 0
+  const sonarArmed = sonarMode && canSonar
 
   // A blank board. 'pending' boards have no session yet (the ticket is spent on
   // the first reveal); 'local' boards are practice games that never hit the API.
-  const blankBoard = useCallback((kind: 'pending' | 'local'): GameState => {
-    const config = currentConfig
-    return {
-      id: `${kind}-${Date.now()}`,
-      width: config.cols,
-      height: config.rows,
-      mine_count: config.mines,
-      status: 'in_progress',
-      move_count: 0,
-      cells: [],
-      flagged: [],
-      mines_left: config.mines,
-      startedAt: null,
-      finishedAt: null,
-      mines: undefined,
-      exploded: [],
-      score: 0,
-    }
-  }, [currentConfig])
+  const blankBoard = useCallback(
+    (kind: 'pending' | 'local'): GameState => blankGame(currentConfig, `${kind}-${Date.now()}`),
+    [currentConfig],
+  )
 
   // Reset to a blank board. No session is created and no ticket is spent until
   // the player reveals their first tile (see move()).
@@ -341,11 +433,23 @@ export default function Minesweeper() {
     if (pending.current) return
     setError(null)
     setGame(blankBoard('pending'))
-    setLocalStart(null)
     setElapsed(0)
     setTotalClicks(0)
+    setSonarMode(false)
+    setNotice(null)
     audio.playClick()
   }, [blankBoard])
+
+  // Short pop-up for power-up events.
+  const showNotice = useCallback((text: string, tone: 'good' | 'info' = 'good') => {
+    setNotice({ text, tone, id: Date.now() })
+  }, [])
+
+  useEffect(() => {
+    if (!notice) return
+    const t = setTimeout(() => setNotice(null), 2200)
+    return () => clearTimeout(t)
+  }, [notice])
 
   // Spends a ticket and creates the server game. Falls back to practice mode.
   const createSession = useCallback(async (): Promise<GameState> => {
@@ -429,7 +533,6 @@ export default function Minesweeper() {
           setDifficulty(config.key)
         }
         setGame(g)
-        setLocalStart(null)
         setTotalClicks(g.move_count)
         setError(null)
       })
@@ -442,6 +545,27 @@ export default function Minesweeper() {
       cancelled = true
     }
   }, [])
+
+  // When the countdown reaches zero, end the game. Practice games end here; for
+  // ranked games the server decides, so ask it (it ends the game on that request).
+  const expiringRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!game || deadline === null || nowMs < deadline) return
+    if (game.id.startsWith('local-')) {
+      setGame((g) => (g ? localExpire(g) : g))
+      return
+    }
+    if (expiringRef.current === game.id) return
+    const id = game.id
+    expiringRef.current = id
+    getGame(id)
+      .then((g) => setGame((cur) => (cur && cur.id === id ? g : cur)))
+      .catch(() => {})
+      .finally(() => {
+        // Allows a retry if the server still had time left.
+        if (expiringRef.current === id) expiringRef.current = null
+      })
+  }, [game, deadline, nowMs])
 
   // Win/Loss Audio triggers
   // A finished ranked game has nothing to resume.
@@ -479,6 +603,15 @@ export default function Minesweeper() {
           audio.playFlag(!f)
           return !f
         })
+      } else if (e.key === 's' || e.key === 'S') {
+        if (canSonar) {
+          setSonarMode((on) => {
+            if (!on) audio.playSonar()
+            return !on
+          })
+        }
+      } else if (e.key === 'Escape') {
+        setSonarMode(false)
       } else if (e.key === '+' || e.key === '=') {
         setZoom((z) => Math.min(1.8, Number((z + 0.15).toFixed(2))))
       } else if (e.key === '-' || e.key === '_') {
@@ -489,7 +622,43 @@ export default function Minesweeper() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [start])
+  }, [start, canSonar])
+
+  // Sounds and pop-ups for what a move turned up.
+  const announce = useCallback(
+    (type: MoveType, index: number, flagged: number[], events: MoveEvents) => {
+      if (type === 'flag') {
+        audio.playFlag(flagged.includes(index))
+      } else if (type === 'sonar') {
+        audio.playSonar()
+      } else if (events.cells.length > 0) {
+        audio.playReveal(events.cells[0][1], events.cells.length > 1)
+      }
+
+      const messages: string[] = []
+      if (type === 'sonar') {
+        const n = events.pinged.length
+        messages.push(n ? `📡 Sonar found ${n} mine${n === 1 ? '' : 's'}` : '📡 No new mines there')
+      }
+      if (events.blocked.length > 0) {
+        audio.playShield()
+        messages.push('🛡️ Shield blocked a mine!')
+      }
+      if (events.picked_up.length > 0) {
+        audio.playPowerUp()
+        for (const [, kind] of events.picked_up) {
+          if (kind === 'shield') messages.push('🛡️ Shield ready')
+          else if (kind === 'sonar') messages.push('📡 Sonar ready (S)')
+          else messages.push(`⏱️ +${EXTEND_SECONDS}s +${EXTEND_MOVES} moves`)
+        }
+      }
+      if (messages.length > 0) {
+        const goodNews = events.blocked.length > 0 || events.picked_up.length > 0
+        showNotice(messages.join(' · '), goodNews ? 'good' : 'info')
+      }
+    },
+    [showNotice],
+  )
 
   // Move handler
   const move = useCallback(
@@ -513,249 +682,24 @@ export default function Minesweeper() {
         setGame(current)
       }
 
-      // Local practice mode
+      // Practice game: play it locally with the same rules as the server.
       if (current.id.startsWith('local-')) {
         try {
-          const { width, height, mine_count } = current
-          const totalCells = width * height
-          let currentMines = current.mines ? new Set(current.mines) : null
-          const openedMap = new Map(current.cells)
-          const flaggedSet = new Set(current.flagged)
-
-          if (type === 'flag') {
-            if (openedMap.has(index)) return
-            if (flaggedSet.has(index)) {
-              flaggedSet.delete(index)
-              audio.playFlag(false)
-            } else {
-              if (flaggedSet.size >= mine_count) return
-              flaggedSet.add(index)
-              audio.playFlag(true)
-            }
-            setGame((g) =>
-              g
-                ? {
-                  ...g,
-                  flagged: Array.from(flaggedSet),
-                  mines_left: mine_count - flaggedSet.size,
-                }
-                : null,
-            )
-            return
-          }
-
-          let isFirst = false
-          if (!currentMines) {
-            isFirst = true
-            setLocalStart(Date.now())
-            const safeZone = new Set<number>()
-            const r0 = Math.floor(index / width)
-            const c0 = index % width
-            for (let dr = -1; dr <= 1; dr++) {
-              for (let dc = -1; dc <= 1; dc++) {
-                const nr = r0 + dr
-                const nc = c0 + dc
-                if (nr >= 0 && nr < height && nc >= 0 && nc < width) {
-                  safeZone.add(nr * width + nc)
-                }
-              }
-            }
-
-            const candidates: number[] = []
-            for (let i = 0; i < totalCells; i++) {
-              if (!safeZone.has(i)) candidates.push(i)
-            }
-            for (let i = candidates.length - 1; i > 0; i--) {
-              const j = Math.floor(Math.random() * (i + 1))
-                ;[candidates[i], candidates[j]] = [candidates[j], candidates[i]]
-            }
-
-            const placed = new Set(candidates.slice(0, mine_count))
-            if (placed.size < mine_count) {
-              for (let i = 0; i < totalCells; i++) {
-                if (i !== index && placed.size < mine_count) placed.add(i)
-              }
-            }
-            currentMines = placed
-          }
-
-          const getNeighbors = (idx: number) => {
-            const r = Math.floor(idx / width)
-            const c = idx % width
-            const n: number[] = []
-            for (let dr = -1; dr <= 1; dr++) {
-              for (let dc = -1; dc <= 1; dc++) {
-                if (dr === 0 && dc === 0) continue
-                const nr = r + dr
-                const nc = c + dc
-                if (nr >= 0 && nr < height && nc >= 0 && nc < width) {
-                  n.push(nr * width + nc)
-                }
-              }
-            }
-            return n
-          }
-
-          if (type === 'chord') {
-            const val = openedMap.get(index)
-            if (val === undefined || val === 0) return
-            const neighbors = getNeighbors(index)
-            const flagCount = neighbors.filter((n) => flaggedSet.has(n)).length
-            if (flagCount !== val) return
-
-            const toReveal = neighbors.filter((n) => !flaggedSet.has(n) && !openedMap.has(n))
-            if (toReveal.length === 0) return
-
-            const hitMines = toReveal.filter((idx) => currentMines!.has(idx))
-            if (hitMines.length > 0) {
-              setGame((g) =>
-                g
-                  ? {
-                    ...g,
-                    status: 'lost',
-                    mines: Array.from(currentMines!),
-                    exploded: hitMines,
-                    finishedAt: new Date().toISOString(),
-                  }
-                  : null,
-              )
-              return
-            }
-
-            const queue = [...toReveal]
-            const newlyOpened: [number, number][] = []
-            const visited = new Set<number>()
-
-            while (queue.length > 0) {
-              const curr = queue.shift()!
-              if (visited.has(curr) || openedMap.has(curr) || flaggedSet.has(curr)) continue
-              visited.add(curr)
-              const nList = getNeighbors(curr)
-              const adjMines = nList.filter((n) => currentMines!.has(n)).length
-              newlyOpened.push([curr, adjMines])
-              openedMap.set(curr, adjMines)
-
-              if (adjMines === 0) {
-                for (const n of nList) {
-                  if (!visited.has(n) && !openedMap.has(n)) queue.push(n)
-                }
-              }
-            }
-
-            const allOpened = [...current.cells, ...newlyOpened]
-            const won = allOpened.length === totalCells - mine_count
-            setGame((g) =>
-              g
-                ? {
-                  ...g,
-                  mines: Array.from(currentMines!),
-                  move_count: g.move_count + 1,
-                  cells: allOpened,
-                  status: won ? 'won' : 'in_progress',
-                  score: won ? Math.max(100, 1000 - g.move_count * 2) : 0,
-                  finishedAt: won ? new Date().toISOString() : null,
-                }
-                : null,
-            )
-            return
-          }
-
-          if (flaggedSet.has(index)) return
-          if (openedMap.has(index)) {
-            pending.current = false
-            move('chord', index)
-            return
-          }
-
-          if (currentMines.has(index)) {
-            setGame((g) =>
-              g
-                ? {
-                  ...g,
-                  status: 'lost',
-                  mines: Array.from(currentMines!),
-                  exploded: [index],
-                  finishedAt: new Date().toISOString(),
-                }
-                : null,
-            )
-            return
-          }
-
-          const queue = [index]
-          const newlyOpened: [number, number][] = []
-          const visited = new Set<number>()
-
-          while (queue.length > 0) {
-            const curr = queue.shift()!
-            if (visited.has(curr) || openedMap.has(curr) || flaggedSet.has(curr)) continue
-            visited.add(curr)
-
-            const neighbors = getNeighbors(curr)
-            const adjMines = neighbors.filter((n) => currentMines!.has(n)).length
-            newlyOpened.push([curr, adjMines])
-            openedMap.set(curr, adjMines)
-
-            if (adjMines === 0) {
-              for (const n of neighbors) {
-                if (!visited.has(n) && !openedMap.has(n)) queue.push(n)
-              }
-            }
-          }
-
-          const allOpened = [...current.cells, ...newlyOpened]
-          const won = allOpened.length === totalCells - mine_count
-          const count = newlyOpened.length > 0 ? newlyOpened[0][1] : 0
-          audio.playReveal(count, newlyOpened.length > 1 || isFirst)
-
-          setGame((g) =>
-            g
-              ? {
-                ...g,
-                mines: Array.from(currentMines!),
-                startedAt: g.startedAt || new Date().toISOString(),
-                move_count: g.move_count + 1,
-                cells: allOpened,
-                status: won ? 'won' : 'in_progress',
-                score: won ? Math.max(100, 1000 - g.move_count * 2) : 0,
-                finishedAt: won ? new Date().toISOString() : null,
-              }
-              : null,
-          )
+          const outcome = localMove(current, type, index)
+          if (!outcome) return
+          setGame(outcome.game)
+          announce(type, index, outcome.game.flagged, outcome.events)
         } finally {
           pending.current = false
         }
         return
       }
 
-      // Backend Hub Mode
+      // Ranked game: the server plays the move.
       try {
         const r = await playMove(current.id, current.move_count, type, index, current.width)
-        if (type !== 'flag' && !current.startedAt && localStart === null) setLocalStart(Date.now())
-
-        if (type === 'flag') {
-          audio.playFlag(r.flagged.includes(index))
-        } else {
-          const firstCount = r.cells.length > 0 ? r.cells[0][1] : 0
-          audio.playReveal(firstCount, r.cells.length > 1)
-        }
-
-        setGame((g) =>
-          g
-            ? {
-              ...g,
-              status: r.status,
-              move_count: r.move_count,
-              cells: [...g.cells, ...r.cells],
-              flagged: r.flagged,
-              mines_left: r.mines_left,
-              mines: r.mines,
-              exploded: r.exploded,
-              score: r.score,
-              finishedAt: r.status !== 'in_progress' ? new Date().toISOString() : g.finishedAt,
-            }
-            : null,
-        )
+        setGame((g) => (g && g.id === current.id ? applyResult(g, r) : g))
+        announce(type, index, r.flagged, r)
 
         if (r.status !== 'in_progress') {
           getGame(current.id).then(setGame).catch(() => { })
@@ -768,7 +712,7 @@ export default function Minesweeper() {
         pending.current = false
       }
     },
-    [game, localStart, createSession],
+    [game, createSession, announce],
   )
 
   const view = useMemo(() => {
@@ -778,6 +722,11 @@ export default function Minesweeper() {
       flagged: new Set(game.flagged),
       mines: new Set(game.mines ?? []),
       exploded: new Set(game.exploded ?? []),
+      detected: new Set(game.detected),
+      defused: new Set(game.defused),
+      found: new Map(game.found),
+      // Power-ups nobody picked up, shown once the game is over.
+      missed: new Map(game.status !== 'in_progress' ? (game.powerups ?? []) : []),
     }
   }, [game])
 
@@ -830,17 +779,33 @@ export default function Minesweeper() {
     }
   }
 
-  const onCellClick = (index: number, isOpen: boolean, isFlag: boolean) => {
+  // Only chord when it can open something, so a stray click never costs a move.
+  const canChord = (index: number) => {
+    if (!game || !view) return false
+    const value = view.opened.get(index)
+    if (!value) return false
+    const around = neighbors(index, game.width, game.height)
+    const isMarked = (n: number) => view.flagged.has(n) || view.defused.has(n) || view.detected.has(n)
+    return (
+      around.filter(isMarked).length === value &&
+      around.some((n) => !view.opened.has(n) && !isMarked(n))
+    )
+  }
+
+  const onCellClick = (index: number, isOpen: boolean, isFlag: boolean, isDetected: boolean) => {
     if (didLongPress.current || isTouchDragging.current) {
       didLongPress.current = false
       isTouchDragging.current = false
       return
     }
-    if (isOpen) {
-      move('chord', index)
+    if (sonarArmed) {
+      setSonarMode(false)
+      move('sonar', index)
+    } else if (isOpen) {
+      if (canChord(index)) move('chord', index)
     } else if (flagMode) {
       move('flag', index)
-    } else if (!isFlag) {
+    } else if (!isFlag && !isDetected) {
       move('reveal', index)
     }
   }
@@ -1002,7 +967,7 @@ export default function Minesweeper() {
 
       <main className="ms-main-stage">
         <div className="ms-cabinet-card">
-          {/* HUD: mines left, restart, timer */}
+          {/* HUD: mines left, restart, countdown */}
           <div className="ms-hud-panel">
             <div className="ms-lcd-counter" title="Mines left" aria-label="Mines left">
               {formatDigits(game?.mines_left ?? currentConfig.mines)}
@@ -1019,16 +984,26 @@ export default function Minesweeper() {
               <span className="smiley-face">{face}</span>
             </button>
 
-            <div className="ms-lcd-counter" title="Time in seconds" aria-label="Time in seconds">
-              {formatDigits(elapsed)}
+            <div
+              className={`ms-lcd-counter ${running && secondsLeft <= LOW_TIME ? 'is-low' : ''}`}
+              title="Seconds left"
+              aria-label="Seconds left"
+            >
+              {formatDigits(Math.ceil(secondsLeft))}
             </div>
           </div>
+
+          {notice && (
+            <div key={notice.id} className={`ms-notice ${notice.tone}`} role="status">
+              {notice.text}
+            </div>
+          )}
 
           {/* Minefield */}
           {game && view && (
             <div className="ms-board-viewport" ref={boardViewportRef}>
               <div
-                className="ms-board-plate"
+                className={`ms-board-plate ${sonarArmed ? 'is-aiming' : ''}`}
                 role="group"
                 aria-label="Minefield"
                 style={{
@@ -1044,6 +1019,10 @@ export default function Minesweeper() {
                   const isFlag = view.flagged.has(i)
                   const isMine = view.mines.has(i)
                   const isExploded = view.exploded.has(i)
+                  const isDefused = view.defused.has(i)
+                  const isDetected = view.detected.has(i)
+                  const foundPowerUp = view.found.get(i)
+                  const missedPowerUp = view.missed.get(i)
 
                   // SVG glyphs scale crisply with optimalTileSize
                   let cls = 'tile'
@@ -1052,8 +1031,22 @@ export default function Minesweeper() {
 
                   if (isOpen) {
                     cls += ` open n${n}`
-                    content = n ? <span className="n-digit">{n}</span> : null
+                    content = (
+                      <>
+                        {n ? <span className="n-digit">{n}</span> : null}
+                        {foundPowerUp && (
+                          <span className="pu-badge" aria-hidden="true">
+                            {POWERUP_ICON[foundPowerUp]}
+                          </span>
+                        )}
+                      </>
+                    )
                     label = n ? `${n} adjacent` : 'Empty'
+                    if (foundPowerUp) label += `, ${POWERUP_NAME[foundPowerUp]} picked up`
+                  } else if (isDefused) {
+                    cls += ' open shielded'
+                    content = <MineGlyph defused />
+                    label = 'Mine blocked by shield'
                   } else if (isExploded) {
                     cls += ' open boom'
                     content = <MineGlyph exploded />
@@ -1063,12 +1056,26 @@ export default function Minesweeper() {
                     cls += isWrong ? ' flag wrong' : ' flag'
                     content = <FlagGlyph isWrong={isWrong} />
                     label = isWrong ? 'Wrong flag' : 'Flagged'
+                  } else if (isDetected) {
+                    cls += ' detected'
+                    content = <MineGlyph />
+                    label = 'Mine found by sonar'
                   } else if (isMine && game.status !== 'in_progress') {
-                    const isDefused = game.status === 'won'
-                    cls += isDefused ? ' open defused' : ' open mine'
-                    content = <MineGlyph defused={isDefused} />
-                    label = isDefused ? 'Defused mine' : 'Mine'
+                    const isWon = game.status === 'won'
+                    cls += isWon ? ' open defused' : ' open mine'
+                    content = <MineGlyph defused={isWon} />
+                    label = isWon ? 'Defused mine' : 'Mine'
+                  } else if (missedPowerUp) {
+                    cls += ' missed-powerup'
+                    content = (
+                      <span className="pu-badge" aria-hidden="true">
+                        {POWERUP_ICON[missedPowerUp]}
+                      </span>
+                    )
+                    label = `Hidden ${POWERUP_NAME[missedPowerUp]}`
                   }
+                  // Tiles that act like opened ones: no digging, flagging or long-press.
+                  const isSettled = isOpen || isDefused
 
                   return (
                     <button
@@ -1078,18 +1085,21 @@ export default function Minesweeper() {
                       style={{ width: `${optimalTileSize}px`, height: `${optimalTileSize}px` }}
                       aria-label={`Row ${Math.floor(i / cols) + 1}, column ${(i % cols) + 1}: ${label}`}
                       onMouseDown={(e) => {
-                        if (e.button === 0 && !isOpen && !isFlag) setIsClickingCell(true)
+                        if (e.button === 0 && !isSettled && !isFlag && !isDetected) setIsClickingCell(true)
                       }}
                       onMouseUp={() => setIsClickingCell(false)}
                       onMouseLeave={() => setIsClickingCell(false)}
-                      onTouchStart={(e) => onTouchStartCell(e, i, isOpen)}
+                      onTouchStart={(e) => onTouchStartCell(e, i, isSettled)}
                       onTouchMove={onTouchMoveCell}
                       onTouchEnd={onTouchEndCell}
                       onTouchCancel={onTouchEndCell}
-                      onClick={() => onCellClick(i, isOpen, isFlag)}
+                      onClick={() => {
+                        if (isDefused && !sonarArmed) return
+                        onCellClick(i, isOpen, isFlag, isDetected)
+                      }}
                       onContextMenu={(e) => {
                         e.preventDefault()
-                        if (!isOpen) move('flag', i)
+                        if (!isSettled) move('flag', i)
                       }}
                     >
                       {content}
@@ -1101,21 +1111,39 @@ export default function Minesweeper() {
           )}
 
           {/* Stats */}
+          {/* Moves left and power-ups */}
           <div className="ms-telemetry-bar">
-            <div className="telemetry-item">
-              <span className="telemetry-lbl">APM</span>
-              <span className="telemetry-val">{apm}</span>
-            </div>
-            <div className="telemetry-item">
+            <div
+              className={`telemetry-item ${movesLeft !== null && movesLeft <= LOW_MOVES && game?.status === 'in_progress' ? 'is-low' : ''}`}
+              title="Digs, chords and sonar pings use a move. Flags are free."
+            >
               <span className="telemetry-lbl">Moves</span>
-              <span className="telemetry-val">{game?.move_count ?? 0}</span>
+              <span className="telemetry-val">{movesLeft ?? '∞'}</span>
             </div>
-            <div className="telemetry-item">
-              <span className="telemetry-lbl">Grid</span>
-              <span className="telemetry-val">
-                {cols}×{rows}
-              </span>
+            <div
+              className={`telemetry-item pu-item ${(game?.shields ?? 0) > 0 ? 'is-ready' : ''}`}
+              title="Shield: blocks the next mine you hit"
+            >
+              <span aria-hidden="true">{POWERUP_ICON.shield}</span>
+              <span className="telemetry-lbl">Shield</span>
+              <span className="telemetry-val">{game?.shields ?? 0}</span>
             </div>
+            <button
+              type="button"
+              className={`telemetry-item pu-item pu-sonar ${canSonar ? 'is-ready' : ''} ${sonarArmed ? 'is-armed' : ''}`}
+              onClick={() => {
+                if (!canSonar) return
+                setSonarMode((on) => !on)
+                audio.playSonar()
+              }}
+              disabled={!canSonar}
+              aria-pressed={sonarArmed}
+              title="Sonar (S): tap a tile to show the mines in the 3×3 around it. Uses a move."
+            >
+              <span aria-hidden="true">{POWERUP_ICON.sonar}</span>
+              <span className="telemetry-lbl">{sonarArmed ? 'Pick a tile' : 'Sonar'}</span>
+              <span className="telemetry-val">{game?.sonars ?? 0}</span>
+            </button>
           </div>
 
           {/* Controls */}
@@ -1179,7 +1207,9 @@ export default function Minesweeper() {
             </div>
 
             <span className="ms-footer-hint">
-              Left-click to dig. Right-click to flag. Click a number to chord.
+              {sonarArmed
+                ? 'Sonar armed: click a tile to scan around it. Esc cancels.'
+                : 'Left-click to dig. Right-click to flag. S for sonar.'}
             </span>
           </div>
 
@@ -1187,9 +1217,9 @@ export default function Minesweeper() {
           {game && game.status !== 'in_progress' && (
             <div className={`ms-status-toast ${game.status}`} role="status">
               <div className="toast-content">
-                <strong>{game.status === 'won' ? 'Board cleared' : 'You hit a mine'}</strong>
+                <strong>{game.status === 'won' ? 'Board cleared' : END_TITLE[game.end_reason ?? 'mine']}</strong>
                 <span>
-                  {elapsed}s · {game.move_count} moves · {apm} APM
+                  {elapsed}s · {game.moves_used} moves · {apm} APM
                   {game.status === 'won' && game.score ? ` · Score ${game.score}` : ''}
                 </span>
               </div>

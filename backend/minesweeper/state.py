@@ -39,6 +39,24 @@ class MinesweeperState:
     startedAt: datetime = field(default_factory=timezone.now)
     finishedAt: datetime | None = None
     score: int | None = None
+    # Limits. None means no limit (games cached before limits existed).
+    time_limit: int | None = None
+    move_limit: int | None = None
+    moves_used: int = 0
+    bonus_seconds: int = 0
+    bonus_moves: int = 0
+    # Power-ups: how many to hide (placed with the mines on the first reveal),
+    # [[cell, type], ...] still hidden, and the ones picked up.
+    powerup_count: int = 0
+    powerups: list = field(default_factory=list)
+    found: list = field(default_factory=list)
+    shields: int = 0
+    sonars: int = 0
+    # Mines shown by sonar, and mines blocked by a shield.
+    detected: list = field(default_factory=list)
+    defused: list = field(default_factory=list)
+    # Why a lost game ended: "mine", "time" or "moves".
+    end_reason: str | None = None
 
     @property
     def pk(self):
