@@ -58,6 +58,8 @@ def create_game(seed):
         "snake": [segment.copy() for segment in INITIAL_SNAKE],
         "direction": INITIAL_DIRECTION,
         "apple": None,
+        "key": None,
+        "has_key": False,
         "score": 0,
         "apples_eaten": 0,
         "status": "ACTIVE",
@@ -66,11 +68,11 @@ def create_game(seed):
         "rng": seed_to_rng(seed),
     }
     game["apple"] = generate_apple(game)
+    game["key"] = generate_key(game)
     return game
 
 
 def generate_apple(game):
-    # Pick a free cell, scanning column by column (x outer, y inner).
     occupied = {tuple(segment) for segment in game["snake"]}
     free = [
         [x, y]
@@ -82,6 +84,20 @@ def generate_apple(game):
         return None
     return free[next_random(game) % len(free)]
 
+def generate_key(game):
+    occupied = {tuple(segment) for segment in game["snake"]}
+    if game["apple"] is not None:
+        occupied.add(tuple(game["apple"]))
+        
+    free = [
+        [x, y]
+        for x in range(BOARD_WIDTH)
+        for y in range(BOARD_HEIGHT)
+        if (x, y) not in occupied
+    ]
+    if not free:
+        return None
+    return free[next_random(game) % len(free)]
 
 def move_snake(game, direction):
     """Advance one tick in the given direction."""
@@ -99,9 +115,12 @@ def move_snake(game, direction):
     head_x, head_y = game["snake"][0]
     new_head = [head_x + dx, head_y + dy]
     x, y = new_head
-    ate_apple = new_head == game["apple"]
 
-    # The tail moves out of the way unless the snake grows.
+    ate_apple = (
+        new_head == game["apple"]
+        and game["has_key"]
+    )
+
     body = game["snake"] if ate_apple else game["snake"][:-1]
 
     if not (0 <= x < BOARD_WIDTH and 0 <= y < BOARD_HEIGHT) or new_head in body:
@@ -111,12 +130,22 @@ def move_snake(game, direction):
     game["direction"] = direction
     game["snake"].insert(0, new_head)
 
+    if game["key"] is not None and new_head == game["key"]:
+        game["key"] = None
+        game["has_key"] = True
+
     if ate_apple:
         game["score"] += POINTS_PER_APPLE
         game["apples_eaten"] += 1
+
         game["apple"] = generate_apple(game)
+
         if game["apple"] is None:
+            game["key"] = None
             game["status"] = "WON"
+        else:
+            game["key"] = generate_key(game)
+            game["has_key"] = False
     else:
         game["snake"].pop()
 
