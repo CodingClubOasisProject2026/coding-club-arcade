@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
-from django.db.models import F, Sum
+from django.db.models import DecimalField, F, Sum
+from django.db.models.functions import Round
 from django.db.transaction import atomic
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
@@ -20,7 +21,19 @@ User = get_user_model()
 
 class LeaderboardView(ListAPIView):
     serializer_class = LeaderboardSerializer
-    queryset = User.objects.annotate(score=Sum("sessions__score")).exclude(score__isnull=True).order_by("-score", "username")
+    # Each game's raw score is scaled by its ratio so every game counts about the same.
+    queryset = (
+        User.objects.annotate(
+            score=Round(
+                Sum(
+                    F("sessions__score") * F("sessions__game__ratio"),
+                    output_field=DecimalField(max_digits=20, decimal_places=5),
+                )
+            )
+        )
+        .exclude(score__isnull=True)
+        .order_by("-score", "username")
+    )
 
     @method_decorator(cache_page(10))
     def dispatch(self, request, *args, **kwargs):
