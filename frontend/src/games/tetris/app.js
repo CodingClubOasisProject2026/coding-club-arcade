@@ -472,15 +472,20 @@
         board.append(cell);
       }),
     );
+    const scoreStr = String(game.score).padStart(6, "0");
+    const linesStr = String(game.lines).padStart(2, "0");
+    const levelStr = String(game.level).padStart(2, "0");
 
-    getElement("score").textContent = String(game.score).padStart(6, "0");
-    getElement("lines").textContent = String(game.lines).padStart(2, "0");
-    getElement("level").textContent = String(game.level).padStart(2, "0");
+    getElement("score").textContent = scoreStr;
+    getElement("lines").textContent = linesStr;
+    getElement("level").textContent = levelStr;
+
     renderNextPiece();
   }
 
   function renderNextPiece() {
     const preview = getElement("next-preview");
+    if (!preview) return;
     preview.replaceChildren();
     for (let y = 0; y < 4; y++) {
       for (let x = 0; x < 4; x++) {
@@ -663,10 +668,202 @@
     }
   }
 
-  getElement("best-score").textContent = String(
-    localStorage.getItem("arcade-tetris-best") || 0,
-  ).padStart(6, "0");
+  function updateBestScore(best) {
+    const formatted = String(best).padStart(6, "0");
+    const bestEl = getElement("best-score");
+    if (bestEl) bestEl.textContent = formatted;
+    const navBestEl = getElement("nav-best-score");
+    if (navBestEl) navBestEl.textContent = formatted;
+  }
+
+  function setupTouchControls() {
+    function bindAutoRepeat(button, action, initialDelay = 150, repeatInterval = 55) {
+      if (!button) return;
+      let timer = null;
+      let interval = null;
+
+      const trigger = () => {
+        if (game.status === "playing") {
+          performAction(action);
+          if (navigator.vibrate) {
+            try { navigator.vibrate(8); } catch (_) {}
+          }
+        }
+      };
+
+      const start = (e) => {
+        e.preventDefault();
+        if (game.status !== "playing") return;
+        button.classList.add("touch-active");
+        trigger();
+
+        clearTimeout(timer);
+        clearInterval(interval);
+        timer = setTimeout(() => {
+          interval = setInterval(() => {
+            if (game.status === "playing") {
+              trigger();
+            } else {
+              stop();
+            }
+          }, repeatInterval);
+        }, initialDelay);
+      };
+
+      const stop = (e) => {
+        if (e && e.cancelable) e.preventDefault();
+        button.classList.remove("touch-active");
+        clearTimeout(timer);
+        clearInterval(interval);
+      };
+
+      button.addEventListener("pointerdown", start);
+      button.addEventListener("pointerup", stop);
+      button.addEventListener("pointercancel", stop);
+      button.addEventListener("pointerleave", stop);
+      button.addEventListener("contextmenu", (e) => e.preventDefault());
+    }
+
+    function bindSingleTap(button, action, vibrateMs = 15) {
+      if (!button) return;
+      button.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        button.classList.add("touch-active");
+        if (game.status === "playing") {
+          performAction(action);
+          if (navigator.vibrate) {
+            try { navigator.vibrate(vibrateMs); } catch (_) {}
+          }
+        }
+      });
+      const end = () => button.classList.remove("touch-active");
+      button.addEventListener("pointerup", end);
+      button.addEventListener("pointercancel", end);
+      button.addEventListener("pointerleave", end);
+      button.addEventListener("contextmenu", (e) => e.preventDefault());
+    }
+
+    bindAutoRepeat(getElement("btn-touch-left"), "left", 150, 55);
+    bindAutoRepeat(getElement("btn-touch-right"), "right", 150, 55);
+    bindAutoRepeat(getElement("btn-touch-down"), "soft_drop", 140, 50);
+    bindSingleTap(getElement("btn-touch-rotate"), "rotate", 18);
+    bindSingleTap(getElement("btn-touch-drop"), "hard_drop", 35);
+
+    const pauseBtn = getElement("btn-touch-pause");
+    if (pauseBtn) {
+      pauseBtn.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        pauseBtn.classList.add("touch-active");
+        if (game.status === "playing") {
+          pauseGame();
+          if (navigator.vibrate) try { navigator.vibrate(15); } catch (_) {}
+        } else if (game.status === "paused") {
+          setGameStatus("playing", "IN GAME");
+          getElement("overlay").classList.add("hidden");
+          addKeyboardListener();
+          scheduleGravity();
+          game.elapsedTimer = setInterval(updateElapsedTime, 1000);
+          if (navigator.vibrate) try { navigator.vibrate(15); } catch (_) {}
+        }
+      });
+      const endPause = () => pauseBtn.classList.remove("touch-active");
+      pauseBtn.addEventListener("pointerup", endPause);
+      pauseBtn.addEventListener("pointercancel", endPause);
+      pauseBtn.addEventListener("pointerleave", endPause);
+      pauseBtn.addEventListener("contextmenu", (e) => e.preventDefault());
+    }
+
+    setupBoardTouchGestures();
+  }
+
+  function setupBoardTouchGestures() {
+    const board = getElement("board");
+    if (!board) return;
+
+    let startX = 0;
+    let startY = 0;
+    let lastX = 0;
+    let lastY = 0;
+    let startTime = 0;
+    let hasMoved = false;
+    let activePointerId = null;
+
+    board.addEventListener("pointerdown", (e) => {
+      if (game.status !== "playing") return;
+      board.setPointerCapture(e.pointerId);
+      activePointerId = e.pointerId;
+      startX = e.clientX;
+      startY = e.clientY;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      startTime = Date.now();
+      hasMoved = false;
+    });
+
+    board.addEventListener("pointermove", (e) => {
+      if (activePointerId !== e.pointerId || game.status !== "playing") return;
+      const rect = board.getBoundingClientRect();
+      const cellWidth = Math.max(16, rect.width / COLUMNS);
+      const cellHeight = Math.max(16, rect.height / ROWS);
+
+      const deltaX = e.clientX - lastX;
+      const deltaY = e.clientY - lastY;
+
+      // Horizontal dragging moves piece left/right column by column
+      if (Math.abs(deltaX) >= cellWidth) {
+        const steps = Math.trunc(deltaX / cellWidth);
+        for (let i = 0; i < Math.abs(steps); i++) {
+          performAction(steps > 0 ? "right" : "left");
+        }
+        lastX += steps * cellWidth;
+        hasMoved = true;
+        if (navigator.vibrate) try { navigator.vibrate(8); } catch (_) {}
+      }
+
+      // Dragging down soft drops
+      if (deltaY >= cellHeight * 1.3) {
+        const steps = Math.trunc(deltaY / (cellHeight * 1.3));
+        for (let i = 0; i < steps; i++) {
+          performAction("soft_drop");
+        }
+        lastY += steps * (cellHeight * 1.3);
+        hasMoved = true;
+      }
+    });
+
+    const onPointerEnd = (e) => {
+      if (activePointerId !== e.pointerId) return;
+      activePointerId = null;
+      if (game.status !== "playing") return;
+
+      const totalDistX = e.clientX - startX;
+      const totalDistY = e.clientY - startY;
+      const totalDist = Math.hypot(totalDistX, totalDistY);
+      const duration = Date.now() - startTime;
+
+      // Quick downward flick -> Hard drop
+      if (totalDistY > 55 && totalDistY > Math.abs(totalDistX) * 1.6 && duration < 240) {
+        performAction("hard_drop");
+        if (navigator.vibrate) try { navigator.vibrate(30); } catch (_) {}
+        return;
+      }
+
+      // Tap on board without dragging -> Rotate piece!
+      if (!hasMoved && totalDist < 14 && duration < 260) {
+        performAction("rotate");
+        if (navigator.vibrate) try { navigator.vibrate(15); } catch (_) {}
+      }
+    };
+
+    board.addEventListener("pointerup", onPointerEnd);
+    board.addEventListener("pointercancel", onPointerEnd);
+  }
+
+  const initialBest = Number(localStorage.getItem("arcade-tetris-best")) || 0;
+  updateBestScore(initialBest);
   getElement("start-button").onclick = startGame;
+  setupTouchControls();
+
   document.addEventListener("visibilitychange", () => {
     // Pause when hidden so background time does not advance the local board.
     if (document.hidden && game.status === "playing") pauseGame();

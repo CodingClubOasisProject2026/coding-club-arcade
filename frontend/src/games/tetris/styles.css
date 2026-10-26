@@ -893,25 +893,226 @@ kbd {
 }
 
 /* ---------------------------------------------------------
-   6. RESPONSIVE MEDIA QUERIES
+   6. RESPONSIVE MEDIA QUERIES & TOUCH CONTROLS
    --------------------------------------------------------- */
+
+/* Default: Touch controls hidden on desktop */
+.tetris-touch-controls {
+  display: none;
+}
+
+/* Tablet & Mobile Layout (width <= 860px) */
 @media (max-width: 860px) {
   .tetris-shell {
-    padding: 16px 12px 24px;
+    padding: 16px 12px 28px;
   }
-  
+
   .game-layout {
-    grid-template-columns: minmax(280px, 320px);
+    grid-template-columns: minmax(280px, 340px);
+    justify-content: center;
     gap: 16px;
   }
-  
+
+  .board-column {
+    order: 1;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .board-wrap {
+    width: 100%;
+    max-width: 340px;
+  }
+
+  .board {
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* Show tactile on-screen controls directly below the board */
+  .tetris-touch-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 340px;
+    margin-top: 12px;
+    padding: 4px 2px;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+    gap: 8px;
+  }
+
+  .touch-cluster {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .touch-btn {
+    appearance: none;
+    -webkit-appearance: none;
+    outline: none;
+    border: none;
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
+    cursor: pointer;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    -webkit-user-select: none;
+    transition: transform 0.05s ease, filter 0.05s ease;
+  }
+
+  /* D-pad directional buttons (◀, ▶) */
+  .touch-btn-dir {
+    width: 44px;
+    height: 44px;
+    border-radius: 9px;
+    background: linear-gradient(180deg, #252e4e 0%, #151b30 100%);
+    border: 1.5px solid #48547e;
+    border-bottom: 3.5px solid #0c0f1c;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    color: #e2e8f0;
+  }
+
+  .touch-btn-dir .touch-arrow {
+    font-size: 15px;
+    line-height: 1;
+  }
+
+  /* Soft Drop button (▼ DROP) */
+  .touch-btn-down {
+    width: 48px;
+    height: 44px;
+    border-radius: 9px;
+    background: linear-gradient(180deg, #252e4e 0%, #151b30 100%);
+    border: 1.5px solid #48547e;
+    border-bottom: 3.5px solid #0c0f1c;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    color: #e2e8f0;
+    gap: 1px;
+  }
+
+  .touch-btn-down .touch-arrow {
+    font-size: 13px;
+    line-height: 1;
+  }
+
+  .touch-btn-down .touch-label {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 5.5px;
+    color: #94a3b8;
+    letter-spacing: -0.5px;
+  }
+
+  /* Utility Pause button (⏸) */
+  .touch-btn-pause {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: linear-gradient(180deg, #1e243a 0%, #111524 100%);
+    border: 1px solid #3b4568;
+    border-bottom: 2.5px solid #0a0d16;
+    color: #94a3b8;
+    font-size: 12px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  }
+
+  /* Slam / Hard drop button (⤓ SLAM) */
+  .touch-btn-slam {
+    height: 44px;
+    min-width: 50px;
+    padding: 0 8px;
+    border-radius: 10px;
+    background: linear-gradient(180deg, #f59e0b 0%, #b45309 100%);
+    border: 1.5px solid #fde047;
+    border-bottom: 3.5px solid #78350f;
+    color: #1a0f02;
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.45), 0 3px 8px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    gap: 1px;
+  }
+
+  .touch-btn-slam .touch-arrow {
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .touch-btn-slam .touch-label {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 5.5px;
+    letter-spacing: -0.5px;
+    color: #3b1d03;
+    font-weight: 700;
+  }
+
+  /* Rotate button (⟳ ROTATE) */
+  .touch-btn-rotate {
+    height: 44px;
+    min-width: 52px;
+    padding: 0 8px;
+    border-radius: 10px;
+    background: linear-gradient(180deg, #818cf8 0%, #4338ca 100%);
+    border: 1.5px solid #c7d2fe;
+    border-bottom: 3.5px solid #2e1065;
+    color: #ffffff;
+    box-shadow: 0 0 12px rgba(99, 102, 241, 0.45), 0 3px 8px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+    gap: 1px;
+  }
+
+  .touch-btn-rotate .touch-arrow {
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .touch-btn-rotate .touch-label {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 5.5px;
+    letter-spacing: -0.5px;
+    color: #e0e7ff;
+    font-weight: 700;
+  }
+
+  /* Tactile Pressed states */
+  .touch-btn:active,
+  .touch-btn.touch-active {
+    transform: translateY(2px) scale(0.96);
+    filter: brightness(1.22);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.8), inset 0 2px 4px rgba(0, 0, 0, 0.45);
+  }
+
+  .touch-btn-dir:active,
+  .touch-btn-dir.touch-active,
+  .touch-btn-down:active,
+  .touch-btn-down.touch-active,
+  .touch-btn-slam:active,
+  .touch-btn-slam.touch-active,
+  .touch-btn-rotate:active,
+  .touch-btn-rotate.touch-active {
+    border-bottom-width: 1.5px;
+  }
+
+  .touch-btn-pause:active,
+  .touch-btn-pause.touch-active {
+    border-bottom-width: 1px;
+  }
+
+  /* Side panels sit beneath the board on tablet & mobile */
   .side-column.left-column {
     order: 2;
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 12px;
   }
-  
+
   .side-column.right-column {
     order: 3;
     display: grid;
@@ -920,17 +1121,20 @@ kbd {
   }
 }
 
+/* Narrower screens (phones <= 540px) */
 @media (max-width: 540px) {
   .tetris-nav {
     padding: 0 12px;
+    height: 48px;
   }
-  
+
   .tetris-edition-tag {
     display: none;
   }
-  
+
   .side-column.left-column,
   .side-column.right-column {
     grid-template-columns: 1fr;
   }
 }
+

@@ -1,16 +1,24 @@
+import { lazy, Suspense, type ReactNode } from 'react'
 import { Link, Route, Routes, useLocation } from 'react-router-dom'
 import { logout } from './api'
 import { useAuth } from './auth'
 import AuthProvider from './AuthProvider'
 import GoogleSignIn from './GoogleSignIn'
-import Minesweeper from './games/minesweeper/Minesweeper'
-import Pacman from './games/pacman/Pacman'
 import TetrisPage from './games/tetris/TetrisPage'
-import WordlePage from './games/wordle/WordlePage.jsx'
-import Snake from './games/snake/Snake'
-import Flappy from './games/flappy_bird/flappy' // Imported Flappy Bird
-import Leaderboard from './pages/leaderboard'
+import ArcadeLoader from './loader/ArcadeLoader'
 import Hub from './pages/Hub'
+
+// Games load on demand; the arcade loader shows while a game's code downloads.
+const Minesweeper = lazy(() => import('./games/minesweeper/Minesweeper'))
+const Pacman = lazy(() => import('./games/pacman/Pacman'))
+const WordlePage = lazy(() => import('./games/wordle/WordlePage.jsx'))
+const Snake = lazy(() => import('./games/snake/Snake'))
+const Flappy = lazy(() => import('./games/flappy_bird/flappy'))
+const Leaderboard = lazy(() => import('./pages/leaderboard'))
+
+function Loading({ children }: { children: ReactNode }) {
+  return <Suspense fallback={<ArcadeLoader />}>{children}</Suspense>
+}
 
 function AuthBar() {
   const { me } = useAuth()
@@ -71,7 +79,7 @@ export default function App() {
       <AuthProvider>
         <div className="wordle-route">
           <Routes>
-            <Route path="/wordle" element={<WordlePage />} />
+            <Route path="/wordle" element={<Loading><WordlePage /></Loading>} />
           </Routes>
         </div>
       </AuthProvider>
@@ -82,7 +90,7 @@ export default function App() {
     return (
       <AuthProvider>
         <Routes>
-          <Route path="/minesweeper" element={<Minesweeper />} />
+          <Route path="/minesweeper" element={<Loading><Minesweeper /></Loading>} />
         </Routes>
       </AuthProvider>
     )
@@ -92,7 +100,7 @@ export default function App() {
     return (
       <AuthProvider>
         <Routes>
-          <Route path="/pacman" element={<Pacman />} />
+          <Route path="/pacman" element={<Loading><Pacman /></Loading>} />
         </Routes>
       </AuthProvider>
     )
@@ -102,7 +110,7 @@ export default function App() {
     return (
       <AuthProvider>
         <Routes>
-          <Route path="/snake" element={<Snake />} />
+          <Route path="/snake" element={<Loading><Snake /></Loading>} />
         </Routes>
       </AuthProvider>
     )
@@ -121,7 +129,7 @@ export default function App() {
     return (
       <AuthProvider>
         <Routes>
-          <Route path="/flappy" element={<Flappy />} />
+          <Route path="/flappy" element={<Loading><Flappy /></Loading>} />
         </Routes>
       </AuthProvider>
     )
@@ -151,7 +159,7 @@ export default function App() {
 
         <Routes>
           <Route path="/" element={<Hub />} />
-          <Route path="/leaderboard" element={<Leaderboard />} />
+          <Route path="/leaderboard" element={<Loading><Leaderboard /></Loading>} />
           <Route
             path="*"
             element={

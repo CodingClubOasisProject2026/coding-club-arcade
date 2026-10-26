@@ -3,10 +3,103 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#07070e" />
+    <meta name="description" content="Coding Club Arcade: play Pac-Man, Snake, Tetris, Minesweeper, Wordle and Flappy Bird, and climb the leaderboard." />
     <title>Coding Club Arcade</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" />
+    <link rel="preload" as="image" href="/logo.jpeg" />
+    <link rel="stylesheet" href="/arcade-loader.css" />
   </head>
   <body>
+    <!-- Boot screen: painted before the JS bundle loads, dismissed from src/loader/boot.ts. -->
+    <div id="arcade-boot" class="al-screen" role="status" aria-live="polite" aria-label="Loading the arcade">
+      <div class="al-floor" aria-hidden="true"></div>
+      <div class="al-core">
+        <div class="al-brand">
+          <img src="/logo.jpeg" alt="" width="36" height="36" />
+          <span>CODING CLUB</span>
+        </div>
+        <div class="al-title">ARCADE</div>
+        <div class="al-parade" aria-hidden="true">
+          <span class="al-sprite al-pac" style="--i: 0"><i></i></span>
+          <span class="al-sprite al-ghost" style="--i: 1"><i></i></span>
+          <span class="al-sprite al-tetro" style="--i: 2"><i></i></span>
+          <span class="al-sprite al-snake" style="--i: 3"><i></i></span>
+          <span class="al-sprite al-mine" style="--i: 4"><i></i></span>
+          <span class="al-sprite al-word" style="--i: 5"><i>W</i></span>
+          <span class="al-sprite al-bird" style="--i: 6"><i></i></span>
+        </div>
+        <div class="al-progress">
+          <div class="al-meta">
+            <span class="al-meta-label">LOADING</span>
+            <span class="al-pct">000%</span>
+          </div>
+          <div class="al-bar"><span class="al-bar-fill"></span></div>
+        </div>
+        <p class="al-tip"></p>
+      </div>
+      <div class="al-coin" aria-hidden="true">INSERT COIN</div>
+    </div>
+
+    <script>
+      // Fake progress while the bundle downloads; boot.ts calls __arcadeBoot.done() when the app is ready.
+      (function () {
+        var el = document.getElementById('arcade-boot')
+        if (!el) return
+        var fill = el.querySelector('.al-bar-fill')
+        var pctEl = el.querySelector('.al-pct')
+        var tipEl = el.querySelector('.al-tip')
+        var tips = [
+          '<b>TIP</b> Sign in with Google to post your scores.',
+          '<b>TIP</b> Every ranked run uses one ticket.',
+          '<b>TIP</b> Scores are verified on the server before they count.',
+          '<b>TIP</b> Most games pause with P.',
+          '<b>TIP</b> Check the leaderboard to see who is on top.',
+        ]
+        var tip = Math.floor(Math.random() * tips.length)
+        var pct = 0
+        var started = performance.now()
+        var MIN_SHOW_MS = 1200
+
+        function setPct(p) {
+          pct = p
+          fill.style.width = p + '%'
+          pctEl.textContent = ('00' + Math.floor(p)).slice(-3) + '%'
+        }
+        tipEl.innerHTML = tips[tip]
+
+        var barTimer = setInterval(function () {
+          if (pct < 92) setPct(pct + Math.max(0.6, (92 - pct) * 0.08))
+        }, 80)
+        var tipTimer = setInterval(function () {
+          tip = (tip + 1) % tips.length
+          tipEl.innerHTML = tips[tip]
+        }, 2200)
+
+        window.__arcadeBoot = {
+          done: function () {
+            var wait = Math.max(0, MIN_SHOW_MS - (performance.now() - started))
+            setTimeout(function () {
+              clearInterval(barTimer)
+              clearInterval(tipTimer)
+              setPct(100)
+              el.classList.add('is-done')
+              setTimeout(function () {
+                el.classList.add('is-off')
+                setTimeout(function () {
+                  el.remove()
+                  delete window.__arcadeBoot
+                }, 600)
+              }, 380)
+            }, wait)
+          },
+        }
+      })()
+    </script>
+
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
