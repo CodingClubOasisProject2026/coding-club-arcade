@@ -33,7 +33,6 @@
       [0, 1, 1],
       [1, 1, 0],
     ],
-    B: [[1]],
   };
   const PIECE_COLORS = {
     I: "#55d9e9",
@@ -43,9 +42,17 @@
     Z: "#f07883",
     J: "#68a6fa",
     L: "#f2a35d",
-    B: "#f45136",
   };
   const getElement = (id) => document.getElementById(id);
+
+  // ─── Score-based speed config ────────────────────────────────────────────────
+  // Speed increases every time score crosses a multiple of this value:
+  const SCORE_SPEED_THRESHOLD = 500;
+  // Each step removes this many ms from the drop delay:
+  const SCORE_SPEED_REDUCTION_PER_STEP = 40;
+  // Hard floor for the delay (ms), regardless of level or score:
+  const MIN_GRAVITY_DELAY = 80;
+  // ─────────────────────────────────────────────────────────────────────────────
 
   const game = {
     status: "idle",
@@ -58,21 +65,22 @@
     level: 1,
     consecutiveClears: 0,
     startedAt: 0,
+    durationMs: null,
     gravityTimer: null,
     clearAnimationTimer: null,
     calloutTimer: null,
     elapsedTimer: null,
     session: null,
-    // One character per action, joined into a string on submit.
     actions: [],
     completionPayload: null,
     submitted: false,
+    taskId: null,
     keyHandler: null,
   };
 
   class SeededPieceGenerator {
     constructor(seed) {
-      // Match the seeded Python RNG, bag shuffle, and bomb schedule on the backend.
+      // Match random.Random(seed).shuffle() in tetris.pieces.SeededPieceRandomizer.
       this.state = new Uint32Array(624);
       let value = BigInt(seed);
       if (value < 0n) value = -value;
@@ -114,7 +122,6 @@
       this.state[0] = 0x80000000;
       this.index = 624;
       this.bag = [];
-      this.bagsUntilBomb = 2 + this.below(3);
     }
 
     nextUint32() {
@@ -151,14 +158,7 @@
 
     next() {
       if (this.bag.length === 0) {
-        this.bag = Object.keys(PIECE_SHAPES).filter((type) => type !== "B");
-        if (this.bagsUntilBomb === 0) {
-          this.bag.push("B");
-          this.bagsUntilBomb = 2 + this.below(3);
-        } else {
-          this.bagsUntilBomb--;
-        }
-        this.shuffle(this.bag);
+        this.bag = this.shuffle(Object.keys(PIECE_SHAPES));
       }
       const type = this.bag.pop();
       return {
@@ -170,22 +170,9 @@
     }
   }
 
-  function updateBestScoreDisplay(val) {
-    const text = String(val).padStart(6, "0");
-    const bestEl = getElement("best-score");
-    if (bestEl) bestEl.textContent = text;
-    const navBest = getElement("nav-best-score");
-    if (navBest) navBest.textContent = text;
-  }
-
   function setGameStatus(status, label) {
     game.status = status;
-    const labelEl = getElement("game-state-label");
-    if (labelEl) labelEl.textContent = label;
-    const badgeEl = getElement("status-badge");
-    if (badgeEl) {
-      badgeEl.className = "board-status-badge status-" + status.toLowerCase();
-    }
+    getElement("game-state-label").textContent = label;
   }
 
   function showOverlay(title, message, buttonLabel, onClick, disabled = false) {
@@ -277,6 +264,8 @@
     game.actions = [];
     game.completionPayload = null;
     game.submitted = false;
+    game.taskId = null;
+    game.durationMs = null;
     game.randomizer = new SeededPieceGenerator(seed);
     game.startedAt = Date.now();
     game.nextPiece = game.randomizer.next();
@@ -324,18 +313,10 @@
     return shape[0].map((_, index) => shape.map((row) => row[index]).reverse());
   }
 
-  // Must match ACTION_CODES in backend/tetris/tasks.py.
-  const ACTION_CODES = {
-    gravity: "T",
-    left: "L",
-    right: "R",
-    rotate: "C",
-    soft_drop: "S",
-    hard_drop: "H",
-  };
-
   function recordAction(action) {
-    game.actions.push(ACTION_CODES[action]);
+    const elapsed = Math.max(0, Date.now() - game.startedAt);
+    const previousTime = game.actions.at(-1)?.at_ms ?? 0;
+    game.actions.push({ action, at_ms: Math.max(elapsed, previousTime) });
   }
 
   function performAction(action) {
@@ -380,42 +361,12 @@
     const piece = game.piece;
     if (!piece) return;
 
-    if (piece.type === "B") {
-      for (let y = Math.max(0, piece.y - 1); y < Math.min(ROWS, piece.y + 2); y++) {
-        for (let x = Math.max(0, piece.x - 1); x < Math.min(COLUMNS, piece.x + 2); x++) {
-          game.board[y][x] = null;
-        }
-      }
-      for (let x = 0; x < COLUMNS; x++) {
-        const remaining = game.board.map((row) => row[x]).filter(Boolean);
-        for (let y = ROWS - 1; y >= 0; y--) game.board[y][x] = remaining.pop() || null;
-      }
-      const boardElement = getElement("board");
-      const callout = getElement("clear-callout");
-      callout.className = "clear-callout";
-      callout.textContent = "💥 BOOM!";
-      void callout.offsetWidth;
-      callout.className = "clear-callout visible count-bomb";
-      clearTimeout(game.calloutTimer);
-      game.calloutTimer = setTimeout(() => {
-        callout.classList.remove("visible");
-      }, 950);
-      boardElement.classList.remove("line-clear-effect");
-      void boardElement.offsetWidth;
-      boardElement.classList.add("line-clear-effect");
-      clearTimeout(game.clearAnimationTimer);
-      game.clearAnimationTimer = setTimeout(
-        () => boardElement.classList.remove("line-clear-effect"),
-        700,
-      );
-    } else {
-      piece.shape.forEach((row, y) =>
-        row.forEach((filled, x) => {
-          if (filled && piece.y + y >= 0)
-            game.board[piece.y + y][piece.x + x] = piece.type;
-        }),
-      );
-    }
+    piece.shape.forEach((row, y) =>
+      row.forEach((filled, x) => {
+        if (filled && piece.y + y >= 0)
+          game.board[piece.y + y][piece.x + x] = piece.type;
+      }),
+    );
 
     let cleared = 0;
     game.board = game.board.filter((row) => {
@@ -462,7 +413,13 @@
   function scheduleGravity() {
     clearTimeout(game.gravityTimer);
     if (game.status === "playing") {
-      const delay = Math.max(120, 800 - (game.level - 1) * 55);
+      // Base delay from level.
+      const levelDelay = Math.max(120, 800 - (game.level - 1) * 55);
+      // Score bonus: shave SCORE_SPEED_REDUCTION_PER_STEP ms for every
+      // SCORE_SPEED_THRESHOLD points the player has accumulated.
+      const scoreSteps = Math.floor(game.score / SCORE_SPEED_THRESHOLD);
+      const scoreBonus = scoreSteps * SCORE_SPEED_REDUCTION_PER_STEP;
+      const delay = Math.max(MIN_GRAVITY_DELAY, levelDelay - scoreBonus);
       game.gravityTimer = setTimeout(advanceGravity, delay);
     }
   }
@@ -504,11 +461,11 @@
       row.forEach((type, x) => {
         const cell = document.createElement("div");
         const isGhost = !type && ghostCells.has(y * COLUMNS + x);
-        cell.className = `board-cell${type ? " filled" : isGhost ? " ghost" : ""}${type === "B" || (!type && isGhost && game.piece.type === "B") ? " bomb" : ""}`;
+        cell.className = `board-cell${type ? " filled" : isGhost ? " ghost" : ""}`;
         cell.setAttribute("role", "gridcell");
         cell.setAttribute(
           "aria-label",
-          type === "B" ? `Bomb row ${y + 1} column ${x + 1}` : type ? `${type} block row ${y + 1} column ${x + 1}` : "Empty",
+          type ? `${type} block row ${y + 1} column ${x + 1}` : "Empty",
         );
         if (type) cell.style.setProperty("--piece-color", PIECE_COLORS[type]);
         else if (isGhost) cell.style.setProperty("--piece-color", PIECE_COLORS[game.piece.type]);
@@ -525,29 +482,12 @@
   function renderNextPiece() {
     const preview = getElement("next-preview");
     preview.replaceChildren();
-    if (!game.nextPiece) return;
-
-    const shape = game.nextPiece.shape;
-    const height = shape.length;
-    const width = shape[0].length;
-    const offsetY = Math.floor((4 - height) / 2);
-    const offsetX = Math.floor((4 - width) / 2);
-
     for (let y = 0; y < 4; y++) {
       for (let x = 0; x < 4; x++) {
         const cell = document.createElement("div");
         cell.className = "preview-cell";
-        const shapeY = y - offsetY;
-        const shapeX = x - offsetX;
-        if (
-          shapeY >= 0 &&
-          shapeY < height &&
-          shapeX >= 0 &&
-          shapeX < width &&
-          shape[shapeY][shapeX]
-        ) {
+        if (game.nextPiece?.shape[y]?.[x]) {
           cell.classList.add("filled");
-          if (game.nextPiece.type === "B") cell.classList.add("bomb");
           cell.style.setProperty(
             "--piece-color",
             PIECE_COLORS[game.nextPiece.type],
@@ -618,14 +558,28 @@
     setGameStatus("submitting", "RUN COMPLETE");
     stopTimers();
     removeKeyboardListener();
-    game.completionPayload = { actions: game.actions.join("") };
+    game.durationMs = Math.max(
+      0,
+      Date.now() - game.startedAt,
+      game.actions.at(-1)?.at_ms ?? 0,
+    );
+    game.completionPayload = {
+      actions: game.actions.map(({ action }) => {
+        if (action === "left" || action === "right") {
+          return { type: "move", direction: action };
+        }
+        if (action === "gravity") return { type: "tick" };
+        if (action === "rotate") return { type: "rotate", direction: "clockwise" };
+        return { type: action };
+      }),
+    };
 
     const best = Math.max(
       game.score,
       Number(localStorage.getItem("arcade-tetris-best")) || 0,
     );
     localStorage.setItem("arcade-tetris-best", best);
-    updateBestScoreDisplay(best);
+    getElement("best-score").textContent = String(best).padStart(6, "0");
     renderGame();
     showOverlay(
       "Run complete",
@@ -639,8 +593,8 @@
       await submitRun();
       setGameStatus("queued", "QUEUED FOR VALIDATION");
       showOverlay(
-        "Run submitted",
-        "Your action list was accepted for backend validation. Your displayed score follows the local scoring preview.",
+        "Run queued",
+        `Your action list was accepted for backend validation. Task: ${game.taskId || "queued"}. Your displayed score follows the local scoring preview.`,
         "PLAY AGAIN",
         startGame,
       );
@@ -671,8 +625,9 @@
         actions: game.completionPayload.actions,
       },
     );
-    if (!result?.id) throw new Error("The backend did not accept the Tetris action list.");
+    if (result.status !== "queued" || !result.task_id) throw new Error("The backend did not queue the Tetris validation task.");
     game.submitted = true;
+    game.taskId = result.task_id;
   }
 
   async function retrySubmission() {
@@ -688,8 +643,8 @@
       await submitRun();
       setGameStatus("queued", "QUEUED FOR VALIDATION");
       showOverlay(
-        "Run submitted",
-        "Your action list was accepted for backend validation.",
+        "Run queued",
+        `Your action list was accepted for backend validation. Task: ${game.taskId || "queued"}.`,
         "PLAY AGAIN",
         startGame,
       );
@@ -708,7 +663,9 @@
     }
   }
 
-  updateBestScoreDisplay(localStorage.getItem("arcade-tetris-best") || 0);
+  getElement("best-score").textContent = String(
+    localStorage.getItem("arcade-tetris-best") || 0,
+  ).padStart(6, "0");
   getElement("start-button").onclick = startGame;
   document.addEventListener("visibilitychange", () => {
     // Pause when hidden so background time does not advance the local board.
