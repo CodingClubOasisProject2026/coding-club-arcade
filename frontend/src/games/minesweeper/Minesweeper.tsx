@@ -26,6 +26,22 @@ const SOUND_STORAGE_KEY = 'minesweeper.soundEnabled'
 const LOW_TIME = 10
 const LOW_MOVES = 5
 
+// Layout sizes in px, kept in step with Minesweeper.css.
+const TILE_GAP = 2 // .ms-board gap
+const PLATE_PAD = 6 // .ms-board padding
+const MIN_TILE = 20
+const MAX_TILE = 44
+const CARD_GAP = 10 // .ms-card gap
+const CARD_BORDER = 1 // .ms-card border
+const SIDE_W = 220 // side column in the 'side' layout
+// Height used by everything except the board in each layout:
+// stack: nav 52 + stage padding 24 + hud 56 + panel 96 + hint 16 + 3 card gaps 30
+const STACK_CHROME = 52 + 24 + 56 + 96 + 16 + 3 * CARD_GAP
+// side: nav 44 + stage padding 16
+const SIDE_CHROME = 44 + 16
+// No-tickets banner under the nav (.ms-ticket-banner), when shown
+const BANNER_H = 40
+
 const END_TITLE: Record<EndReason, string> = {
   mine: 'You hit a mine',
   time: 'Out of time',
@@ -327,7 +343,6 @@ function formatDigits(num: number): string {
 export default function Minesweeper() {
   const [difficulty, setDifficulty] = useState<Difficulty>('beginner')
   const [game, setGame] = useState<GameState | null>(null)
-  const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [flagMode, setFlagMode] = useState(false)
   const [soundOn, setSoundOn] = useState(() => audio.enabled)
@@ -337,9 +352,9 @@ export default function Minesweeper() {
   const [notice, setNotice] = useState<{ text: string; tone: 'good' | 'info'; id: number } | null>(null)
   const [elapsed, setElapsed] = useState(0)
   const [nowMs, setNowMs] = useState(() => Date.now())
-  const [totalClicks, setTotalClicks] = useState(0)
-  const [zoom, setZoom] = useState(1)
-  const [dismissedRotatePrompt, setDismissedRotatePrompt] = useState(false)
+  const [helpOpen, setHelpOpen] = useState(false)
+  // Tile the sonar is hovering over, to preview the 3x3 it will scan.
+  const [aim, setAim] = useState<number | null>(null)
 
   // Viewport tracking for guaranteed responsive cell sizing
   const [viewport, setViewport] = useState({
@@ -366,6 +381,11 @@ export default function Minesweeper() {
 
   const { me, refresh } = useAuth()
   const signedIn = me?.authenticated === true
+  // Ranked games need a signed-in player with a ticket.
+  const ranked = signedIn && me.tickets > 0
+  const outOfTickets = signedIn && me.tickets === 0
+  // Once we know who's playing, a player who can't play ranked starts in practice.
+  const practiceOnly = !!me && !ranked
 
   const currentConfig = useMemo(() => {
     return DIFFICULTIES.find((d) => d.key === difficulty) ?? DIFFICULTIES[0]
@@ -431,14 +451,23 @@ export default function Minesweeper() {
   // the player reveals their first tile (see move()).
   const start = useCallback(() => {
     if (pending.current) return
-    setError(null)
     setGame(blankBoard('pending'))
     setElapsed(0)
-    setTotalClicks(0)
     setSonarMode(false)
     setNotice(null)
     audio.playClick()
   }, [blankBoard])
+
+  // An untouched board follows the player's tickets: practice when they can't
+  // play ranked (no ticket is asked for), ranked again once they can.
+  useEffect(() => {
+    setGame((g) => {
+      if (!g || g.move_count > 0 || g.startedAt) return g
+      if (practiceOnly && g.id.startsWith('pending-')) return { ...g, id: g.id.replace('pending-', 'local-') }
+      if (!practiceOnly && g.id.startsWith('local-')) return { ...g, id: g.id.replace('local-', 'pending-') }
+      return g
+    })
+  }, [practiceOnly, game?.id])
 
   // Short pop-up for power-up events.
   const showNotice = useCallback((text: string, tone: 'good' | 'info' = 'good') => {
@@ -462,12 +491,8 @@ export default function Minesweeper() {
         // ignore
       }
       return g
-    } catch (e) {
-      if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
-        setError('Practice mode. Sign in to record leaderboard scores.')
-      } else if (e instanceof ApiError && e.status === 400) {
-        setError('No tickets left. You are playing in practice mode.')
-      }
+    } catch {
+      // Signed out, out of tickets, or offline: play a practice game.
       return blankBoard('local')
     } finally {
       setBusy(false)
@@ -480,8 +505,6 @@ export default function Minesweeper() {
   // because the callback closes over the old value.)
   useEffect(() => {
     difficultyRef.current = difficulty
-    setZoom(1)
-    setDismissedRotatePrompt(false)
     if (boardViewportRef.current) {
       boardViewportRef.current.scrollLeft = 0
       boardViewportRef.current.scrollTop = 0
@@ -533,8 +556,6 @@ export default function Minesweeper() {
           setDifficulty(config.key)
         }
         setGame(g)
-        setTotalClicks(g.move_count)
-        setError(null)
       })
       .catch((e) => {
         // Gone, or not this user's game (signed out, other account). Network
@@ -612,12 +633,9 @@ export default function Minesweeper() {
         }
       } else if (e.key === 'Escape') {
         setSonarMode(false)
-      } else if (e.key === '+' || e.key === '=') {
-        setZoom((z) => Math.min(1.8, Number((z + 0.15).toFixed(2))))
-      } else if (e.key === '-' || e.key === '_') {
-        setZoom((z) => Math.max(0.7, Number((z - 0.15).toFixed(2))))
-      } else if (e.key === '0') {
-        setZoom(1)
+        setHelpOpen(false)
+      } else if (e.key === '?') {
+        setHelpOpen((open) => !open)
       }
     }
     window.addEventListener('keydown', onKey)
@@ -668,7 +686,6 @@ export default function Minesweeper() {
       // Nothing to flag or chord before the first reveal.
       if (isPending && type !== 'reveal') return
       pending.current = true
-      setTotalClicks((c) => c + 1)
 
       if (navigator.vibrate) {
         navigator.vibrate(type === 'flag' ? 20 : 10)
@@ -813,423 +830,432 @@ export default function Minesweeper() {
   const cols = game?.width ?? currentConfig.cols
   const rows = game?.height ?? currentConfig.rows
 
-  // Live APM calculation (Actions Per Minute)
-  const apm = useMemo(() => {
-    if (elapsed === 0) return 0
-    return Math.round((totalClicks / elapsed) * 60)
-  }, [totalClicks, elapsed])
+  // Layout. Every size here matches a fixed size in Minesweeper.css, so the
+  // tile size depends only on the window and never on what's on screen.
+  // 'side' puts the controls beside the board, for short landscape screens.
+  const layout = viewport.h <= 520 && viewport.w > viewport.h ? 'side' : 'stack'
+  const compact = viewport.w <= 640
+  const gutter = compact ? 12 : 16 // .ms-stage side padding
+  const cardPad = compact ? 10 : 14 // .ms-card padding
+  const cardInset = cardPad + CARD_BORDER
+  // Only while playing practice because of tickets. It can only appear or go
+  // away when a new board starts, never in the middle of a game.
+  const showTicketBanner = outOfTickets && !!game && game.id.startsWith('local-')
+  const availW =
+    viewport.w - 2 * gutter - 2 * cardInset - 2 * PLATE_PAD - (layout === 'side' ? SIDE_W + CARD_GAP : 0)
+  const availH =
+    viewport.h -
+    (layout === 'side' ? SIDE_CHROME : STACK_CHROME) -
+    (showTicketBanner ? BANNER_H : 0) -
+    2 * cardInset -
+    2 * PLATE_PAD
+  const fit = Math.floor(
+    Math.min((availW - (cols - 1) * TILE_GAP) / cols, (availH - (rows - 1) * TILE_GAP) / rows),
+  )
+  const tileSize = Math.max(MIN_TILE, Math.min(MAX_TILE, fit))
+  const boardWidth = cols * tileSize + (cols - 1) * TILE_GAP + 2 * PLATE_PAD
 
-  // Phone detection:
-  // Phones in portrait have narrow width (<= 500px).
-  // Phones in landscape have short height (<= 500px) and width <= 1050px.
-  // Laptops and desktops have height >= 600px and width >= 1024px.
-  const isPhonePortrait = viewport.w <= 500 && viewport.h > viewport.w
-  const isPhoneLandscape = viewport.h <= 500 && viewport.w <= 1050 && viewport.w > viewport.h
+  const started = !!game?.startedAt
+  const over = !!game && game.status !== 'in_progress'
+  const totalMoves = game && game.moves_left !== null ? game.moves_left + game.moves_used : null
+  const movesFraction = totalMoves ? (movesLeft ?? 0) / totalMoves : 1
 
-  // In phone landscape, the side rail takes ~240px on the right,
-  // so the board takes the remaining width and gets nearly the full screen height!
-  const maxBoardWidth = isPhoneLandscape
-    ? Math.max(280, viewport.w - 240)
-    : Math.min(viewport.w - 32, 980)
+  // 3x3 the armed sonar would scan.
+  const aimArea = useMemo(() => {
+    if (!sonarArmed || aim === null) return null
+    return new Set([aim, ...neighbors(aim, cols, rows)])
+  }, [sonarArmed, aim, cols, rows])
 
-  const maxBoardHeight = isPhoneLandscape
-    ? Math.max(160, viewport.h - 52)
-    : Math.max(220, viewport.h - 190)
+  // Known before the first dig, so the hint (not a pop-up) can say it.
+  const isPractice = game ? game.id.startsWith('local-') || (game.id.startsWith('pending-') && !ranked) : !ranked
 
-  const rawSizeByWidth = Math.floor((maxBoardWidth - (cols - 1) * 2 - 20) / cols)
-  const rawSizeByHeight = Math.floor((maxBoardHeight - (rows - 1) * 2 - 20) / rows)
-  const fitTileSize = Math.min(rawSizeByWidth, rawSizeByHeight)
+  let hint: string
+  if (over) hint = 'Press R or the face to play again.'
+  else if (sonarArmed) hint = 'Sonar: pick a tile to reveal mines in the 3×3 around it. Esc cancels.'
+  else if (!started && isPractice)
+    hint = signedIn ? 'No tickets left, so this is a practice game. Dig to start.' : 'Practice game. Sign in to save scores. Dig to start.'
+  else if (!started) hint = 'Dig any tile to start. The clock starts on your first dig.'
+  else if (flagMode) hint = 'Flag mode: tap tiles to flag them. Flags are free.'
+  else hint = 'Right-click or long-press to flag. Click a number to clear around it.'
 
-  // On laptop/desktop: strictly use fitTileSize so the HUD and Footer are NEVER cut off!
-  // In phone landscape: fitTileSize fits the full 30x16 field onto the phone with 0 scroll!
-  // In phone portrait: if user chooses to stay in portrait, provide a comfortable tap size.
-  const baseTileSize = isPhonePortrait
-    ? Math.max(30, Math.min(48, rawSizeByWidth))
-    : Math.max(12, Math.min(48, fitTileSize))
-
-  const optimalTileSize = Math.round(baseTileSize * zoom)
-
-  const tryRotateLandscape = async () => {
-    try {
-      if (document.documentElement.requestFullscreen) {
-        await document.documentElement.requestFullscreen()
-      }
-      if ('orientation' in screen && screen.orientation && 'lock' in screen.orientation) {
-        await (screen.orientation as { lock: (orientation: string) => Promise<void> }).lock('landscape')
-      }
-    } catch {
-      // Browsers like iOS Safari require physical rotation
-    }
-  }
-
+  const resultTitle = !game
+    ? ''
+    : game.status === 'won'
+      ? 'Board cleared!'
+      : END_TITLE[game.end_reason ?? 'mine']
 
   return (
-    <div className={`ms-page ${isShaking ? 'screen-shake' : ''}`}>
+    <div
+      className={`ms-page layout-${layout} ${compact ? 'is-compact' : ''} ${isShaking ? 'screen-shake' : ''}`}
+    >
       <header className="ms-nav">
         <div className="ms-nav-left">
-          <Link to="/" className="ms-back-link">
-            ← Arcade
+          <Link to="/" className="ms-back-link" aria-label="Back to arcade">
+            ← <span className="ms-back-text">Arcade</span>
           </Link>
           <span className="ms-title">Minesweeper</span>
         </div>
 
-        {/* Difficulty selector */}
-        <div className="ms-diff-pills" role="radiogroup" aria-label="Difficulty">
+        <div className="ms-diff" role="radiogroup" aria-label="Difficulty">
           {DIFFICULTIES.map((d) => (
             <button
               key={d.key}
               type="button"
               role="radio"
               aria-checked={difficulty === d.key}
-              className={`ms-diff-pill ${difficulty === d.key ? 'active' : ''}`}
+              className={`ms-diff-btn ${difficulty === d.key ? 'active' : ''}`}
               onClick={() => setDifficulty(d.key)}
               disabled={busy}
+              title={`${d.cols}×${d.rows}, ${d.mines} mines, ${d.time}s, ${d.moves} moves`}
             >
-              <span className="diff-full">{d.label}</span>
-              <span className="diff-short">
-                {d.cols}×{d.rows}
-              </span>
+              {compact ? d.label.slice(0, 3) : d.label}
             </button>
           ))}
         </div>
 
         <div className="ms-nav-right">
+          {signedIn ? (
+            <span
+              className={`ms-tickets ${outOfTickets ? 'is-empty' : ''}`}
+              title={
+                outOfTickets
+                  ? 'No tickets left. You can still play practice games, but scores are not saved.'
+                  : 'Tickets left. Each ranked game uses one.'
+              }
+            >
+              🎟️ {outOfTickets && !compact ? 'No tickets left' : me.tickets}
+            </span>
+          ) : (
+            me && <GoogleSignIn label={compact ? '' : 'Sign in'} />
+          )}
           <button
             type="button"
-            className="ms-btn-sound"
+            className="ms-icon-btn"
             onClick={() => setSoundOn(audio.toggle())}
             title={soundOn ? 'Mute sound' : 'Turn sound on'}
             aria-label={soundOn ? 'Mute sound' : 'Turn sound on'}
           >
             {soundOn ? '🔊' : '🔇'}
           </button>
-
-          {signedIn && (
-            <div className="ms-user-tickets" title="Tickets left">
-              🎟️ <span>{me.tickets}</span>
-            </div>
-          )}
         </div>
       </header>
 
-      {error && (
-        <div className="ms-alert-banner" role="status">
-          <span>{error}</span>
-          {!signedIn && <GoogleSignIn />}
+      {showTicketBanner && (
+        <div className="ms-ticket-banner" role="status">
+          <span aria-hidden="true">🎟️</span>
+          <span className="ms-ticket-banner-text">
+            <b>No tickets left.</b>{' '}
+            {compact
+              ? 'Practice mode: scores aren’t saved.'
+              : 'You’re in practice mode, so scores aren’t saved. Ask a club admin for more tickets.'}
+          </span>
         </div>
       )}
 
-      {/* Landscape Rotation Modal for Mobile Expert Mode */}
-      {difficulty === 'expert' && isPhonePortrait && !dismissedRotatePrompt && (
-        <div className="ms-rotate-overlay" role="dialog" aria-modal="true" aria-labelledby="ms-rotate-heading">
-          <div className="ms-rotate-card">
-            <div className="ms-rotate-badge">Widescreen Required</div>
-            <div className="ms-rotate-icon-wrap" aria-hidden="true">
-              <svg className="ms-phone-rotate-anim" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="5" y="2" width="14" height="20" rx="3" ry="3" />
-                <path d="M12 18h.01" />
-              </svg>
-            </div>
-
-            <h2 id="ms-rotate-heading" className="ms-rotate-title">Rotate Phone to Landscape</h2>
-            <p className="ms-rotate-desc">
-              Expert mode is <strong>30 columns wide</strong>. Rotate your device sideways to play the entire field without scrolling!
-            </p>
-
-            <div className="ms-rotate-actions">
-              <button
-                type="button"
-                className="ms-btn-rotate-primary"
-                onClick={async () => {
-                  await tryRotateLandscape()
-                }}
-              >
-                <span>🔄</span> Turn Sideways
-              </button>
-              <button
-                type="button"
-                className="ms-btn-rotate-secondary"
-                onClick={() => setDismissedRotatePrompt(true)}
-              >
-                Continue in Portrait
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Persistent hint chip when player chose to stay in portrait */}
-      {difficulty === 'expert' && isPhonePortrait && dismissedRotatePrompt && (
-        <div className="ms-landscape-hint-chip" onClick={() => setDismissedRotatePrompt(false)}>
-          <span>🔄</span> Rotate to landscape for zero-scroll widescreen
-        </div>
-      )}
-
-      <main className="ms-main-stage">
-        <div className="ms-cabinet-card">
-          {/* HUD: mines left, restart, countdown */}
-          <div className="ms-hud-panel">
-            <div className="ms-lcd-counter" title="Mines left" aria-label="Mines left">
-              {formatDigits(game?.mines_left ?? currentConfig.mines)}
+      <main className="ms-stage">
+        <div className="ms-card">
+          {/* Sits on the card's top edge, so it never moves anything */}
+          {isPractice && !showTicketBanner && <span className="ms-practice-tag">Practice · not ranked</span>}
+          {/* Mines left, restart, time left */}
+          <div className="ms-hud">
+            <div className="ms-readout">
+              <span className="ms-readout-label">Mines</span>
+              <span className="ms-lcd" aria-label="Mines left">
+                {formatDigits(game?.mines_left ?? currentConfig.mines)}
+              </span>
             </div>
 
             <button
               type="button"
-              className={`ms-smiley-btn ${game?.status !== 'in_progress' ? 'glow' : ''}`}
+              className={`ms-face ${over ? 'glow' : ''}`}
               onClick={start}
               disabled={busy}
-              aria-label="Restart game"
-              title="Restart (R)"
+              aria-label="New game"
+              title="New game (R)"
             >
-              <span className="smiley-face">{face}</span>
+              {face}
             </button>
 
-            <div
-              className={`ms-lcd-counter ${running && secondsLeft <= LOW_TIME ? 'is-low' : ''}`}
-              title="Seconds left"
-              aria-label="Seconds left"
-            >
-              {formatDigits(Math.ceil(secondsLeft))}
+            <div className="ms-readout">
+              <span className="ms-readout-label">Time</span>
+              <span
+                className={`ms-lcd ${running && secondsLeft <= LOW_TIME ? 'is-low' : ''}`}
+                aria-label="Seconds left"
+              >
+                {formatDigits(Math.ceil(secondsLeft))}
+              </span>
             </div>
           </div>
-
-          {notice && (
-            <div key={notice.id} className={`ms-notice ${notice.tone}`} role="status">
-              {notice.text}
-            </div>
-          )}
 
           {/* Minefield */}
-          {game && view && (
-            <div className="ms-board-viewport" ref={boardViewportRef}>
+          <div className="ms-board-wrap">
+            {game && view && (
+              <div className="ms-board-scroll" ref={boardViewportRef} style={{ width: boardWidth }}>
+                <div
+                  className={`ms-board ${sonarArmed ? 'is-aiming' : ''}`}
+                  role="group"
+                  aria-label="Minefield"
+                  style={{
+                    gridTemplateColumns: `repeat(${cols}, ${tileSize}px)`,
+                    gridTemplateRows: `repeat(${rows}, ${tileSize}px)`,
+                    width: boardWidth,
+                  }}
+                  onContextMenu={(e) => e.preventDefault()}
+                  onMouseLeave={() => setAim(null)}
+                >
+                  {Array.from({ length: cols * rows }, (_, i) => {
+                    const n = view.opened.get(i)
+                    const isOpen = n !== undefined
+                    const isFlag = view.flagged.has(i)
+                    const isMine = view.mines.has(i)
+                    const isExploded = view.exploded.has(i)
+                    const isDefused = view.defused.has(i)
+                    const isDetected = view.detected.has(i)
+                    const foundPowerUp = view.found.get(i)
+                    const missedPowerUp = view.missed.get(i)
+
+                    let cls = 'ms-tile'
+                    let content: React.ReactNode = null
+                    let label = 'Hidden'
+
+                    if (isOpen) {
+                      cls += ` open n${n}`
+                      content = (
+                        <>
+                          {n ? <span className="n-digit">{n}</span> : null}
+                          {foundPowerUp && (
+                            <span className="pu-badge" aria-hidden="true">
+                              {POWERUP_ICON[foundPowerUp]}
+                            </span>
+                          )}
+                        </>
+                      )
+                      label = n ? `${n} adjacent` : 'Empty'
+                      if (foundPowerUp) label += `, ${POWERUP_NAME[foundPowerUp]} picked up`
+                    } else if (isDefused) {
+                      cls += ' open shielded'
+                      content = <MineGlyph defused />
+                      label = 'Mine blocked by shield'
+                    } else if (isExploded) {
+                      cls += ' open boom'
+                      content = <MineGlyph exploded />
+                      label = 'Exploded mine'
+                    } else if (isFlag) {
+                      const isWrong = game.status === 'lost' && !isMine
+                      cls += isWrong ? ' flag wrong' : ' flag'
+                      content = <FlagGlyph isWrong={isWrong} />
+                      label = isWrong ? 'Wrong flag' : 'Flagged'
+                    } else if (isDetected) {
+                      cls += ' detected'
+                      content = <MineGlyph />
+                      label = 'Mine found by sonar'
+                    } else if (isMine && over) {
+                      const isWon = game.status === 'won'
+                      cls += isWon ? ' open defused' : ' open mine'
+                      content = <MineGlyph defused={isWon} />
+                      label = isWon ? 'Defused mine' : 'Mine'
+                    } else if (missedPowerUp) {
+                      cls += ' missed'
+                      content = (
+                        <span className="pu-badge" aria-hidden="true">
+                          {POWERUP_ICON[missedPowerUp]}
+                        </span>
+                      )
+                      label = `Hidden ${POWERUP_NAME[missedPowerUp]}`
+                    }
+                    if (aimArea?.has(i)) cls += ' in-aim'
+                    // Tiles that act like opened ones: no digging, flagging or long-press.
+                    const isSettled = isOpen || isDefused
+
+                    return (
+                      <button
+                        key={i}
+                        type="button"
+                        className={cls}
+                        aria-label={`Row ${Math.floor(i / cols) + 1}, column ${(i % cols) + 1}: ${label}`}
+                        onMouseEnter={sonarArmed ? () => setAim(i) : undefined}
+                        onMouseDown={(e) => {
+                          if (e.button === 0 && !isSettled && !isFlag && !isDetected) setIsClickingCell(true)
+                        }}
+                        onMouseUp={() => setIsClickingCell(false)}
+                        onMouseLeave={() => setIsClickingCell(false)}
+                        onTouchStart={(e) => onTouchStartCell(e, i, isSettled)}
+                        onTouchMove={onTouchMoveCell}
+                        onTouchEnd={onTouchEndCell}
+                        onTouchCancel={onTouchEndCell}
+                        onClick={() => {
+                          if (isDefused && !sonarArmed) return
+                          onCellClick(i, isOpen, isFlag, isDetected)
+                        }}
+                        onContextMenu={(e) => {
+                          e.preventDefault()
+                          if (!isSettled) move('flag', i)
+                        }}
+                      >
+                        {content}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Moves, power-ups and controls. The result covers this area so nothing moves. */}
+          <div className="ms-panel">
+            <div className="ms-status">
               <div
-                className={`ms-board-plate ${sonarArmed ? 'is-aiming' : ''}`}
-                role="group"
-                aria-label="Minefield"
-                style={{
-                  gridTemplateColumns: `repeat(${cols}, ${optimalTileSize}px)`,
-                  gridTemplateRows: `repeat(${rows}, ${optimalTileSize}px)`,
-                  width: cols * optimalTileSize + (cols - 1) * 2 + 12,
-                }}
-                onContextMenu={(e) => e.preventDefault()}
+                className={`ms-moves ${movesLeft !== null && movesLeft <= LOW_MOVES && !over ? 'is-low' : ''}`}
+                title="Digs, clears and sonar use a move. Flags are free."
               >
-                {Array.from({ length: cols * rows }, (_, i) => {
-                  const n = view.opened.get(i)
-                  const isOpen = n !== undefined
-                  const isFlag = view.flagged.has(i)
-                  const isMine = view.mines.has(i)
-                  const isExploded = view.exploded.has(i)
-                  const isDefused = view.defused.has(i)
-                  const isDetected = view.detected.has(i)
-                  const foundPowerUp = view.found.get(i)
-                  const missedPowerUp = view.missed.get(i)
-
-                  // SVG glyphs scale crisply with optimalTileSize
-                  let cls = 'tile'
-                  let content: React.ReactNode = null
-                  let label = 'Hidden'
-
-                  if (isOpen) {
-                    cls += ` open n${n}`
-                    content = (
-                      <>
-                        {n ? <span className="n-digit">{n}</span> : null}
-                        {foundPowerUp && (
-                          <span className="pu-badge" aria-hidden="true">
-                            {POWERUP_ICON[foundPowerUp]}
-                          </span>
-                        )}
-                      </>
-                    )
-                    label = n ? `${n} adjacent` : 'Empty'
-                    if (foundPowerUp) label += `, ${POWERUP_NAME[foundPowerUp]} picked up`
-                  } else if (isDefused) {
-                    cls += ' open shielded'
-                    content = <MineGlyph defused />
-                    label = 'Mine blocked by shield'
-                  } else if (isExploded) {
-                    cls += ' open boom'
-                    content = <MineGlyph exploded />
-                    label = 'Exploded mine'
-                  } else if (isFlag) {
-                    const isWrong = game.status === 'lost' && !isMine
-                    cls += isWrong ? ' flag wrong' : ' flag'
-                    content = <FlagGlyph isWrong={isWrong} />
-                    label = isWrong ? 'Wrong flag' : 'Flagged'
-                  } else if (isDetected) {
-                    cls += ' detected'
-                    content = <MineGlyph />
-                    label = 'Mine found by sonar'
-                  } else if (isMine && game.status !== 'in_progress') {
-                    const isWon = game.status === 'won'
-                    cls += isWon ? ' open defused' : ' open mine'
-                    content = <MineGlyph defused={isWon} />
-                    label = isWon ? 'Defused mine' : 'Mine'
-                  } else if (missedPowerUp) {
-                    cls += ' missed-powerup'
-                    content = (
-                      <span className="pu-badge" aria-hidden="true">
-                        {POWERUP_ICON[missedPowerUp]}
-                      </span>
-                    )
-                    label = `Hidden ${POWERUP_NAME[missedPowerUp]}`
-                  }
-                  // Tiles that act like opened ones: no digging, flagging or long-press.
-                  const isSettled = isOpen || isDefused
-
-                  return (
-                    <button
-                      key={i}
-                      type="button"
-                      className={cls}
-                      style={{ width: `${optimalTileSize}px`, height: `${optimalTileSize}px` }}
-                      aria-label={`Row ${Math.floor(i / cols) + 1}, column ${(i % cols) + 1}: ${label}`}
-                      onMouseDown={(e) => {
-                        if (e.button === 0 && !isSettled && !isFlag && !isDetected) setIsClickingCell(true)
-                      }}
-                      onMouseUp={() => setIsClickingCell(false)}
-                      onMouseLeave={() => setIsClickingCell(false)}
-                      onTouchStart={(e) => onTouchStartCell(e, i, isSettled)}
-                      onTouchMove={onTouchMoveCell}
-                      onTouchEnd={onTouchEndCell}
-                      onTouchCancel={onTouchEndCell}
-                      onClick={() => {
-                        if (isDefused && !sonarArmed) return
-                        onCellClick(i, isOpen, isFlag, isDetected)
-                      }}
-                      onContextMenu={(e) => {
-                        e.preventDefault()
-                        if (!isSettled) move('flag', i)
-                      }}
-                    >
-                      {content}
-                    </button>
-                  )
-                })}
+                <div className="ms-moves-top">
+                  <span className="ms-readout-label">Moves left</span>
+                  <span className="ms-moves-val">{movesLeft ?? '∞'}</span>
+                </div>
+                <div className="ms-meter" aria-hidden="true">
+                  <span style={{ transform: `scaleX(${Math.max(0, Math.min(1, movesFraction))})` }} />
+                </div>
               </div>
-            </div>
-          )}
 
-          {/* Stats */}
-          {/* Moves left and power-ups */}
-          <div className="ms-telemetry-bar">
-            <div
-              className={`telemetry-item ${movesLeft !== null && movesLeft <= LOW_MOVES && game?.status === 'in_progress' ? 'is-low' : ''}`}
-              title="Digs, chords and sonar pings use a move. Flags are free."
-            >
-              <span className="telemetry-lbl">Moves</span>
-              <span className="telemetry-val">{movesLeft ?? '∞'}</span>
+              <div
+                className={`ms-pu ${(game?.shields ?? 0) > 0 ? 'is-ready' : ''}`}
+                title="Shield: blocks the next mine you hit. Used automatically."
+              >
+                <span className="ms-pu-icon" aria-hidden="true">{POWERUP_ICON.shield}</span>
+                <span className="ms-pu-name">Shield</span>
+                <span className="ms-pu-count">{game?.shields ?? 0}</span>
+              </div>
+
+              <button
+                type="button"
+                className={`ms-pu ${canSonar ? 'is-ready' : ''} ${sonarArmed ? 'is-armed' : ''}`}
+                onClick={() => {
+                  if (!canSonar) return
+                  setSonarMode((on) => !on)
+                  audio.playSonar()
+                }}
+                disabled={!canSonar}
+                aria-pressed={sonarArmed}
+                title="Sonar (S): pick a tile to reveal the mines in the 3×3 around it. Uses a move."
+              >
+                <span className="ms-pu-icon" aria-hidden="true">{POWERUP_ICON.sonar}</span>
+                <span className="ms-pu-name">Sonar</span>
+                <span className="ms-pu-count">{game?.sonars ?? 0}</span>
+              </button>
             </div>
-            <div
-              className={`telemetry-item pu-item ${(game?.shields ?? 0) > 0 ? 'is-ready' : ''}`}
-              title="Shield: blocks the next mine you hit"
-            >
-              <span aria-hidden="true">{POWERUP_ICON.shield}</span>
-              <span className="telemetry-lbl">Shield</span>
-              <span className="telemetry-val">{game?.shields ?? 0}</span>
+
+            <div className="ms-controls">
+              <div className="ms-toggle" role="group" aria-label="Tap mode">
+                <button
+                  type="button"
+                  className={!flagMode ? 'active' : ''}
+                  aria-pressed={!flagMode}
+                  onClick={() => {
+                    setFlagMode(false)
+                    audio.playClick()
+                  }}
+                >
+                  ⛏️ Dig
+                </button>
+                <button
+                  type="button"
+                  className={flagMode ? 'active flag' : ''}
+                  aria-pressed={flagMode}
+                  onClick={() => {
+                    setFlagMode(true)
+                    audio.playFlag(true)
+                  }}
+                  title="Flag mode (F)"
+                >
+                  🚩 Flag
+                </button>
+              </div>
+              <button type="button" className="ms-help-btn" onClick={() => setHelpOpen(true)} title="How to play (?)">
+                ? Rules
+              </button>
             </div>
-            <button
-              type="button"
-              className={`telemetry-item pu-item pu-sonar ${canSonar ? 'is-ready' : ''} ${sonarArmed ? 'is-armed' : ''}`}
-              onClick={() => {
-                if (!canSonar) return
-                setSonarMode((on) => !on)
-                audio.playSonar()
-              }}
-              disabled={!canSonar}
-              aria-pressed={sonarArmed}
-              title="Sonar (S): tap a tile to show the mines in the 3×3 around it. Uses a move."
-            >
-              <span aria-hidden="true">{POWERUP_ICON.sonar}</span>
-              <span className="telemetry-lbl">{sonarArmed ? 'Pick a tile' : 'Sonar'}</span>
-              <span className="telemetry-val">{game?.sonars ?? 0}</span>
-            </button>
+
+            {game && over && (
+              <div className={`ms-result ${game.status}`} role="status">
+                <div className="ms-result-text">
+                  <strong>{resultTitle}</strong>
+                  <span>
+                    {elapsed}s · {game.moves_used} moves
+                    {typeof game.score === 'number' ? ` · Score ${game.score}` : ''}
+                    {isPractice ? ' · not saved' : ''}
+                  </span>
+                </div>
+                <button type="button" className="ms-primary-btn" onClick={start} disabled={busy}>
+                  Play again
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* Controls */}
-          <div className="ms-card-footer">
-            <div className="ms-mode-switch" role="group" aria-label="Tap mode">
-              <button
-                type="button"
-                className={`mode-btn ${!flagMode ? 'active' : ''}`}
-                aria-pressed={!flagMode}
-                onClick={() => {
-                  setFlagMode(false)
-                  audio.playClick()
-                }}
-              >
-                Dig
-              </button>
-              <button
-                type="button"
-                className={`mode-btn flag ${flagMode ? 'active' : ''}`}
-                aria-pressed={flagMode}
-                onClick={() => {
-                  setFlagMode(true)
-                  audio.playFlag(true)
-                }}
-              >
-                Flag (F)
-              </button>
-            </div>
-
-            {/* Zoom controls */}
-            <div className="ms-zoom-controls" role="group" aria-label="Board zoom">
-              <button
-                type="button"
-                className="ms-zoom-btn"
-                onClick={() => setZoom((z) => Math.max(0.7, Number((z - 0.15).toFixed(2))))}
-                disabled={zoom <= 0.7}
-                title="Zoom out (-)"
-                aria-label="Zoom out"
-              >
-                −
-              </button>
-              <button
-                type="button"
-                className="ms-zoom-val"
-                onClick={() => setZoom(1)}
-                title="Reset zoom (0)"
-                aria-label="Reset zoom"
-              >
-                {Math.round(zoom * 100)}%
-              </button>
-              <button
-                type="button"
-                className="ms-zoom-btn"
-                onClick={() => setZoom((z) => Math.min(1.8, Number((z + 0.15).toFixed(2))))}
-                disabled={zoom >= 1.8}
-                title="Zoom in (+)"
-                aria-label="Zoom in"
-              >
-                +
-              </button>
-            </div>
-
-            <span className="ms-footer-hint">
-              {sonarArmed
-                ? 'Sonar armed: click a tile to scan around it. Esc cancels.'
-                : 'Left-click to dig. Right-click to flag. S for sonar.'}
-            </span>
-          </div>
-
-          {/* Result bar */}
-          {game && game.status !== 'in_progress' && (
-            <div className={`ms-status-toast ${game.status}`} role="status">
-              <div className="toast-content">
-                <strong>{game.status === 'won' ? 'Board cleared' : END_TITLE[game.end_reason ?? 'mine']}</strong>
-                <span>
-                  {elapsed}s · {game.moves_used} moves · {apm} APM
-                  {game.status === 'won' && game.score ? ` · Score ${game.score}` : ''}
-                </span>
-              </div>
-              <button type="button" className="toast-restart-btn" onClick={start} disabled={busy}>
-                Play again
-              </button>
-            </div>
-          )}
+          {/* Power-up news takes over the hint line for a moment */}
+          <p className={`ms-hint ${notice ? `is-notice ${notice.tone}` : ''}`} role="status">
+            {notice ? notice.text : hint}
+          </p>
         </div>
       </main>
+
+      {helpOpen && (
+        <div className="ms-help-backdrop" onClick={() => setHelpOpen(false)}>
+          <div
+            className="ms-help"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="ms-help-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="ms-help-title">How to play</h2>
+            <ul>
+              <li>
+                <b>Dig</b> a tile by clicking it. A number tells you how many of the 8 tiles around it
+                are mines.
+              </li>
+              <li>
+                <b>Flag</b> a tile you think is a mine: right-click, long-press, or use Flag mode (F).
+                Flags are free.
+              </li>
+              <li>
+                <b>Clear around</b> a number by clicking it once all its mines are flagged.
+              </li>
+              <li>
+                <b>Beat the limits.</b> {currentConfig.label}: {currentConfig.time}s and{' '}
+                {currentConfig.moves} moves. Digs, clears and sonar each use a move.
+              </li>
+            </ul>
+            <h3>Power-ups</h3>
+            <p className="ms-help-sub">Hidden under some safe tiles. Dig them up to collect them.</p>
+            <ul className="ms-help-pu">
+              <li>
+                <span>{POWERUP_ICON.shield}</span>
+                <div>
+                  <b>Shield</b>: blocks the next mine you hit. Used automatically.
+                </div>
+              </li>
+              <li>
+                <span>{POWERUP_ICON.sonar}</span>
+                <div>
+                  <b>Sonar</b>: press S (or the Sonar button), then pick a tile to reveal every mine in
+                  the 3×3 around it.
+                </div>
+              </li>
+              <li>
+                <span>{POWERUP_ICON.extender}</span>
+                <div>
+                  <b>Extender</b>: +{EXTEND_SECONDS} seconds and +{EXTEND_MOVES} moves, right away.
+                </div>
+              </li>
+            </ul>
+            <p className="ms-help-sub">Win bonus: 10 points per mine, plus points for time and moves left.</p>
+            <button type="button" className="ms-primary-btn" onClick={() => setHelpOpen(false)}>
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
