@@ -803,10 +803,12 @@ function Wordle({ launch, onReplay, onHome }) {
               </div>
             )}
             {replayError && <p className="modal-error" role="alert">{replayError}</p>}
-            <button className="modal-primary" type="button" autoFocus disabled={replayBusy} onClick={handlePlayAgain}>
-              {replayBusy ? 'Starting…' : 'Play again'}
-            </button>
-            <a className="modal-link" href={HUB_URL}>Back to arcade hub</a>
+            <div className="modal-actions modal-actions-row">
+              <button className="modal-primary" type="button" autoFocus disabled={replayBusy} onClick={handlePlayAgain}>
+                {replayBusy ? 'Starting…' : 'Play again'}
+              </button>
+              <a className="modal-primary modal-secondary" href={HUB_URL}>Arcade hub</a>
+            </div>
           </section>
         </div>
       )}

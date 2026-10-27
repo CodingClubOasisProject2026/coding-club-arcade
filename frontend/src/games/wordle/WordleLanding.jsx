@@ -64,9 +64,11 @@ function DemoBoard() {
     });
 
     const score = greens * POINTS_PER_GREEN + (solved ? SOLVE_POINTS : 0);
-    const timeLeft = Math.max(0, START_SECONDS - Math.floor((tick * TICK_MS) / 1000 * 2)
-        + greens * SECONDS_PER_GREEN + (solved ? SOLVE_SECONDS : 0));
-    const pct = Math.min(100, (timeLeft / START_SECONDS) * 100);
+    const rawTime = START_SECONDS - Math.floor((tick * TICK_MS) / 1000 * 2)
+        + greens * SECONDS_PER_GREEN + (solved ? SOLVE_SECONDS : 0);
+    // Never show more than the 2:00 the real game starts with, however many bonuses stack up.
+    const timeLeft = Math.min(START_SECONDS, Math.max(0, rawTime));
+    const pct = (timeLeft / START_SECONDS) * 100;
 
     return (
         <div className="lp-demo" aria-hidden="true">
@@ -158,7 +160,6 @@ export default function Landing({ me, onPlay, busy = false, error = '' }) {
                 <section className="landing-card lp-card" aria-label="Live demo">
                     <div className="landing-meta">
                         <span>WORDLE / WORDS</span>
-                        <span className="landing-live"><i className="lp-dot" aria-hidden="true" />LIVE DEMO</span>
                     </div>
                     <DemoBoard />
                     <div className="lp-legend" aria-hidden="true">
