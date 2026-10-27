@@ -229,6 +229,7 @@ export default function Snake() {
         <div className="snake-stats">
           <span>SCORE {String(game.score ?? 0).padStart(4, '0')}</span>
           <span>APPLES {game.apples_eaten ?? 0}</span>
+          {game.apple_locked && <span className="snake-keyhud">LOCKED 🔒</span>}
           {phase === 'playing' && (
             <button type="button" onClick={togglePause} className="snake-btn-pause">
               PAUSE
@@ -254,7 +255,7 @@ export default function Snake() {
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
       >
-        <Board board={game.board} snake={game.snake} apple={game.apple} />
+        <Board board={game.board} snake={game.snake} apple={game.apple} keyCell={game.key} appleLocked={game.apple_locked} />
 
         {phase !== 'playing' && overlay && (
           <div className="snake-overlay">
@@ -282,6 +283,8 @@ export default function Snake() {
       <DPad onDirection={changeDirection} />
 
       <p className="snake-hint">
+        SOME APPLES ARE LOCKED · GRAB THE KEY FIRST · HITTING A LOCKED APPLE ENDS THE RUN
+        <br />
         ARROWS / WASD MOVE · SPACE OR P PAUSE · SWIPE ON MOBILE
         {me?.authenticated && <span> · 🎟 {me.tickets} ticket{me.tickets === 1 ? '' : 's'}</span>}
       </p>

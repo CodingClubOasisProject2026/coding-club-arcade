@@ -240,6 +240,57 @@
   display: block;
 }
 
+/* Key + locked apple */
+.snake-apple,
+.snake-key-wrap {
+  position: absolute;
+  inset: 0;
+}
+
+.snake-apple.locked .snake-sprite {
+  filter: grayscale(0.5) brightness(0.8);
+}
+
+.snake-lock {
+  position: absolute;
+  inset: 18%;
+  width: 64%;
+  height: 64%;
+  filter: drop-shadow(1px 1px 0 #000);
+}
+
+.snake-key-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: key-bob 0.9s ease-in-out infinite alternate;
+  filter: drop-shadow(0 0 4px rgba(255, 210, 74, 1)) brightness(1.15);
+}
+
+.snake-key {
+  height: 100%;
+  width: auto;
+  image-rendering: pixelated;
+  transform: rotate(45deg);
+}
+
+@keyframes key-bob {
+  from { transform: translateY(-6%); }
+  to { transform: translateY(6%); }
+}
+
+.snake-keyhud {
+  color: #8a8f9e;
+}
+
+@media (max-width: 480px) {
+  .snake-stats {
+    gap: 10px;
+    font-size: 10px;
+    flex-wrap: wrap;
+  }
+}
+
 /* Apple burst */
 .ap-burst {
   position: absolute;

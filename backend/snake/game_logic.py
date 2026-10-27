@@ -2,11 +2,18 @@
 
 frontend/src/games/snake/engine.ts is a line-for-line port of this file.
 Any rule change must be made in both, or verified scores will diverge.
+
+Twist: one apple at a time, and each spawn is randomly normal or locked
+(1 in LOCKED_APPLE_CHANCE). A normal apple is eaten directly. A locked apple
+comes with a key somewhere on the board; the snake must eat the key (no
+growth, no points) to unlock the apple, and running into a locked apple is
+game over. Eating an apple scores, grows the snake and spawns the next one.
 """
 
 BOARD_WIDTH = 20
 BOARD_HEIGHT = 20
 POINTS_PER_APPLE = 10
+LOCKED_APPLE_CHANCE = 3  # 1 in 3 apples spawn locked
 MAX_TICKS = 100_000
 
 # Tick speed. The frontend waits this long before each tick, so a run can't
@@ -58,6 +65,8 @@ def create_game(seed):
         "snake": [segment.copy() for segment in INITIAL_SNAKE],
         "direction": INITIAL_DIRECTION,
         "apple": None,
+        "apple_locked": False,
+        "key": None,
         "score": 0,
         "apples_eaten": 0,
         "status": "ACTIVE",
@@ -65,13 +74,30 @@ def create_game(seed):
         "min_ms": 0,
         "rng": seed_to_rng(seed),
     }
-    game["apple"] = generate_apple(game)
+    spawn_apple(game)
     return game
 
 
-def generate_apple(game):
+def spawn_apple(game):
+    game["apple"] = generate_cell(game, [])
+    if game["apple"] is None:
+        game["apple_locked"] = False
+        game["key"] = None
+        return
+    locked = next_random(game) % LOCKED_APPLE_CHANCE == 0
+    if not locked:
+        game["apple_locked"] = False
+        game["key"] = None
+        return
+    key = generate_cell(game, [game["apple"]])
+    game["key"] = key
+    game["apple_locked"] = key is not None
+
+
+def generate_cell(game, extra_blocked):
     # Pick a free cell, scanning column by column (x outer, y inner).
     occupied = {tuple(segment) for segment in game["snake"]}
+    occupied.update(tuple(cell) for cell in extra_blocked)
     free = [
         [x, y]
         for x in range(BOARD_WIDTH)
@@ -99,22 +125,32 @@ def move_snake(game, direction):
     head_x, head_y = game["snake"][0]
     new_head = [head_x + dx, head_y + dy]
     x, y = new_head
-    ate_apple = new_head == game["apple"]
+    hit_locked = game["apple_locked"] and new_head == game["apple"]
+    ate_apple = (not game["apple_locked"]) and new_head == game["apple"]
+    ate_key = game["key"] is not None and new_head == game["key"]
 
     # The tail moves out of the way unless the snake grows.
     body = game["snake"] if ate_apple else game["snake"][:-1]
 
-    if not (0 <= x < BOARD_WIDTH and 0 <= y < BOARD_HEIGHT) or new_head in body:
+    if (
+        hit_locked
+        or not (0 <= x < BOARD_WIDTH and 0 <= y < BOARD_HEIGHT)
+        or new_head in body
+    ):
         game["status"] = "GAME_OVER"
         return game
 
     game["direction"] = direction
     game["snake"].insert(0, new_head)
 
-    if ate_apple:
+    if ate_key:
+        game["apple_locked"] = False
+        game["key"] = None
+        game["snake"].pop()
+    elif ate_apple:
         game["score"] += POINTS_PER_APPLE
         game["apples_eaten"] += 1
-        game["apple"] = generate_apple(game)
+        spawn_apple(game)
         if game["apple"] is None:
             game["status"] = "WON"
     else:

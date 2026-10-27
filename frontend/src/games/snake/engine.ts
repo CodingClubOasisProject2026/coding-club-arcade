@@ -8,6 +8,8 @@ export type SnakeStatus = 'ACTIVE' | 'WON' | 'GAME_OVER'
 
 export const BOARD = { width: 20, height: 20 }
 export const POINTS = 10
+/** 1 in N apples spawns locked behind a key. */
+export const LOCKED_APPLE_CHANCE = 3
 
 export const BASE_TICK_MS = 150
 export const MIN_TICK_MS = 90
@@ -39,6 +41,8 @@ export type GameState = {
   snake: Cell[]
   direction: SnakeDirection
   apple: Cell | null
+  apple_locked: boolean
+  key: Cell | null
   score: number
   apples_eaten: number
   status: SnakeStatus
@@ -72,9 +76,11 @@ export function tickDelayMs(applesEaten: number): number {
   return Math.max(MIN_TICK_MS, BASE_TICK_MS - applesEaten * SPEEDUP_PER_APPLE_MS)
 }
 
-function generateApple(game: GameState): Cell | null {
+/** Pick a free cell (not on the snake or in `blocked`). One RNG call if any is free. */
+function generateCell(game: GameState, blocked: (Cell | null)[] = []): Cell | null {
   // Same scan order as the backend: x outer, y inner.
   const occupied = new Set(game.snake.map(([x, y]) => `${x},${y}`))
+  for (const cell of blocked) if (cell) occupied.add(`${cell[0]},${cell[1]}`)
   const free: Cell[] = []
   for (let x = 0; x < BOARD.width; x += 1) {
     for (let y = 0; y < BOARD.height; y += 1) {
@@ -85,19 +91,39 @@ function generateApple(game: GameState): Cell | null {
   return free[nextRandom(game) % free.length]
 }
 
+/** Place a new apple (normal or locked, decided by the RNG) and its key if locked. */
+function spawnApple(game: GameState): void {
+  game.apple = generateCell(game, [])
+  if (game.apple === null) {
+    game.apple_locked = false
+    game.key = null
+    return
+  }
+  const locked = nextRandom(game) % LOCKED_APPLE_CHANCE === 0
+  if (locked) {
+    game.key = generateCell(game, [game.apple])
+    game.apple_locked = game.key !== null
+  } else {
+    game.apple_locked = false
+    game.key = null
+  }
+}
+
 export function createGame(seed: string | number | bigint): GameState {
   const game: GameState = {
     board: { ...BOARD },
     snake: INIT_SNAKE.map(([x, y]) => [x, y] as Cell),
     direction: INIT_DIR,
     apple: null,
+    apple_locked: false,
+    key: null,
     score: 0,
     apples_eaten: 0,
     status: 'ACTIVE',
     tick: 0,
     rng: seedToRng(seed),
   }
-  game.apple = generateApple(game)
+  spawnApple(game)
   return game
 }
 
@@ -109,11 +135,14 @@ export function step(game: GameState, direction: SnakeDirection): GameState {
   const [dx, dy] = DIR[direction]
   const [hx, hy] = game.snake[0]
   const head: Cell = [hx + dx, hy + dy]
-  const ate = game.apple !== null && head[0] === game.apple[0] && head[1] === game.apple[1]
+  const onApple = game.apple !== null && head[0] === game.apple[0] && head[1] === game.apple[1]
+  const hitLocked = game.apple_locked && onApple
+  const ate = !game.apple_locked && onApple
+  const ateKey = game.key !== null && head[0] === game.key[0] && head[1] === game.key[1]
   const body = ate ? game.snake : game.snake.slice(0, -1)
 
   const outOfBounds = head[0] < 0 || head[0] >= BOARD.width || head[1] < 0 || head[1] >= BOARD.height
-  if (outOfBounds || body.some(([x, y]) => x === head[0] && y === head[1])) {
+  if (outOfBounds || hitLocked || body.some(([x, y]) => x === head[0] && y === head[1])) {
     game.status = 'GAME_OVER'
     return game
   }
@@ -121,10 +150,14 @@ export function step(game: GameState, direction: SnakeDirection): GameState {
   game.direction = direction
   game.snake.unshift(head)
 
-  if (ate) {
+  if (ateKey) {
+    game.apple_locked = false
+    game.key = null
+    game.snake.pop()
+  } else if (ate) {
     game.score += POINTS
     game.apples_eaten += 1
-    game.apple = generateApple(game)
+    spawnApple(game)
     if (game.apple === null) game.status = 'WON'
   } else {
     game.snake.pop()
@@ -146,6 +179,8 @@ export function advance(game: GameState, direction: SnakeDirection, actions: Act
 export function createPreviewGame(): GameState {
   const game = createGame(1)
   game.apple = [10, 5]
+  game.apple_locked = true
+  game.key = [14, 12]
   return game
 }
 

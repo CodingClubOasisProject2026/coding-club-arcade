@@ -52,6 +52,45 @@ function Sprite({ name }: { name: string }) {
   )
 }
 
+/** Pixel-art golden key (12x12 grid), drawn as SVG rects. */
+const KEY_PIXELS: [number, number, number, number, string][] = [
+  // [x, y, w, h, fill]
+  [2, 1, 4, 1, '#fff4b0'],
+  [1, 2, 6, 1, '#ffd24a'],
+  [1, 3, 2, 3, '#ffd24a'],
+  [5, 3, 2, 3, '#ffd24a'],
+  [1, 6, 6, 1, '#c9921a'],
+  [2, 7, 4, 1, '#c9921a'],
+  [3, 7, 2, 1, '#ffd24a'],
+  [3, 8, 2, 4, '#ffd24a'],
+  [5, 9, 2, 1, '#ffd24a'],
+  [5, 11, 2, 1, '#ffd24a'],
+  [4, 8, 1, 4, '#c9921a'],
+]
+
+function KeySprite() {
+  return (
+    <svg className="snake-key" viewBox="0 0 8 12" shapeRendering="crispEdges" aria-hidden="true">
+      {KEY_PIXELS.map(([x, y, w, h, fill], i) => (
+        <rect key={i} x={x} y={y} width={w} height={h} fill={fill} />
+      ))}
+      <rect x="3" y="3" width="2" height="2" fill="#2a1b0a" />
+    </svg>
+  )
+}
+
+function Padlock() {
+  return (
+    <svg className="snake-lock" viewBox="0 0 10 10" shapeRendering="crispEdges" aria-hidden="true">
+      <path d="M3 5V3h1V2h2v1h1v2" fill="none" stroke="#c8ccd6" strokeWidth="1" />
+      <rect x="2" y="5" width="6" height="4" fill="#8a8f9e" />
+      <rect x="2" y="5" width="6" height="1" fill="#c8ccd6" />
+      <rect x="2" y="9" width="6" height="0.01" fill="#000" />
+      <rect x="4.5" y="6.5" width="1" height="1.5" fill="#1b1d26" />
+    </svg>
+  )
+}
+
 function Burst({ x, y, board }: { x: number; y: number; board: { width: number; height: number } }) {
   return (
     <div
@@ -80,9 +119,11 @@ interface BoardProps {
   board: { width: number; height: number }
   snake: [number, number][]
   apple: [number, number] | null
+  appleLocked?: boolean
+  keyCell?: [number, number] | null
 }
 
-export default function Board({ board, snake, apple }: BoardProps) {
+export default function Board({ board, snake, apple, appleLocked = false, keyCell = null }: BoardProps) {
   const [bursts, setBursts] = useState<{ id: string; x: number; y: number }[]>([])
   const prevApple = useRef<[number, number] | null>(null)
 
@@ -100,6 +141,7 @@ export default function Board({ board, snake, apple }: BoardProps) {
   }, [apple, snake])
 
   const parts = new Map(snake.map(([x, y], i) => [`${x},${y}`, spriteFor(snake, i)]))
+  const keyKey = keyCell ? `${keyCell[0]},${keyCell[1]}` : null
   const appleKey = apple ? `${apple[0]},${apple[1]}` : null
 
   const cells = []
@@ -119,7 +161,16 @@ export default function Board({ board, snake, apple }: BoardProps) {
             ...pixelated,
           }}
         >
-          {part ? <Sprite name={part} /> : key === appleKey ? <Sprite name="apple" /> : null}
+          {part ? <Sprite name={part} /> : key === appleKey ? (
+            <div className={appleLocked ? 'snake-apple locked' : 'snake-apple'}>
+              <Sprite name="apple" />
+              {appleLocked && <Padlock />}
+            </div>
+          ) : key === keyKey ? (
+            <div className="snake-key-wrap">
+              <KeySprite />
+            </div>
+          ) : null}
         </div>
       )
     }
