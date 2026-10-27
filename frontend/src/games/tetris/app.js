@@ -182,6 +182,8 @@
 
   function setGameStatus(status, label) {
     game.status = status;
+    const badge = getElement("status-badge");
+    if (badge) badge.className = `board-status-badge status-${status}`;
     getElement("game-state-label").textContent = label;
   }
 
@@ -823,6 +825,8 @@
     const formatted = String(best).padStart(6, "0");
     const bestEl = getElement("best-score");
     if (bestEl) bestEl.textContent = formatted;
+    const navBestEl = getElement("nav-best-score");
+    if (navBestEl) navBestEl.textContent = formatted;
   }
 
   function setupTouchControls() {
