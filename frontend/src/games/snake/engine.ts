@@ -148,3 +148,46 @@ export function createPreviewGame(): GameState {
   game.apple = [10, 5]
   return game
 }
+
+export const MAX_TICKS = 100_000
+// Mirrors MIN_REAL_TIME_RATIO in backend/snake/tasks.py.
+const MIN_REAL_TIME_RATIO = 0.9
+
+/**
+ * Port of replay_actions in backend/snake/game_logic.py plus the timing check in
+ * snake.tasks.calculate_score. Lets the UI show the verified score instantly;
+ * the backend still re-runs this and is the source of truth.
+ * Returns the score, or null if the backend would reject the run.
+ */
+export function verifyRun(seed: string | number | bigint, log: ActionLog, elapsedMs: number): number | null {
+  const { actions, total_ticks: totalTicks, end_reason: endReason } = log
+  if (!Number.isInteger(totalTicks) || totalTicks < 0 || totalTicks > MAX_TICKS) return null
+
+  let previousTick = 0
+  for (const { tick, direction } of actions) {
+    if (!Number.isInteger(tick) || tick < 1 || tick > totalTicks || tick <= previousTick) return null
+    if (!(direction in DIR)) return null
+    previousTick = tick
+  }
+
+  const game = createGame(seed)
+  let direction = INIT_DIR
+  let actionIndex = 0
+  let minMs = 0
+  for (let tick = 1; tick <= totalTicks; tick += 1) {
+    if (game.status !== 'ACTIVE') return null
+    if (actionIndex < actions.length && actions[actionIndex].tick === tick) {
+      direction = actions[actionIndex].direction
+      actionIndex += 1
+    }
+    if (direction === OPP[game.direction]) return null
+    minMs += tickDelayMs(game.apples_eaten)
+    step(game, direction)
+  }
+
+  if (endReason === 'COLLISION' && game.status !== 'GAME_OVER') return null
+  if (endReason === 'WON' && game.status !== 'WON') return null
+  if (endReason === 'QUIT' && game.status !== 'ACTIVE') return null
+  if (elapsedMs < minMs * MIN_REAL_TIME_RATIO) return null
+  return game.score
+}

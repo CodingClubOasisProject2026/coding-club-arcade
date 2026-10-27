@@ -6,7 +6,7 @@ import GoogleSignIn from '../../GoogleSignIn'
 import Board from './Board'
 import DungeonBackdrop from './DungeonBackdrop'
 import DPad from './DPad'
-import { runStatus, startRun, submitRun } from './api'
+import { startRun, submitRun } from './api'
 import {
   advance,
   createGame,
@@ -16,12 +16,11 @@ import {
   type ActionLog,
   type GameState,
   type SnakeDirection,
+  verifyRun,
 } from './engine'
 import './Snake.css'
 
 const MAX_QUEUED_TURNS = 2
-const POLL_TRIES = 10
-const POLL_MS = 600
 
 const KEY_TO_DIR: Record<string, SnakeDirection> = {
   ArrowUp: 'UP',
@@ -38,9 +37,7 @@ const KEY_TO_DIR: Record<string, SnakeDirection> = {
   D: 'RIGHT',
 }
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
-
-type Submission = 'idle' | 'practice' | 'sending' | 'verified' | 'pending' | 'error'
+type Submission = 'idle' | 'practice' | 'verified' | 'rejected' | 'error'
 
 function randomSeed() {
   const words = crypto.getRandomValues(new Uint32Array(2))
@@ -60,6 +57,8 @@ export default function Snake() {
   // The live game is mutated in place by step(); React gets a copy each tick.
   const gameRef = useRef(game)
   const sessionRef = useRef<string | null>(null)
+  const seedRef = useRef<string | number | bigint>(0)
+  const startedAtRef = useRef(0)
   const actionsRef = useRef<ActionLog['actions']>([])
   const queueRef = useRef<SnakeDirection[]>([])
   const swipeOriginRef = useRef<{ x: number; y: number } | null>(null)
@@ -96,6 +95,8 @@ export default function Snake() {
       setBusy(false)
       refresh()
     }
+    seedRef.current = seed
+    startedAtRef.current = Date.now()
     gameRef.current = createGame(seed)
     actionsRef.current = []
     queueRef.current = []
@@ -119,8 +120,9 @@ export default function Snake() {
     [phase]
   )
 
-  // Send the recorded log to the backend and wait for the Celery task to score it.
-  const finish = useCallback(async () => {
+  // Verify the run locally (same replay as the backend) so the result shows
+  // instantly, then hand the log to the backend in the background.
+  const finish = useCallback(() => {
     const sessionId = sessionRef.current
     const g = gameRef.current
     if (!sessionId) {
@@ -133,23 +135,17 @@ export default function Snake() {
       total_ticks: g.tick,
       end_reason: g.status === 'WON' ? 'WON' : 'COLLISION',
     }
-    setSubmission('sending')
-    try {
-      await submitRun(sessionId, log)
-      for (let i = 0; i < POLL_TRIES; i += 1) {
-        await sleep(POLL_MS)
-        const result = await runStatus(sessionId)
-        if (result.status === 'verified') {
-          setFinalScore(result.score)
-          setSubmission('verified')
-          return
-        }
-      }
-      setSubmission('pending')
-    } catch (e: unknown) {
+    const score = verifyRun(seedRef.current, log, Date.now() - startedAtRef.current)
+    if (score === null) {
+      setSubmission('rejected')
+    } else {
+      setFinalScore(score)
+      setSubmission('verified')
+    }
+    submitRun(sessionId, log).catch((e: unknown) => {
       setError(e instanceof Error ? e.message : 'Failed to submit score')
       setSubmission('error')
-    }
+    })
   }, [])
 
   // Game loop: runs entirely in the browser, recording each direction change.
@@ -162,7 +158,7 @@ export default function Snake() {
       paint()
       if (g.status !== 'ACTIVE') {
         setPhase('over')
-        void finish()
+        finish()
         return
       }
       timer = window.setTimeout(tick, tickDelayMs(g.apples_eaten))
@@ -267,14 +263,13 @@ export default function Snake() {
               <p style={{ margin: 0, fontSize: '13px' }}>
                 FINAL SCORE: {finalScore ?? game.score}
                 {submission === 'practice' && ' · PRACTICE, NOT SUBMITTED'}
-                {submission === 'sending' && ' · VERIFYING...'}
                 {submission === 'verified' && ' · VERIFIED'}
-                {submission === 'pending' && ' · STILL VERIFYING'}
+                {submission === 'rejected' && ' · COULD NOT VERIFY'}
               </p>
             )}
             <button
               type="button"
-              disabled={busy || submission === 'sending'}
+              disabled={busy}
               onClick={phase === 'paused' ? togglePause : startNewGame}
               className="snake-overlay-btn"
             >
