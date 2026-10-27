@@ -94,7 +94,10 @@ def play_bot(seed, max_pieces=60):
 class ValidateActionsTests(SimpleTestCase):
     def test_accepts_every_action_code(self):
         validate_actions("TLRCcSH")
-        validate_actions("")
+
+    def test_rejects_empty_actions(self):
+        with self.assertRaises(ValueError):
+            validate_actions("")
 
     def test_rejects_non_strings(self):
         for bad in (None, ["T"], [{"type": "tick"}], 5):

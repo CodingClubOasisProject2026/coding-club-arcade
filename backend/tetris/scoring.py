@@ -1,18 +1,11 @@
 
+from tetris.pieces import ROWS
+
+
 class ScoringSystem:
     """Score cleared lines; multiply successive clears and reset on a dry lock."""
 
-    LINE_CLEAR_POINTS = {
-        0: 0,
-        1: 100,
-        2: 200,
-        3: 300,
-        4: 400,
-        5:500,
-        6:600,
-        7:700,
-
-    }
+    POINTS_PER_LINE = 100
 
     GRAVITY_INTERVAL_MS = 800
 
@@ -25,8 +18,8 @@ class ScoringSystem:
         if not isinstance(lines_cleared, int) or isinstance(lines_cleared, bool):
             raise TypeError("lines_cleared must be an integer")
 
-        if lines_cleared not in self.LINE_CLEAR_POINTS:
-            raise ValueError("lines_cleared must be between 0 and 4")
+        if lines_cleared < 0 or lines_cleared > ROWS:
+            raise ValueError(f"lines_cleared must be between 0 and {ROWS}")
 
         if lines_cleared == 0:
             self.consecutive_clears = 0
@@ -35,9 +28,7 @@ class ScoringSystem:
             self.consecutive_clears += 1
             multiplier = self.consecutive_clears
 
-        points_earned = (
-            self.LINE_CLEAR_POINTS[lines_cleared] * multiplier
-        )
+        points_earned = self.POINTS_PER_LINE * lines_cleared * multiplier
 
         self.total_score += points_earned
         self.total_lines_cleared += lines_cleared

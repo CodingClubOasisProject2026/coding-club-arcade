@@ -704,15 +704,16 @@
       Date.now() - game.startedAt,
       game.actions.at(-1)?.at_ms ?? 0,
     );
+    const actionCodes = {
+      gravity: "T",
+      left: "L",
+      right: "R",
+      rotate: "C",
+      soft_drop: "S",
+      hard_drop: "H",
+    };
     game.completionPayload = {
-      actions: game.actions.map(({ action }) => {
-        if (action === "left" || action === "right") {
-          return { type: "move", direction: action };
-        }
-        if (action === "gravity") return { type: "tick" };
-        if (action === "rotate") return { type: "rotate", direction: "clockwise" };
-        return { type: action };
-      }),
+      actions: game.actions.map(({ action }) => actionCodes[action]).join(""),
     };
 
     const best = Math.max(
@@ -779,9 +780,10 @@
         actions: game.completionPayload.actions,
       },
     );
-    if (result.status !== "queued" || !result.task_id) throw new Error("The backend did not queue the Tetris validation task.");
+    // The backend returns its standard updated-session payload after enqueueing;
+    // it does not include a queue status or Celery task id.
     game.submitted = true;
-    game.taskId = result.task_id;
+    game.taskId = result?.task_id || null;
   }
 
   async function retrySubmission() {

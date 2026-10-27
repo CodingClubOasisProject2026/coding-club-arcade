@@ -31,9 +31,11 @@ _DIRECTIONS = {"L": "left", "R": "right", "C": "clockwise", "c": "counterclockwi
 
 
 def validate_actions(actions):
-    """Raise ValueError unless actions is a string of known action codes."""
+    """Raise ValueError unless actions contains a nonempty sequence of known codes."""
     if not isinstance(actions, str):
         raise ValueError("actions must be a string.")
+    if not actions:
+        raise ValueError("actions must not be empty.")
     if len(actions) > MAX_ACTIONS:
         raise ValueError("actions is too long.")
     if not _VALID_ACTIONS.fullmatch(actions):
