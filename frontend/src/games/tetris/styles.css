@@ -858,16 +858,30 @@ kbd {
   opacity: 1;
   transform: translate(0, 0) rotate(0) scale(1);
   transform-origin: center;
-  animation: fragment-disintegrate 760ms cubic-bezier(.17, .72, .26, 1) var(--fragment-delay) forwards;
+  animation: fragment-disintegrate 900ms cubic-bezier(.16, .72, .22, 1) var(--fragment-delay) both;
   will-change: transform, opacity;
 }
 
 @keyframes fragment-disintegrate {
-  0% { opacity: 1; transform: translate(0, 0) rotate(0) scale(1); }
-  60% { opacity: 0.9; }
+  0%, 10% {
+    opacity: 1;
+    filter: brightness(1.1);
+    transform: translate(0, 0) rotate(0) scale(1);
+  }
+  24% {
+    opacity: 1;
+    filter: brightness(1.9);
+    transform: translate(var(--fragment-burst-x), var(--fragment-burst-y)) rotate(var(--fragment-turn-burst)) scale(.94);
+  }
+  48% {
+    opacity: .9;
+    filter: brightness(1.45);
+    transform: translate(var(--fragment-mid-x), var(--fragment-mid-y)) rotate(var(--fragment-turn-mid)) scale(.72);
+  }
   100% {
     opacity: 0;
-    transform: translate(var(--fragment-x), var(--fragment-y)) rotate(var(--fragment-turn)) scale(0.3);
+    filter: brightness(1.8);
+    transform: translate(var(--fragment-x), var(--fragment-y)) rotate(var(--fragment-turn)) scale(.08);
   }
 }
 

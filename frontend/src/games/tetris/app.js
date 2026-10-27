@@ -584,14 +584,14 @@
         const cell = board.children[rowIndex * COLUMNS + column];
         if (!cell || !type) return;
         const rect = cell.getBoundingClientRect();
-        const shardWidth = rect.width * 0.4;
-        const shardHeight = rect.height * 0.4;
+        const shardWidth = rect.width * 0.5;
+        const shardHeight = rect.height * 0.5;
 
         shards.forEach((direction, shardIndex) => {
           const fragment = document.createElement("span");
-          const xOffset = shardIndex % 2 ? rect.width * 0.55 : rect.width * 0.05;
-          const yOffset = shardIndex > 1 ? rect.height * 0.55 : rect.height * 0.05;
-          const travel = 1.1 + ((column + shardIndex) % 3) * 0.22;
+          const xOffset = shardIndex % 2 ? rect.width * 0.5 : 0;
+          const yOffset = shardIndex > 1 ? rect.height * 0.5 : 0;
+          const travel = 1.15 + ((column + shardIndex) % 3) * 0.22;
           const turn = (shardIndex % 2 ? 1 : -1) * (55 + ((column + rowIndex) % 4) * 18);
           fragment.className = "clear-fragment";
           fragment.style.left = `${rect.left - boardRect.left + xOffset}px`;
@@ -599,6 +599,24 @@
           fragment.style.width = `${shardWidth}px`;
           fragment.style.height = `${shardHeight}px`;
           fragment.style.setProperty("--fragment-color", PIECE_COLORS[type]);
+          fragment.style.setProperty(
+            "--fragment-burst-x",
+            `${Math.round(direction.x * rect.width * 0.18)}px`,
+          );
+          fragment.style.setProperty(
+            "--fragment-burst-y",
+            `${Math.round(direction.y * rect.height * 0.18)}px`,
+          );
+          fragment.style.setProperty(
+            "--fragment-mid-x",
+            `${Math.round(direction.x * rect.width * 0.25)}px`,
+          );
+          fragment.style.setProperty(
+            "--fragment-mid-y",
+            `${Math.round(direction.y * rect.height * 0.25)}px`,
+          );
+          fragment.style.setProperty("--fragment-turn-burst", `${Math.round(turn * 0.18)}deg`);
+          fragment.style.setProperty("--fragment-turn-mid", `${Math.round(turn * 0.48)}deg`);
           fragment.style.setProperty(
             "--fragment-x",
             `${Math.round(direction.x * rect.width * travel)}px`,
@@ -618,7 +636,7 @@
     });
 
     boardWrap.append(layer);
-    game.clearFragmentsTimer = setTimeout(() => layer.remove(), 1100);
+    game.clearFragmentsTimer = setTimeout(() => layer.remove(), 1300);
   }
 
   function renderNextPiece() {
