@@ -3,87 +3,51 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-    <meta name="theme-color" content="#070913" />
-    <title>Arcade — Tetris</title>
+    <meta name="theme-color" content="#11151c" />
+    <title>Tetris</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <!-- 1. TOP RETRO NAVIGATION BAR (Matching Pac-Man & Handheld Theme) -->
-    <header class="tetris-nav">
-      <div class="tetris-nav-left">
-        <a href="/" target="_top" class="tetris-back-link" title="Return to Arcade">
-          <span class="tetris-back-arrow">◀</span>
-          <span>ARCADE</span>
-        </a>
-        <div class="tetris-nav-title">TETRIS</div>
-      </div>
-
-      <div class="tetris-nav-center">
-        <div class="tetris-high-score-badge">
-          <span class="tetris-hs-label">HIGH</span>
-          <span class="tetris-hs-val" id="nav-best-score">000000</span>
-        </div>
-      </div>
-
-      <div class="tetris-nav-right">
-        <div class="tetris-edition-tag">🕹️ RETRO EDITION</div>
-      </div>
+    <header class="tetris-page-head">
+      <a href="/" target="_top" class="back-link" aria-label="Back to arcade">
+        <span aria-hidden="true">←</span> Back
+      </a>
+      <h1>Tetris</h1>
     </header>
 
-    <!-- 2. MAIN ARCADE CABINET SHELL -->
     <main class="tetris-shell">
       <div class="game-layout">
-        <!-- LEFT WING: STATS & NEXT PIECE -->
         <aside class="side-column left-column">
-          <!-- Live Score Panel -->
           <div class="panel panel-stats">
-            <div class="panel-header">
-              <span class="panel-icon">📊</span>
-              <span class="panel-label">METRICS</span>
-            </div>
-            
             <div class="score-display-box">
-              <span class="box-label">SCORE</span>
+              <span class="box-label">Score</span>
               <div id="score" class="score">000000</div>
             </div>
 
             <div class="stat-dual-grid">
               <div class="mini-stat-card">
-                <span class="mini-stat-label">LINES</span>
+                <span class="mini-stat-label">Lines</span>
                 <strong id="lines" class="mini-stat-val">00</strong>
               </div>
               <div class="mini-stat-card">
-                <span class="mini-stat-label">LEVEL</span>
+                <span class="mini-stat-label">Level</span>
                 <strong id="level" class="mini-stat-val">01</strong>
               </div>
             </div>
           </div>
 
-          <!-- Next Piece Preview -->
           <div class="panel panel-preview">
-            <div class="panel-header">
-              <span class="panel-icon">🔮</span>
-              <span class="panel-label">NEXT PIECE</span>
-            </div>
+            <span class="box-label">Next</span>
             <div class="preview-chamber">
               <div id="next-preview" class="preview-grid"></div>
             </div>
           </div>
         </aside>
 
-        <!-- CENTER STAGE: THE PLAYFIELD MATRIX -->
         <div class="board-column">
           <div class="board-wrap">
-            <div class="board-head">
-              <div class="board-status-badge" id="status-badge">
-                <span class="status-indicator-dot"></span>
-                <span id="game-state-label">READY</span>
-              </div>
-              <div class="board-timer-badge">
-                <span class="timer-icon">⏱</span>
-                <span id="elapsed">00:00</span>
-              </div>
-            </div>
+            <span class="sr-only" id="game-state-label">READY</span>
+            <span class="sr-only" id="elapsed">00:00</span>
 
             <div
               id="board"
@@ -92,23 +56,26 @@
               aria-label="Tetris playfield"
             ></div>
 
+            <div id="stack-callout" class="stack-callout" aria-live="polite" aria-atomic="true"></div>
             <div id="clear-callout" class="clear-callout" aria-live="polite" aria-atomic="true"></div>
 
             <div id="overlay" class="board-overlay">
               <div class="overlay-card">
-                <div class="overlay-icon">▦</div>
-                <h2 id="overlay-title">Ready to play?</h2>
-                <p id="overlay-copy">Stack pieces and clear lines to set a new record!</p>
-                <button id="start-button" class="primary-button">
-                  <span class="btn-text">START GAME</span>
-                  <span class="btn-glow"></span>
-                </button>
+                <h2 id="overlay-title" class="sr-only"></h2>
+                <p id="overlay-copy" aria-live="polite"></p>
+                <button id="start-button" class="primary-button">Start game</button>
               </div>
             </div>
           </div>
 
-          <!-- Tactile Arcade Touch Controller (Mobile / Touch Phones) -->
-          <div class="tetris-touch-controls" id="touch-controls" aria-label="Game Touch Controls">
+          <div class="keyboard-hints" aria-label="Keyboard controls">
+            <span><kbd>←</kbd> <kbd>→</kbd> Move</span>
+            <span><kbd>↑</kbd> Rotate</span>
+            <span><kbd>↓</kbd> Drop</span>
+            <span><kbd>Space</kbd> Hard drop</span>
+            <span><kbd>P</kbd> Pause</span>
+          </div>
+          <div class="tetris-touch-controls" id="touch-controls" aria-label="Touch controls">
             <div class="touch-cluster touch-cluster-dpad">
               <button type="button" class="touch-btn touch-btn-dir" id="btn-touch-left" aria-label="Move Left">
                 <span class="touch-arrow">◀</span>
@@ -125,6 +92,7 @@
             <div class="touch-cluster touch-cluster-center">
               <button type="button" class="touch-btn touch-btn-pause" id="btn-touch-pause" aria-label="Pause or Resume">
                 <span class="touch-icon">⏸</span>
+                <span class="touch-label">PAUSE</span>
               </button>
             </div>
 
@@ -141,55 +109,6 @@
           </div>
         </div>
 
-        <!-- RIGHT WING: BEST RECORD & CONTROLS -->
-        <aside class="side-column right-column">
-          <!-- Best Score Panel -->
-          <div class="panel panel-best">
-            <div class="panel-header">
-              <span class="panel-icon">🏆</span>
-              <span class="panel-label">RECORD</span>
-            </div>
-            <div class="score-display-box best-box">
-              <span class="box-label">PERSONAL BEST</span>
-              <div class="best-score" id="best-score">000000</div>
-              <div class="muted-small">LOCAL DEVICE</div>
-            </div>
-          </div>
-
-          <!-- Controls Guide -->
-          <div class="panel panel-controls">
-            <div class="panel-header">
-              <span class="panel-icon">🎮</span>
-              <span class="panel-label">CONTROLS</span>
-            </div>
-            <div class="control-rows">
-              <div class="control-row">
-                <div class="key-combo"><kbd>←</kbd><kbd>→</kbd></div>
-                <span class="control-action">MOVE</span>
-              </div>
-              <div class="control-row">
-                <div class="key-combo"><kbd>↑</kbd></div>
-                <span class="control-action">ROTATE</span>
-              </div>
-              <div class="control-row">
-                <div class="key-combo"><kbd>↓</kbd></div>
-                <span class="control-action">SOFT DROP</span>
-              </div>
-              <div class="control-row">
-                <div class="key-combo"><kbd>SPACE</kbd></div>
-                <span class="control-action">HARD DROP</span>
-              </div>
-              <div class="control-row">
-                <div class="key-combo"><kbd>P</kbd></div>
-                <span class="control-action">PAUSE</span>
-              </div>
-            </div>
-            <div class="landing-hint">
-              <span class="landing-swatch" aria-hidden="true"></span>
-              <span>Ghost shows landing point</span>
-            </div>
-          </div>
-        </aside>
       </div>
     </main>
 

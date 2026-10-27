@@ -45,6 +45,11 @@
   };
   const getElement = (id) => document.getElementById(id);
 
+  function createPracticeSeed() {
+    const words = crypto.getRandomValues(new Uint32Array(2));
+    return (BigInt(words[0]) << 32n) | BigInt(words[1]);
+  }
+
   // ─── Score-based speed config ────────────────────────────────────────────────
   // Speed increases every time score crosses a multiple of this value:
   const SCORE_SPEED_THRESHOLD = 500;
@@ -64,11 +69,16 @@
     lines: 0,
     level: 1,
     consecutiveClears: 0,
+    stackState: "safe",
+    lastGoodStackPromptAt: 0,
     startedAt: 0,
     durationMs: null,
     gravityTimer: null,
     clearAnimationTimer: null,
+    clearFragmentsTimer: null,
     calloutTimer: null,
+    stackCalloutTimer: null,
+    pendingClearRows: null,
     elapsedTimer: null,
     session: null,
     actions: [],
@@ -185,6 +195,45 @@
     getElement("overlay").classList.remove("hidden");
   }
 
+  function showStackPrompt(title, detail, tone) {
+    const prompt = getElement("stack-callout");
+    prompt.className = "stack-callout";
+    prompt.replaceChildren();
+    const heading = document.createElement("span");
+    heading.className = "stack-callout-title";
+    heading.textContent = title;
+    const message = document.createElement("span");
+    message.className = "stack-callout-detail";
+    message.textContent = detail;
+    prompt.append(heading, message);
+    prompt.setAttribute("aria-label", `${title}. ${detail}`);
+    void prompt.offsetWidth;
+    prompt.className = `stack-callout visible ${tone}`;
+    clearTimeout(game.stackCalloutTimer);
+    game.stackCalloutTimer = setTimeout(() => {
+      prompt.classList.remove("visible");
+    }, 1450);
+  }
+
+  function updateStackFeedback(clearedLines) {
+    const firstOccupiedRow = game.board.findIndex((row) => row.some(Boolean));
+    const height = firstOccupiedRow < 0 ? 0 : ROWS - firstOccupiedRow;
+    const previous = game.stackState;
+    const next = height >= 17 ? "critical" : height >= 13 ? "danger" : height <= 8 ? "safe" : "building";
+    game.stackState = next;
+
+    if (next === "critical" && previous !== "critical") {
+      showStackPrompt("TOPPING OUT", "CLEAR LINES NOW", "critical");
+    } else if (next === "danger" && previous !== "danger" && previous !== "critical") {
+      showStackPrompt("STACK WARNING", "CLEAR LINES TO MAKE ROOM", "danger");
+    } else if (next === "safe" && (previous === "danger" || previous === "critical")) {
+      showStackPrompt("STACK RECOVERED", "ROOM TO BUILD", "good");
+    } else if (next === "safe" && clearedLines > 0 && Date.now() - game.lastGoodStackPromptAt > 4500) {
+      showStackPrompt("STACK STEADY", "NICE CLEAR", "good");
+      game.lastGoodStackPromptAt = Date.now();
+    }
+  }
+
   async function requestApi(path, method = "GET", body) {
     const csrfToken =
       document.cookie
@@ -224,6 +273,7 @@
     if (game.status === "creating") return;
     setGameStatus("creating", "CONNECTING");
     getElement("start-button").disabled = true;
+    game.session = null;
 
     try {
       const response = await requestApi("/games/");
@@ -243,13 +293,8 @@
       game.session = session;
       initializeGame(session.seed);
     } catch (error) {
-      setGameStatus("error", "CONNECTION ERROR");
-      showOverlay(
-        "Could not start game",
-        error.message,
-        "TRY AGAIN",
-        startGame,
-      );
+      console.info("Starting Tetris in practice mode:", error.message);
+      initializeGame(createPracticeSeed());
     }
   }
 
@@ -257,10 +302,17 @@
     stopTimers();
     removeKeyboardListener();
     game.board = Array.from({ length: ROWS }, () => Array(COLUMNS).fill(null));
+    game.pendingClearRows = null;
+    clearTimeout(game.clearFragmentsTimer);
+    getElement("board").parentElement.querySelector(".clear-burst-layer")?.remove();
     game.score = 0;
     game.lines = 0;
     game.level = 1;
     game.consecutiveClears = 0;
+    game.stackState = "safe";
+    game.lastGoodStackPromptAt = 0;
+    clearTimeout(game.stackCalloutTimer);
+    getElement("stack-callout").classList.remove("visible");
     game.actions = [];
     game.completionPayload = null;
     game.submitted = false;
@@ -368,33 +420,49 @@
       }),
     );
 
-    let cleared = 0;
-    game.board = game.board.filter((row) => {
+    const clearedRows = [];
+    game.board = game.board.filter((row, rowIndex) => {
       if (row.every(Boolean)) {
-        cleared++;
+        clearedRows.push({ rowIndex, types: row.slice() });
         return false;
       }
       return true;
     });
+    const cleared = clearedRows.length;
+    game.pendingClearRows = cleared ? clearedRows : null;
     while (game.board.length < ROWS)
       game.board.unshift(Array(COLUMNS).fill(null));
     if (cleared) {
       game.lines += cleared;
       game.consecutiveClears += 1;
-      game.score += ([0, 100, 200, 300, 400][cleared] || 0) * game.consecutiveClears;
+      const pointsEarned = ([0, 100, 200, 300, 400][cleared] || 0) * game.consecutiveClears;
+      game.score += pointsEarned;
       game.level = Math.floor(game.lines / 10) + 1;
       const boardElement = getElement("board");
       const callout = getElement("clear-callout");
       const clearNames = ["", "SINGLE!", "DOUBLE!", "TRIPLE!", "MEGA!"];
       const clearName = clearNames[Math.min(cleared, 4)] || "MEGA!";
+      const clearTitle = document.createElement("span");
+      clearTitle.className = "clear-callout-title";
+      clearTitle.textContent = clearName;
+      const clearDetail = document.createElement("span");
+      clearDetail.className = "clear-callout-detail";
+      clearDetail.textContent = game.consecutiveClears > 1
+        ? `${game.consecutiveClears}× COMBO  ·  +${pointsEarned}`
+        : `+${pointsEarned} POINTS`;
       callout.className = "clear-callout";
-      callout.textContent = clearName;
+      callout.replaceChildren(clearTitle, clearDetail);
+      callout.setAttribute("aria-label", `${clearName} ${clearDetail.textContent}`);
       void callout.offsetWidth;
-      callout.className = `clear-callout visible count-${Math.min(cleared, 4)}`;
+      callout.className = `clear-callout visible count-${Math.min(cleared, 4)}${game.consecutiveClears > 1 ? " is-combo" : ""}`;
       clearTimeout(game.calloutTimer);
       game.calloutTimer = setTimeout(() => {
         callout.classList.remove("visible");
-      }, 950);
+      }, 1250);
+      const scoreElement = getElement("score");
+      scoreElement.classList.remove("score-pop");
+      void scoreElement.offsetWidth;
+      scoreElement.classList.add("score-pop");
       boardElement.classList.remove("line-clear-effect");
       void boardElement.offsetWidth;
       boardElement.classList.add("line-clear-effect");
@@ -405,6 +473,7 @@
       );
     } else game.consecutiveClears = 0;
 
+    updateStackFeedback(cleared);
     game.piece = null;
     if (game.status === "playing") spawnPiece();
     if (game.status === "playing") scheduleGravity();
@@ -480,7 +549,74 @@
     getElement("lines").textContent = linesStr;
     getElement("level").textContent = levelStr;
 
+    if (game.pendingClearRows?.length) {
+      animateClearedRows(board, game.pendingClearRows);
+      game.pendingClearRows = null;
+    }
     renderNextPiece();
+  }
+
+  function animateClearedRows(board, clearedRows) {
+    clearTimeout(game.clearFragmentsTimer);
+    const boardWrap = board.parentElement;
+    boardWrap.querySelector(".clear-burst-layer")?.remove();
+
+    const layer = document.createElement("div");
+    layer.className = "clear-burst-layer";
+    layer.setAttribute("aria-hidden", "true");
+    const boardRect = board.getBoundingClientRect();
+    const wrapRect = boardWrap.getBoundingClientRect();
+    layer.style.left = `${boardRect.left - wrapRect.left - boardWrap.clientLeft}px`;
+    layer.style.top = `${boardRect.top - wrapRect.top - boardWrap.clientTop}px`;
+    layer.style.width = `${boardRect.width}px`;
+    layer.style.height = `${boardRect.height}px`;
+    const shards = [
+      { x: -1, y: -1 },
+      { x: 1, y: -0.7 },
+      { x: -0.7, y: 1 },
+      { x: 1, y: 1 },
+    ];
+
+    clearedRows.forEach(({ rowIndex, types }, rowOrder) => {
+      types.forEach((type, column) => {
+        const cell = board.children[rowIndex * COLUMNS + column];
+        if (!cell || !type) return;
+        const rect = cell.getBoundingClientRect();
+        const shardWidth = rect.width * 0.4;
+        const shardHeight = rect.height * 0.4;
+
+        shards.forEach((direction, shardIndex) => {
+          const fragment = document.createElement("span");
+          const xOffset = shardIndex % 2 ? rect.width * 0.55 : rect.width * 0.05;
+          const yOffset = shardIndex > 1 ? rect.height * 0.55 : rect.height * 0.05;
+          const travel = 1.1 + ((column + shardIndex) % 3) * 0.22;
+          const turn = (shardIndex % 2 ? 1 : -1) * (55 + ((column + rowIndex) % 4) * 18);
+          fragment.className = "clear-fragment";
+          fragment.style.left = `${rect.left - boardRect.left + xOffset}px`;
+          fragment.style.top = `${rect.top - boardRect.top + yOffset}px`;
+          fragment.style.width = `${shardWidth}px`;
+          fragment.style.height = `${shardHeight}px`;
+          fragment.style.setProperty("--fragment-color", PIECE_COLORS[type]);
+          fragment.style.setProperty(
+            "--fragment-x",
+            `${Math.round(direction.x * rect.width * travel)}px`,
+          );
+          fragment.style.setProperty(
+            "--fragment-y",
+            `${Math.round(direction.y * rect.height * travel + rect.height * 0.25)}px`,
+          );
+          fragment.style.setProperty("--fragment-turn", `${turn}deg`);
+          fragment.style.setProperty(
+            "--fragment-delay",
+            `${rowOrder * 55 + column * 5 + shardIndex * 12}ms`,
+          );
+          layer.append(fragment);
+        });
+      });
+    });
+
+    boardWrap.append(layer);
+    game.clearFragmentsTimer = setTimeout(() => layer.remove(), 1100);
   }
 
   function renderNextPiece() {
@@ -584,8 +720,21 @@
       Number(localStorage.getItem("arcade-tetris-best")) || 0,
     );
     localStorage.setItem("arcade-tetris-best", best);
-    getElement("best-score").textContent = String(best).padStart(6, "0");
+    const bestScore = getElement("best-score");
+    if (bestScore) bestScore.textContent = String(best).padStart(6, "0");
     renderGame();
+
+    if (!game.session?.id) {
+      setGameStatus("practice-complete", "PRACTICE");
+      showOverlay(
+        "Practice complete",
+        `Score: ${game.score}. This practice run was not submitted for validation.`,
+        "PLAY AGAIN",
+        startGame,
+      );
+      return;
+    }
+
     showOverlay(
       "Run complete",
       "Sending your action list to the backend validator…",
@@ -672,8 +821,6 @@
     const formatted = String(best).padStart(6, "0");
     const bestEl = getElement("best-score");
     if (bestEl) bestEl.textContent = formatted;
-    const navBestEl = getElement("nav-best-score");
-    if (navBestEl) navBestEl.textContent = formatted;
   }
 
   function setupTouchControls() {
@@ -686,7 +833,7 @@
         if (game.status === "playing") {
           performAction(action);
           if (navigator.vibrate) {
-            try { navigator.vibrate(8); } catch (_) {}
+            try { navigator.vibrate(8); } catch {}
           }
         }
       };
@@ -732,7 +879,7 @@
         if (game.status === "playing") {
           performAction(action);
           if (navigator.vibrate) {
-            try { navigator.vibrate(vibrateMs); } catch (_) {}
+            try { navigator.vibrate(vibrateMs); } catch {}
           }
         }
       });
@@ -756,14 +903,14 @@
         pauseBtn.classList.add("touch-active");
         if (game.status === "playing") {
           pauseGame();
-          if (navigator.vibrate) try { navigator.vibrate(15); } catch (_) {}
+          if (navigator.vibrate) try { navigator.vibrate(15); } catch {}
         } else if (game.status === "paused") {
           setGameStatus("playing", "IN GAME");
           getElement("overlay").classList.add("hidden");
           addKeyboardListener();
           scheduleGravity();
           game.elapsedTimer = setInterval(updateElapsedTime, 1000);
-          if (navigator.vibrate) try { navigator.vibrate(15); } catch (_) {}
+          if (navigator.vibrate) try { navigator.vibrate(15); } catch {}
         }
       });
       const endPause = () => pauseBtn.classList.remove("touch-active");
@@ -817,7 +964,7 @@
         }
         lastX += steps * cellWidth;
         hasMoved = true;
-        if (navigator.vibrate) try { navigator.vibrate(8); } catch (_) {}
+        if (navigator.vibrate) try { navigator.vibrate(8); } catch {}
       }
 
       // Dragging down soft drops
@@ -844,14 +991,14 @@
       // Quick downward flick -> Hard drop
       if (totalDistY > 55 && totalDistY > Math.abs(totalDistX) * 1.6 && duration < 240) {
         performAction("hard_drop");
-        if (navigator.vibrate) try { navigator.vibrate(30); } catch (_) {}
+        if (navigator.vibrate) try { navigator.vibrate(30); } catch {}
         return;
       }
 
       // Tap on board without dragging -> Rotate piece!
       if (!hasMoved && totalDist < 14 && duration < 260) {
         performAction("rotate");
-        if (navigator.vibrate) try { navigator.vibrate(15); } catch (_) {}
+        if (navigator.vibrate) try { navigator.vibrate(15); } catch {}
       }
     };
 
