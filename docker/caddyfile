@@ -1,3 +1,10 @@
+{
+    servers {
+        # Trust X-Forwarded-For from the Hack Club Nest proxy so Django sees real client IPs.
+        trusted_proxies static {$TRUSTED_PROXIES:10.60.1.2/32}
+    }
+}
+
 {$SITE_ADDRESS} {
     encode zstd gzip
 
@@ -15,7 +22,11 @@
 
     @backend path /admin/* /accounts/* /me/* /leaderboard/* /games/* /sessions/* /minesweeper/* /pacman/* /snake/* /tetris/* /wordle/*
     handle @backend {
-        reverse_proxy web:8000
+        reverse_proxy web:8000 {
+            # Visitors always arrive over HTTPS (Nest's proxy, or Caddy's own TLS),
+            # but Nest forwards "http", which breaks Django's CSRF and secure cookies.
+            header_up X-Forwarded-Proto https
+        }
     }
 
     handle {
