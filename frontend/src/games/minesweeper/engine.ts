@@ -163,16 +163,23 @@ function settle(g: GameState, now: number): GameState {
     moves_left: movesLeft(g, g.moves_used, bonus.moves),
     time_left: timeLeft(g, bonus.seconds, g.startedAt, g.finishedAt ? Date.parse(g.finishedAt) : now),
   }
-  if (next.status !== 'in_progress') {
-    let points = next.cells.length
-    if (next.status === 'won') {
-      points += next.mine_count * 10
-      if (next.time_left !== null) points += Math.floor(next.time_left)
-      if (next.moves_left !== null) points += next.moves_left * 2
-    }
-    next.score = points
-  }
+  if (next.status !== 'in_progress') next.score = scoreBreakdown(next).total
   return next
+}
+
+export type ScorePart = { label: string; points: number }
+
+/** How a finished game's score adds up. Same formula as score() in backend/minesweeper/game.py. */
+export function scoreBreakdown(g: GameState): { parts: ScorePart[]; total: number } {
+  const parts: ScorePart[] = [{ label: 'tiles', points: g.cells.length }]
+  if (g.status === 'won') {
+    parts.push({ label: 'mines', points: g.mine_count * 10 })
+    if (g.time_left !== null) {
+      parts.push({ label: 'time', points: Math.floor(g.time_left) })
+    }
+    if (g.moves_left !== null) parts.push({ label: 'moves', points: g.moves_left * 2 })
+  }
+  return { parts, total: parts.reduce((sum, p) => sum + p.points, 0) }
 }
 
 function finish(g: GameState, status: 'won' | 'lost', now: number, reason: EndReason | null = null): GameState {
@@ -214,6 +221,7 @@ export function localMove(
     g.flagged = Array.from(flagged)
   } else if (type === 'sonar') {
     if (!g.mines || g.sonars < 1) return null
+    if (opened.has(index) || defused.has(index)) return null
     const mines = new Set(g.mines)
     events.pinged = [index, ...neighbors(index, w, h)]
       .filter((i) => mines.has(i) && !detected.has(i) && !defused.has(i))

@@ -297,8 +297,14 @@ class MinesweeperApiTests(TestCase):
         self.move(40)
         game = self.stored()
         mines = set(game.mines)
-        center = next(i for i in range(81) if any(n in mines for n in neighbors(i, 9, 9)))
+        center = next(
+            i for i in range(81)
+            if i not in game.revealed and any(n in mines for n in neighbors(i, 9, 9))
+        )
         self.edit(sonars=1, detected=[], defused=[])
+        # Revealed tiles can't be targeted, and nothing is spent.
+        self.assertEqual(self.move(40, "sonar").status_code, 400)
+        self.assertEqual(self.stored().sonars, 1)
         used = self.stored().moves_used
         response = self.move(center, "sonar")
         area = set(neighbors(center, 9, 9)) | {center}

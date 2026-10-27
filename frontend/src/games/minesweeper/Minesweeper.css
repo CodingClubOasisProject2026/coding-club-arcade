@@ -709,6 +709,7 @@ button.ms-pu.is-ready:hover {
 }
 
 .ms-result-text {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 5px;
@@ -733,6 +734,31 @@ button.ms-pu.is-ready:hover {
   color: var(--muted);
 }
 
+/* Final score, the biggest thing on the result panel */
+.ms-final-score {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.ms-final-score-val {
+  font-family: var(--mono);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.ms-result.won .ms-final-score-val {
+  color: var(--mint);
+}
+
+.ms-result.lost .ms-final-score-val {
+  color: var(--text);
+}
+
 .ms-primary-btn {
   flex: none;
   height: 40px;
@@ -755,7 +781,20 @@ button.ms-pu.is-ready:hover {
   flex-direction: column;
   justify-content: center;
   align-items: stretch;
+  gap: 8px;
   text-align: center;
+}
+
+.layout-side .ms-final-score {
+  flex-direction: row;
+  justify-content: center;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.layout-side .ms-result-text {
+  flex: none;
+  gap: 3px;
 }
 
 /* ---------- Hint (fixed: one 16px line) ---------- */

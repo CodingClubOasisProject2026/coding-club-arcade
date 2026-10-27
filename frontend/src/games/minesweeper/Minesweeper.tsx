@@ -12,6 +12,7 @@ import {
   POWERUP_ICON,
   POWERUP_NAME,
   applyResult,
+  scoreBreakdown,
   blankGame,
   localExpire,
   localMove,
@@ -480,6 +481,12 @@ export default function Minesweeper() {
     return () => clearTimeout(t)
   }, [notice])
 
+  // A finished game uses the hint line for the score breakdown.
+  const finished = !!game && game.status !== 'in_progress'
+  useEffect(() => {
+    if (finished) setNotice(null)
+  }, [finished])
+
   // Spends a ticket and creates the server game. Falls back to practice mode.
   const createSession = useCallback(async (): Promise<GameState> => {
     setBusy(true)
@@ -816,6 +823,8 @@ export default function Minesweeper() {
       return
     }
     if (sonarArmed) {
+      // Sonar can only be aimed at hidden tiles; stay armed otherwise.
+      if (isOpen) return
       setSonarMode(false)
       move('sonar', index)
     } else if (isOpen) {
@@ -870,8 +879,16 @@ export default function Minesweeper() {
   const isPractice = game ? game.id.startsWith('local-') || (game.id.startsWith('pending-') && !ranked) : !ranked
 
   let hint: string
-  if (over) hint = 'Press R or the face to play again.'
-  else if (sonarArmed) hint = 'Sonar: pick a tile to reveal mines in the 3×3 around it. Esc cancels.'
+  // On finish, the hint line shows how the score adds up (when it matches the
+  // score we were given; the server is the source of truth).
+  const breakdown = game && over ? scoreBreakdown(game) : null
+  const showBreakdown = !!breakdown && typeof game?.score === 'number' && breakdown.total === game.score
+
+  if (over && showBreakdown && game.status === 'won')
+    hint = `${breakdown.parts.map((p) => `${p.points} ${p.label}`).join(' + ')} = ${breakdown.total}`
+  else if (over && showBreakdown) hint = `${breakdown.total} points for tiles opened. Bonuses only count on a win.`
+  else if (over) hint = 'Press R or the face to play again.'
+  else if (sonarArmed) hint = 'Sonar: pick a hidden tile to reveal mines in the 3×3 around it. Esc cancels.'
   else if (!started && isPractice)
     hint = signedIn ? 'No tickets left, so this is a practice game. Dig to start.' : 'Practice game. Sign in to save scores. Dig to start.'
   else if (!started) hint = 'Dig any tile to start. The clock starts on your first dig.'
@@ -1073,7 +1090,7 @@ export default function Minesweeper() {
                         type="button"
                         className={cls}
                         aria-label={`Row ${Math.floor(i / cols) + 1}, column ${(i % cols) + 1}: ${label}`}
-                        onMouseEnter={sonarArmed ? () => setAim(i) : undefined}
+                        onMouseEnter={sonarArmed ? () => setAim(isSettled ? null : i) : undefined}
                         onMouseDown={(e) => {
                           if (e.button === 0 && !isSettled && !isFlag && !isDetected) setIsClickingCell(true)
                         }}
@@ -1084,7 +1101,7 @@ export default function Minesweeper() {
                         onTouchEnd={onTouchEndCell}
                         onTouchCancel={onTouchEndCell}
                         onClick={() => {
-                          if (isDefused && !sonarArmed) return
+                          if (isDefused) return
                           onCellClick(i, isOpen, isFlag, isDetected)
                         }}
                         onContextMenu={(e) => {
@@ -1136,7 +1153,7 @@ export default function Minesweeper() {
                 }}
                 disabled={!canSonar}
                 aria-pressed={sonarArmed}
-                title="Sonar (S): pick a tile to reveal the mines in the 3×3 around it. Uses a move."
+                title="Sonar (S): pick a hidden tile to reveal the mines in the 3×3 around it. Uses a move."
               >
                 <span className="ms-pu-icon" aria-hidden="true">{POWERUP_ICON.sonar}</span>
                 <span className="ms-pu-name">Sonar</span>
@@ -1181,9 +1198,12 @@ export default function Minesweeper() {
                   <strong>{resultTitle}</strong>
                   <span>
                     {elapsed}s · {game.moves_used} moves
-                    {typeof game.score === 'number' ? ` · Score ${game.score}` : ''}
                     {isPractice ? ' · not saved' : ''}
                   </span>
+                </div>
+                <div className="ms-final-score" aria-label={`Final score ${game.score ?? 0}`}>
+                  <span className="ms-readout-label">Score</span>
+                  <span className="ms-final-score-val">{game.score ?? '—'}</span>
                 </div>
                 <button type="button" className="ms-primary-btn" onClick={start} disabled={busy}>
                   Play again

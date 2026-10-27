@@ -200,6 +200,8 @@ def play_move(request, game_id):
                 return _bad("Reveal a tile first.")
             if game.sonars < 1:
                 return _bad("No sonar left.")
+            if idx in revealed or idx in defused:
+                return _bad("Sonar must target a hidden tile.")
             game.sonars -= 1
             game.moves_used += 1
             pinged = sonar(game, idx)
