@@ -16,8 +16,25 @@ const Snake = lazy(() => import('./games/snake/Snake'))
 const Flappy = lazy(() => import('./games/flappy_bird/flappy'))
 const Leaderboard = lazy(() => import('./pages/leaderboard'))
 
-function Loading({ children }: { children: ReactNode }) {
-  return <Suspense fallback={<ArcadeLoader />}>{children}</Suspense>
+function Loading({
+  children,
+  hideForGameTransition = false,
+}: {
+  children: ReactNode
+  hideForGameTransition?: boolean
+}) {
+  const location = useLocation()
+  const fromGameTransition = location.state?.fromGameTransition === true
+
+  return (
+    <Suspense
+      fallback={
+        hideForGameTransition && fromGameTransition ? null : <ArcadeLoader />
+      }
+    >
+      {children}
+    </Suspense>
+  )
 }
 
 function AuthBar() {
@@ -79,7 +96,7 @@ export default function App() {
       <AuthProvider>
         <div className="wordle-route">
           <Routes>
-            <Route path="/wordle" element={<Loading><WordlePage /></Loading>} />
+            <Route path="/wordle" element={<Loading hideForGameTransition><WordlePage /></Loading>} />
           </Routes>
         </div>
       </AuthProvider>
@@ -90,7 +107,7 @@ export default function App() {
     return (
       <AuthProvider>
         <Routes>
-          <Route path="/minesweeper" element={<Loading><Minesweeper /></Loading>} />
+          <Route path="/minesweeper" element={<Loading hideForGameTransition><Minesweeper /></Loading>} />
         </Routes>
       </AuthProvider>
     )
@@ -100,7 +117,7 @@ export default function App() {
     return (
       <AuthProvider>
         <Routes>
-          <Route path="/pacman" element={<Loading><Pacman /></Loading>} />
+          <Route path="/pacman" element={<Loading hideForGameTransition><Pacman /></Loading>} />
         </Routes>
       </AuthProvider>
     )
@@ -110,7 +127,7 @@ export default function App() {
     return (
       <AuthProvider>
         <Routes>
-          <Route path="/snake" element={<Loading><Snake /></Loading>} />
+          <Route path="/snake" element={<Loading hideForGameTransition><Snake /></Loading>} />
         </Routes>
       </AuthProvider>
     )
@@ -129,7 +146,7 @@ export default function App() {
     return (
       <AuthProvider>
         <Routes>
-          <Route path="/flappy" element={<Loading><Flappy /></Loading>} />
+          <Route path="/flappy" element={<Loading hideForGameTransition><Flappy /></Loading>} />
         </Routes>
       </AuthProvider>
     )

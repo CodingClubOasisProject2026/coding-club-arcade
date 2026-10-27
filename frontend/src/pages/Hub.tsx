@@ -1,7 +1,7 @@
-import type { CSSProperties } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
-
-type ArtworkType = 'mine' | 'wordle' | 'snake' | 'tetris' | 'pacman' | 'flappy'
+import GameArtwork, { type ArtworkType } from '../games/GameArtwork'
+import GameTransitionLoader from '../loader/GameTransitionLoader'
 
 type Game = {
   name: string
@@ -70,78 +70,6 @@ const games: Game[] = [
   },
 ]
 
-// 3. Add the 7x7 pixel art pattern for Flappy Bird
-const patterns: Record<Exclude<ArtworkType, 'wordle'>, string[]> = {
-  mine: [
-    '0001000',
-    '0101010',
-    '0011100',
-    '1111111',
-    '0011100',
-    '0101010',
-    '0001000',
-  ],
-  pacman: [
-    '0011100',
-    '0111110',
-    '1111100',
-    '1111000',
-    '1111100',
-    '0111110',
-    '0011100',
-  ],
-  snake: [
-    '0000000',
-    '0111110',
-    '0100010',
-    '0101110',
-    '0100000',
-    '0111101',
-    '0000000',
-  ],
-  tetris: [
-    '0000000',
-    '0011100',
-    '0001000',
-    '0000000',
-    '1000011',
-    '1100111',
-    '1111111',
-  ],
-  flappy: [
-    '0000000',
-    '0111000',
-    '1111100',
-    '1110110',
-    '1111100',
-    '0111000',
-    '0000000',
-  ],
-}
-
-function Artwork({ type }: { type: ArtworkType }) {
-  if (type === 'wordle') {
-    return (
-      <div className="home-word" aria-hidden="true">
-        {'GUESS'.split('').map((letter, index) => (
-          <span key={index}>{letter}</span>
-        ))}
-      </div>
-    )
-  }
-
-  return (
-    <div className="home-pixels" aria-hidden="true">
-      {patterns[type]
-        .join('')
-        .split('')
-        .map((cell, index) => (
-          <span key={index} className={cell === '1' ? 'filled' : undefined} />
-        ))}
-    </div>
-  )
-}
-
 function GameContent({ game, index }: { game: Game; index: number }) {
   return (
     <>
@@ -156,7 +84,7 @@ function GameContent({ game, index }: { game: Game; index: number }) {
       </div>
 
       <div className="home-game-art">
-        <Artwork type={game.art} />
+        <GameArtwork type={game.art} />
       </div>
 
       <div className="home-game-info">
@@ -174,12 +102,24 @@ function GameContent({ game, index }: { game: Game; index: number }) {
 }
 
 export default function Hub() {
+  const [selectedGame, setSelectedGame] = useState<Game | null>(null)
   const available = String(games.filter((game) => game.ready).length).padStart(
     2,
     '0',
   )
 
   const total = String(games.length).padStart(2, '0')
+
+  if (selectedGame) {
+    return (
+      <GameTransitionLoader
+        name={selectedGame.name}
+        artwork={selectedGame.art}
+        color={selectedGame.color}
+        destination={selectedGame.path}
+      />
+    )
+  }
 
   return (
     <main className="home-page">
@@ -225,6 +165,20 @@ export default function Hub() {
                   className="home-game"
                   style={style}
                   aria-label={`Play ${game.name}`}
+                  onClick={(event) => {
+                    if (
+                      event.button !== 0 ||
+                      event.metaKey ||
+                      event.ctrlKey ||
+                      event.shiftKey ||
+                      event.altKey
+                    ) {
+                      return
+                    }
+
+                    event.preventDefault()
+                    setSelectedGame(game)
+                  }}
                 >
                   <GameContent game={game} index={index} />
                 </Link>
