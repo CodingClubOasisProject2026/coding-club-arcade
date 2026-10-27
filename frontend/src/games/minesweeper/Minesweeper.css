@@ -1,39 +1,71 @@
-/* Minesweeper
-   Sizes marked "fixed" are also used by the tile-size maths in
-   Minesweeper.tsx (STACK_CHROME, SIDE_CHROME, SIDE_W, ...). Change both
-   together. Nothing here changes size when the game state changes. */
+/* Minesweeper: retro handheld skin (4-shade green LCD).
+   Layout sizes (--nav-h, --grip-w, --bezel, --bezel-top, ...) come from
+   sizesFor() in Minesweeper.tsx. Change them there, not here. */
+
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
 
 .ms-page {
-  --ink: #0b0e14;
-  --panel: #151a24;
-  --panel-2: #1c2230;
-  --line: rgba(233, 229, 219, 0.1);
-  --text: #e9e5db;
-  --muted: #8b95ab;
-  --ember: #ff5a3c;
-  --amber: #ffb340;
-  --mint: #5fd9a0;
-  --sky: #6cb2ff;
-  --key-top: #45506b;
-  --key-bot: #333c52;
-  --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
-  --sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* LCD palette, darkest to lightest */
+  --lcd-0: #0f380f;
+  --lcd-1: #306230;
+  --lcd-2: #8bac0f;
+  --lcd-3: #9bbc0f;
+
+  /* Plastic */
+  --body: #cbc6c0;
+  --body-lo: #b7b2ac;
+  --body-edge: #8f8a84;
+  --bezel-c: #55566b;
+  --maroon: #9b2257;
+  --maroon-lo: #5e1132;
+  --rubber: #4b4851;
+  --navy: #2a2f6e;
+
+  /* Power LED, changed by the moods below */
+  --led: #ff3030;
+  --led-glow: rgba(255, 48, 48, 0.8);
+  --led-anim: none;
+
+  --pixel: 'Press Start 2P', ui-monospace, monospace;
+  --vt: 'VT323', ui-monospace, monospace;
 
   min-height: 100vh;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
+  overflow-x: clip;
   background:
-    radial-gradient(circle at 50% 0%, rgba(108, 178, 255, 0.07), transparent 55%),
-    var(--ink);
-  color: var(--text);
-  font-family: var(--sans);
+    radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px) 0 0 / 6px 6px,
+    radial-gradient(ellipse 80% 60% at 50% 45%, #2a2238, transparent 70%),
+    #15111d;
+  color: #e8e4de;
+  font-family: var(--pixel);
   user-select: none;
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Zero specificity, so any class below can override it */
+.ms-page.mood-won {
+  --led: #4cff6a;
+  --led-glow: rgba(76, 255, 106, 0.8);
+  --led-anim: msBreathe 1.6s ease-in-out infinite;
+}
+
+.ms-page.mood-lost {
+  --led: #4a1515;
+  --led-glow: transparent;
+}
+
+.ms-page.mood-low {
+  --led-anim: msBlink 0.5s steps(1) infinite;
+}
+
+.ms-page.mood-armed {
+  --led: #4cff6a;
+  --led-glow: rgba(76, 255, 106, 0.8);
+  --led-anim: msBlink 0.8s steps(1) infinite;
+}
+
 :where(.ms-page) button {
   font-family: inherit;
   color: inherit;
@@ -41,26 +73,21 @@
 
 .ms-page button:focus-visible,
 .ms-page a:focus-visible {
-  outline: 2px solid var(--amber);
+  outline: 2px dashed #ffd23f;
   outline-offset: 2px;
 }
 
-/* ---------- Nav (fixed: 52px, 44px in side layout) ---------- */
-/* Three columns so the difficulty picker stays put when the sides change */
+/* ---------- Nav ---------- */
 .ms-nav {
   flex: none;
-  height: 52px;
+  height: var(--nav-h);
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 14px;
   padding: 0 16px;
-  border-bottom: 1px solid var(--line);
-  background: rgba(11, 14, 20, 0.85);
-}
-
-.layout-side .ms-nav {
-  height: 44px;
+  border-bottom: 2px solid #2d2540;
+  background: #110d18;
 }
 
 .ms-nav-left {
@@ -71,52 +98,52 @@
 }
 
 .ms-back-link {
-  color: var(--muted);
+  color: #9a91ad;
   text-decoration: none;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 9px;
   white-space: nowrap;
 }
 
 .ms-back-link:hover {
-  color: var(--text);
+  color: #fff;
 }
 
 .ms-title {
-  font-family: var(--mono);
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 11px;
+  color: var(--lcd-3);
   white-space: nowrap;
+  text-shadow: 2px 2px 0 var(--lcd-0);
 }
 
 .ms-diff {
   display: flex;
-  gap: 2px;
-  padding: 3px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--panel);
+  gap: 4px;
 }
 
 .ms-diff-btn {
   width: 104px;
-  height: 30px;
-  border: 0;
-  border-radius: 7px;
-  background: transparent;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 600;
+  height: 28px;
+  border: 2px solid #3a3150;
+  background: #1c1628;
+  color: #9a91ad;
+  font-size: 8px;
   cursor: pointer;
+  box-shadow: 0 3px 0 #0a0810;
 }
 
-.ms-diff-btn:hover {
-  color: var(--text);
+.ms-diff-btn:hover:not(:disabled) {
+  color: #fff;
+}
+
+.ms-diff-btn:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #0a0810;
 }
 
 .ms-diff-btn.active {
-  background: var(--text);
-  color: var(--ink);
+  border-color: var(--lcd-0);
+  background: var(--lcd-3);
+  color: var(--lcd-0);
 }
 
 .ms-nav-right {
@@ -127,31 +154,39 @@
 }
 
 .ms-tickets {
-  font-family: var(--mono);
-  font-size: 13px;
-  color: var(--amber);
+  font-size: 9px;
+  color: #ffd23f;
   white-space: nowrap;
 }
 
 .ms-tickets.is-empty {
-  padding: 5px 10px;
-  border: 1px solid rgba(255, 90, 60, 0.5);
-  border-radius: 999px;
-  background: rgba(255, 90, 60, 0.12);
+  padding: 5px 8px;
+  border: 2px solid #ff5a3c;
+  background: #2b1213;
   color: #ff8f78;
-  font-weight: 700;
 }
 
 .ms-icon-btn {
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   display: grid;
   place-items: center;
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  background: var(--panel);
-  font-size: 15px;
+  border: 2px solid #3a3150;
+  background: #1c1628;
+  font-size: 14px;
   cursor: pointer;
+  box-shadow: 0 3px 0 #0a0810;
+}
+
+/* The console has its own SOUND button */
+.layout-console .ms-nav-sound {
+  display: none;
+}
+
+.is-slim .ms-diff-btn {
+  width: 92px;
+  height: 24px;
+  font-size: 7px;
 }
 
 .is-compact .ms-nav {
@@ -165,83 +200,23 @@
 }
 
 .is-compact .ms-diff-btn {
-  width: 52px;
+  width: 48px;
 }
 
-/* ---------- Stage + card ---------- */
-.ms-stage {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 12px 16px; /* fixed */
-}
-
-.is-compact .ms-stage {
-  padding: 12px;
-}
-
-.layout-side .ms-stage {
-  padding: 8px 16px;
-}
-
-.ms-card {
-  position: relative;
-  display: grid;
-  grid-template-columns: auto;
-  grid-template-areas:
-    'hud'
-    'board'
-    'panel'
-    'hint';
-  gap: 10px; /* fixed: CARD_GAP */
-  min-width: min(320px, 100%);
-  max-width: 100%;
-  padding: 14px; /* fixed */
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  background: linear-gradient(180deg, var(--panel-2), var(--panel));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 30px 60px -24px rgba(0, 0, 0, 0.85);
-}
-
-.is-compact .ms-card {
-  padding: 10px;
-}
-
-/* Practice tag on the card's top edge */
-.ms-practice-tag {
-  position: absolute;
-  top: -11px;
-  left: 50%;
-  z-index: 2;
-  padding: 3px 10px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--panel-2);
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 700;
-  white-space: nowrap;
-  transform: translateX(-50%);
-  pointer-events: none;
-}
-
-/* No-tickets banner under the nav (fixed: 40px, BANNER_H) */
+/* ---------- No-tickets banner ---------- */
 .ms-ticket-banner {
   flex: none;
-  height: 40px;
+  height: var(--banner-h);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   padding: 0 16px;
-  border-bottom: 1px solid rgba(255, 90, 60, 0.35);
+  border-bottom: 2px solid #5e1f1a;
   background: #2b1213;
   color: #ffb3a3;
-  font-size: 13px;
+  font-family: var(--vt);
+  font-size: 18px;
 }
 
 .ms-ticket-banner-text {
@@ -255,35 +230,590 @@
   color: #ff8f78;
 }
 
-/* Side layout: board on the left, everything else in a fixed-width column */
-.layout-side .ms-card {
-  grid-template-columns: auto 220px; /* fixed: SIDE_W */
-  grid-template-rows: auto auto 1fr;
-  grid-template-areas:
-    'board hud'
-    'board panel'
-    'board hint';
+/* ---------- Stage ---------- */
+/* Extra room above for the shoulder buttons and below for the grips */
+.ms-stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding:
+    calc(var(--stage-y) + var(--shoulder))
+    var(--stage-x)
+    calc(var(--stage-y) + var(--grip-drop));
 }
 
-/* These rows take the card's width but never widen it: the board sets the width */
-.ms-hud,
-.ms-panel,
-.ms-hint {
+/* ---------- Shell ---------- */
+.ms-shell {
+  position: relative;
+  isolation: isolate; /* keeps the shoulders behind the grips, above the page */
+  display: grid;
+  grid-template-columns: auto;
+  align-items: stretch;
+  max-width: 100%;
+}
+
+.layout-console .ms-shell {
+  grid-template-columns: var(--grip-w) auto var(--grip-w);
+}
+
+.ms-shell.is-shaking {
+  animation: msShake 0.35s steps(4) both;
+}
+
+/* The section that holds the screen */
+.ms-core {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--deck-gap);
+  min-width: 0;
+  padding: var(--core-y) var(--core-x);
+  background: linear-gradient(180deg, var(--body), var(--body-lo));
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.6),
+    0 6px 0 var(--body-edge),
+    0 26px 40px -18px rgba(0, 0, 0, 0.8);
+}
+
+.layout-console .ms-core {
+  border-radius: 4px;
+}
+
+/* Upright phones: one body with the big curve on the bottom-right corner */
+.layout-portrait .ms-core {
+  border-radius: 10px 10px 52px 10px;
+}
+
+/* ---------- Grips ---------- */
+.ms-grip {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-evenly;
+  gap: 10px;
+  min-height: 0;
+  margin-bottom: calc(-1 * var(--grip-drop));
+  padding: calc(var(--shoulder) + 12px) 12px 18px;
+  background: linear-gradient(180deg, var(--body), var(--body-lo));
+}
+
+.ms-grip.left {
+  border-radius: 12px 4px 4px 40px;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.6),
+    inset -2px 0 0 rgba(0, 0, 0, 0.1),
+    0 6px 0 var(--body-edge),
+    0 26px 40px -18px rgba(0, 0, 0, 0.8);
+}
+
+.ms-grip.right {
+  border-radius: 4px 12px 72px 4px;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.6),
+    inset 2px 0 0 rgba(0, 0, 0, 0.1),
+    0 6px 0 var(--body-edge),
+    0 26px 40px -18px rgba(0, 0, 0, 0.8);
+}
+
+.is-slim .ms-grip {
+  gap: 6px;
+  padding: calc(var(--shoulder) + 8px) 8px 12px;
+}
+
+.is-slim .ms-grip.left {
+  border-radius: 10px 4px 4px 26px;
+}
+
+.is-slim .ms-grip.right {
+  border-radius: 4px 10px 44px 4px;
+}
+
+.layout-console:not(.is-slim) .ms-grip.left .ms-dpad {
+  margin-right: 18px;
+}
+
+.layout-console:not(.is-slim) .ms-grip.right .ms-abxy {
+  margin-left: 18px;
+}
+
+/* Shoulder bumpers: tucked behind the grip, only the top shows */
+.ms-shoulder {
+  position: absolute;
+  z-index: -1;
+  top: calc(-1 * var(--shoulder));
+  width: 44%;
+  height: calc(var(--shoulder) + 24px);
+  display: block;
+  padding: 0;
+  border: 0;
+  border-radius: 8px 8px 0 0;
+  background: linear-gradient(180deg, #a8a39d, var(--body-edge));
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.4);
+  color: #5d5963;
+  font-size: 7px;
+  line-height: var(--shoulder);
+  text-align: center;
+  cursor: pointer;
+}
+
+.ms-grip.left .ms-shoulder {
+  left: 16%;
+}
+
+.ms-grip.right .ms-shoulder {
+  right: 16%;
+}
+
+.ms-shoulder:hover:not(:disabled) {
+  color: var(--navy);
+}
+
+.ms-shoulder:active:not(:disabled) {
+  transform: translateY(2px);
+}
+
+.ms-shoulder:disabled {
+  cursor: default;
+  color: var(--body-edge);
+}
+
+.is-slim .ms-shoulder {
+  font-size: 0;
+}
+
+/* ---------- D-pad ---------- */
+.ms-dpad {
+  flex: none;
+  width: var(--dpad);
+  height: var(--dpad);
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--body-lo) 60%, var(--body) 72%);
+  box-shadow: inset 0 3px 4px rgba(0, 0, 0, 0.18);
+}
+
+.ms-dpad-cross {
+  width: 76%;
+  height: 76%;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  filter: drop-shadow(0 4px 0 #1b1a1f);
+  transition: transform 0.08s steps(2);
+}
+
+.ms-dpad-cross button,
+.ms-dpad-cross .hub {
+  position: relative;
+  padding: 0;
+  border: 0;
+  background: #2c2b31;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.ms-dpad-cross .up {
+  grid-area: 1 / 2;
+  border-radius: 3px 3px 0 0;
+}
+
+.ms-dpad-cross .left {
+  grid-area: 2 / 1;
+  border-radius: 3px 0 0 3px;
+}
+
+.ms-dpad-cross .hub {
+  grid-area: 2 / 2;
+  cursor: default;
+}
+
+.ms-dpad-cross .right {
+  grid-area: 2 / 3;
+  border-radius: 0 3px 3px 0;
+}
+
+.ms-dpad-cross .down {
+  grid-area: 3 / 2;
+  border-radius: 0 0 3px 3px;
+}
+
+/* Grip ridges on each arm */
+.ms-dpad-cross .up::after,
+.ms-dpad-cross .down::after,
+.ms-dpad-cross .left::after,
+.ms-dpad-cross .right::after {
+  content: '';
+  position: absolute;
+  inset: 30%;
+}
+
+.ms-dpad-cross .up::after,
+.ms-dpad-cross .down::after {
+  background: repeating-linear-gradient(0deg, #46454d 0 2px, transparent 2px 4px);
+}
+
+.ms-dpad-cross .left::after,
+.ms-dpad-cross .right::after {
+  background: repeating-linear-gradient(90deg, #46454d 0 2px, transparent 2px 4px);
+}
+
+.ms-dpad-cross .hub::after {
+  content: '';
+  position: absolute;
+  inset: 32%;
+  border-radius: 50%;
+  background: #1b1a1f;
+}
+
+.ms-dpad-cross button:active {
+  background: #1b1a1f;
+}
+
+/* ---------- A / B / X / Y and round deck buttons ---------- */
+.ms-abxy {
+  position: relative;
+  flex: none;
+  width: calc(var(--face-btn) * 2.9);
+  height: calc(var(--face-btn) * 2.9);
+}
+
+.ms-fbtn,
+.ms-round {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 30%, #c43a76, var(--maroon) 55%, #7c1844);
+  box-shadow:
+    0 4px 0 var(--maroon-lo),
+    inset 0 2px 0 rgba(255, 255, 255, 0.25);
+  color: #f6d3e1;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.ms-fbtn {
+  position: absolute;
+  width: var(--face-btn);
+  height: var(--face-btn);
+  font-size: calc(var(--face-btn) * 0.3);
+}
+
+.ms-fbtn.x {
+  top: 0;
+  left: 50%;
+  margin-left: calc(var(--face-btn) / -2);
+}
+
+.ms-fbtn.b {
+  bottom: 0;
+  left: 50%;
+  margin-left: calc(var(--face-btn) / -2);
+}
+
+.ms-fbtn.y {
+  left: 0;
+  top: 50%;
+  margin-top: calc(var(--face-btn) / -2);
+}
+
+.ms-fbtn.a {
+  right: 0;
+  top: 50%;
+  margin-top: calc(var(--face-btn) / -2);
+}
+
+.ms-fbtn:active:not(:disabled),
+.ms-round:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow:
+    0 1px 0 var(--maroon-lo),
+    inset 0 2px 0 rgba(255, 255, 255, 0.15);
+}
+
+.ms-fbtn:disabled,
+.ms-round:disabled {
+  cursor: default;
+  filter: saturate(0.4);
+  opacity: 0.7;
+}
+
+.ms-fbtn.is-on {
+  box-shadow:
+    0 4px 0 var(--maroon-lo),
+    0 0 0 3px var(--navy);
+}
+
+.ms-fbtn.is-ready,
+.ms-round.is-ready {
+  box-shadow:
+    0 4px 0 var(--maroon-lo),
+    0 0 0 3px var(--lcd-1);
+}
+
+.ms-fbtn.is-armed,
+.ms-round.is-armed {
+  animation: msArmed 0.6s steps(1) infinite;
+}
+
+.ms-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 15px;
+  height: 15px;
+  display: grid;
+  place-items: center;
+  padding: 0 3px;
+  background: var(--lcd-0);
+  color: var(--lcd-3);
+  font-family: var(--pixel);
+  font-size: 7px;
+  font-style: normal;
+  box-shadow: 0 0 0 2px var(--body);
+}
+
+.ms-legend {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 5px 12px;
+  font-size: 6px;
+  line-height: 1;
+  color: var(--navy);
+  white-space: nowrap;
+}
+
+.is-short .ms-legend {
+  display: none;
+}
+
+/* ---------- Angled pills ---------- */
+.ms-pills {
+  display: flex;
+  gap: 10px;
+}
+
+.ms-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  transform: rotate(-24deg);
+  touch-action: manipulation;
+}
+
+.ms-pill-cap {
+  width: 38px;
+  height: 10px;
+  border-radius: 6px;
+  background: var(--rubber);
+  box-shadow:
+    0 3px 0 #2a282e,
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.ms-pill-label {
+  font-size: 6px;
+  line-height: 1;
+  color: var(--navy);
+}
+
+.ms-pill:active:not(:disabled) .ms-pill-cap {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #2a282e;
+}
+
+.ms-pill.is-off .ms-pill-label {
+  color: var(--maroon);
+}
+
+.ms-pill:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.is-slim .ms-pill-cap {
+  width: 30px;
+  height: 8px;
+}
+
+.is-slim .ms-pill-label {
+  font-size: 5px;
+}
+
+/* ---------- Grip decoration ---------- */
+.ms-emboss {
+  font-size: 8px;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--body-lo);
+  text-shadow:
+    -1px -1px 0 #9e9993,
+    1px 1px 0 #e6e2dd;
+}
+
+.is-short .ms-emboss {
+  display: none;
+}
+
+.ms-speaker {
+  display: flex;
+  gap: calc(var(--stick) * 0.08);
+  transform: rotate(-30deg);
+}
+
+.ms-speaker span {
+  width: calc(var(--stick) * 0.08);
+  height: calc(var(--stick) * 0.7);
+  border-radius: 4px;
+  background: var(--body-edge);
+  box-shadow: inset 1px 2px 2px rgba(0, 0, 0, 0.35);
+}
+
+/* ---------- Screen ---------- */
+.ms-screen {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  padding: var(--bezel-top) var(--bezel) var(--bezel);
+  border-radius: 8px 8px calc(var(--bezel) * 2.6) 8px;
+  background: var(--bezel-c);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.3),
+    0 2px 0 rgba(255, 255, 255, 0.5);
+}
+
+/* Stripes, brand and power LED in the top of the bezel */
+.ms-bezel-label {
+  position: absolute;
+  top: 0;
+  left: var(--bezel);
+  right: var(--bezel);
+  height: var(--bezel-top);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.ms-stripes {
+  flex: 1;
+  height: 5px;
+  background: linear-gradient(180deg, var(--maroon) 0 2px, transparent 2px 3px, #3b47a8 3px 5px);
+}
+
+.ms-brand {
+  font-size: 6px;
+  color: #b9b9cc;
+  white-space: nowrap;
+}
+
+.ms-power {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 5px;
+  color: #b9b9cc;
+}
+
+.ms-power i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--led);
+  box-shadow: 0 0 6px var(--led-glow);
+  animation: var(--led-anim);
+}
+
+.is-slim .ms-brand,
+.is-slim .ms-power {
+  font-size: 0;
+}
+
+.is-slim .ms-stripes {
+  height: 4px;
+  background: linear-gradient(180deg, var(--maroon) 0 1px, transparent 1px 2px, #3b47a8 2px 4px);
+}
+
+.ms-practice-tag {
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  z-index: 4;
+  padding: 4px 8px;
+  background: var(--navy);
+  color: #e8e4de;
+  font-size: 7px;
+  line-height: 10px;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  box-shadow: 0 2px 0 #14173a;
+  pointer-events: none;
+}
+
+/* The LCD itself */
+.ms-display {
+  position: relative;
+  display: grid;
+  grid-template-rows: var(--hud-h) auto var(--hint-h);
+  gap: var(--display-gap);
+  justify-items: center;
+  max-width: 100%;
+  background: var(--lcd-3);
+  color: var(--lcd-0);
+  box-shadow:
+    inset 0 0 0 2px rgba(15, 56, 15, 0.35),
+    inset 0 0 18px rgba(15, 56, 15, 0.35);
+}
+
+/* Pixel grid over the whole LCD */
+.ms-display::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background-image:
+    linear-gradient(rgba(15, 56, 15, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 56, 15, 0.06) 1px, transparent 1px);
+  background-size: 3px 3px;
+  pointer-events: none;
+}
+
+/* Colour emoji turned into LCD ink */
+.ms-face span,
+.ms-hud-pu em,
+.pu-badge {
+  filter: grayscale(1) contrast(1.4);
+  mix-blend-mode: multiply;
+}
+
+/* ---------- HUD ---------- */
+.ms-hud {
+  position: relative;
+  justify-self: stretch;
   contain: inline-size;
   min-width: 0;
-}
-
-/* ---------- HUD (fixed: 56px) ---------- */
-.ms-hud {
-  grid-area: hud;
-  height: 56px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 12px;
-  border-radius: 12px;
-  background: #07090d;
-  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.9);
+  gap: 6px;
+  padding: 0 6px;
+}
+
+.ms-hud-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .ms-readout {
@@ -294,61 +824,119 @@
 }
 
 .ms-readout-label {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--muted);
+  font-size: 6px;
+  line-height: 1;
+  color: var(--lcd-1);
 }
 
 .ms-lcd {
-  width: 62px;
-  padding: 3px 0;
+  min-width: 46px;
+  padding: 3px 4px;
+  background: rgba(15, 56, 15, 0.12);
+  color: var(--lcd-0);
   text-align: center;
-  font-family: var(--mono);
-  font-size: 20px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
+  font-size: 13px;
   line-height: 1;
-  color: var(--ember);
-  background: #120706;
-  border-radius: 6px;
-  text-shadow: 0 0 10px rgba(255, 90, 60, 0.6);
+}
+
+.is-slim .ms-lcd {
+  min-width: 38px;
+  padding: 2px 3px;
+  font-size: 11px;
 }
 
 .ms-lcd.is-low {
-  animation: msPulse 1s ease-in-out infinite;
+  animation: msBlink 0.5s steps(1) infinite;
 }
 
 .ms-face {
-  width: 42px;
-  height: 42px;
+  flex: none;
+  width: calc(var(--hud-h) - 4px);
+  height: calc(var(--hud-h) - 4px);
   display: grid;
   place-items: center;
   padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 25%, #55617f, #2b3347 70%);
-  font-size: 22px;
+  border: 2px solid var(--lcd-0);
+  background: var(--lcd-2);
+  box-shadow: 2px 2px 0 var(--lcd-1);
+  font-size: calc(var(--hud-h) * 0.46);
   line-height: 1;
   cursor: pointer;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.25),
-    0 2px 4px rgba(0, 0, 0, 0.6);
 }
 
 .ms-face:active {
-  transform: translateY(1px);
+  transform: translate(2px, 2px);
+  box-shadow: none;
 }
 
 .ms-face.glow {
-  animation: msGlow 1.4s ease-in-out infinite;
+  animation: msFaceBlink 0.8s steps(1) infinite;
+}
+
+.ms-hud-pu {
+  display: flex;
+  gap: 3px;
+}
+
+.ms-hud-pu span {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 4px;
+  background: rgba(15, 56, 15, 0.1);
+  opacity: 0.45;
+}
+
+.ms-hud-pu em {
+  font-size: 11px;
+  font-style: normal;
+  line-height: 1;
+}
+
+.ms-hud-pu b {
+  font-size: 8px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.ms-hud-pu span.on {
+  opacity: 1;
+  background: rgba(15, 56, 15, 0.2);
+}
+
+/* The portrait deck shows power-ups itself */
+.layout-portrait .ms-hud-pu {
+  display: none;
+}
+
+/* Moves meter along the bottom edge of the HUD */
+.ms-meter {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: -3px;
+  height: 3px;
+  background: rgba(15, 56, 15, 0.15);
+  overflow: hidden;
+}
+
+.ms-meter span {
+  display: block;
+  height: 100%;
+  background: var(--lcd-1);
+  transform-origin: left;
+  transition: transform 0.25s steps(6);
+}
+
+.ms-meter.is-low span {
+  background: var(--lcd-0);
+  animation: msBlink 0.5s steps(1) infinite;
 }
 
 /* ---------- Board ---------- */
 .ms-board-wrap {
-  grid-area: board;
   position: relative;
+  justify-self: stretch;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -356,109 +944,136 @@
 }
 
 .ms-board-scroll {
-  max-width: 100%;
   overflow: auto;
-  border-radius: 12px;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--lcd-1) transparent;
 }
 
 .ms-board {
   display: grid;
-  gap: 2px; /* fixed: TILE_GAP */
-  padding: 6px; /* fixed: PLATE_PAD */
-  border-radius: 12px;
-  background: #06080c;
-  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.9);
+  gap: var(--tile-gap);
+  padding: var(--plate-pad);
+  background: var(--lcd-1);
   touch-action: manipulation;
 }
 
 .ms-tile {
+  /* Sprite colours, overridden per tile state below */
+  --px-a: var(--lcd-0);
+  --px-b: var(--lcd-3);
+  --px-c: var(--lcd-0);
+  --px-x: var(--lcd-3);
+
   position: relative;
   display: grid;
   place-items: center;
   padding: 0;
   border: 0;
-  border-radius: 4px;
-  font-family: var(--mono);
-  font-weight: 700;
+  font-family: var(--pixel);
   line-height: 1;
   cursor: pointer;
   touch-action: manipulation;
   -webkit-touch-callout: none;
-  /* Hidden tiles are raised keys */
-  background: linear-gradient(180deg, var(--key-top), var(--key-bot));
+  /* Hidden tiles are raised pixel blocks */
+  background: var(--lcd-2);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.22),
-    inset 0 -2px 0 rgba(0, 0, 0, 0.35);
-  /* Each tile is a size container so its content scales with it */
+    inset 2px 2px 0 var(--lcd-3),
+    inset -2px -2px 0 var(--lcd-1);
   container-type: size;
-  transition: filter 0.1s;
 }
 
 .ms-tile:hover {
-  filter: brightness(1.18);
+  filter: brightness(1.08);
 }
 
 .ms-tile:active {
-  filter: brightness(0.9);
+  box-shadow:
+    inset 2px 2px 0 var(--lcd-1),
+    inset -2px -2px 0 var(--lcd-3);
 }
 
-/* Opened tiles are flat and dark */
+/* Opened tiles are flat */
 .ms-tile.open {
-  background: #10141c;
-  box-shadow: inset 0 0 0 1px rgba(233, 229, 219, 0.04);
+  background: var(--lcd-3);
+  box-shadow: none;
   cursor: default;
   filter: none;
 }
 
 .n-digit {
-  font-size: 14px;
-  font-size: 60cqh;
+  font-size: 11px;
+  font-size: 48cqh;
+  color: var(--lcd-0);
 }
 
-.n1 .n-digit { color: #6cb2ff; }
-.n2 .n-digit { color: #4fd18b; }
-.n3 .n-digit { color: #ff6b6b; }
-.n4 .n-digit { color: #b794ff; }
-.n5 .n-digit { color: #ffa94d; }
-.n6 .n-digit { color: #3fd6d0; }
-.n7 .n-digit { color: #f2e394; }
-.n8 .n-digit { color: #aab4c8; }
+.n1 .n-digit {
+  color: var(--lcd-1);
+}
 
 .tile-icon {
-  width: 72%;
-  height: 72%;
+  width: 74%;
+  height: 74%;
 }
 
+.tile-icon .px-a {
+  fill: var(--px-a);
+}
+
+.tile-icon .px-b {
+  fill: var(--px-b);
+}
+
+.tile-icon .px-c {
+  fill: var(--px-c);
+}
+
+.tile-icon .px-x {
+  fill: var(--px-x);
+}
+
+/* Exploded mine: inverted tile */
 .ms-tile.boom {
-  background: #7a2a28;
+  --px-a: var(--lcd-3);
+  --px-b: var(--lcd-0);
+  background: var(--lcd-0);
 }
 
+/* Mines shown after a loss */
 .ms-tile.mine {
-  background: #2c1c22;
+  background: var(--lcd-2);
 }
 
-.ms-tile.defused,
+/* Mines shown after a win */
+.ms-tile.defused {
+  --px-a: var(--lcd-1);
+  background: var(--lcd-3);
+}
+
+/* Mine stopped by a shield */
 .ms-tile.shielded {
-  background: #13281e;
+  --px-a: var(--lcd-1);
+  background: var(--lcd-2);
+  outline: 2px dashed var(--lcd-0);
+  outline-offset: -2px;
 }
 
-.ms-tile.shielded {
-  box-shadow: inset 0 0 0 2px rgba(95, 217, 160, 0.7);
-}
-
+/* Wrong flag after a loss */
 .ms-tile.flag.wrong {
-  background: #3a1f24;
+  --px-a: var(--lcd-0);
+  --px-c: var(--lcd-0);
+  --px-x: var(--lcd-3);
+  background: var(--lcd-1);
+  box-shadow: none;
 }
 
 /* Mine found by sonar: still a raised key, marked with a ring */
 .ms-tile.detected {
-  background: linear-gradient(180deg, #2c4652, #20343e);
-  box-shadow: inset 0 0 0 2px rgba(95, 217, 160, 0.6);
+  --px-a: var(--lcd-1);
+  --px-b: var(--lcd-2);
+  outline: 2px dotted var(--lcd-0);
+  outline-offset: -3px;
   cursor: default;
-}
-
-.ms-tile.detected .tile-icon {
-  opacity: 0.85;
 }
 
 /* Power-up icon in the corner of the tile where it was found */
@@ -476,8 +1091,15 @@
   position: static;
   font-size: 14px;
   font-size: 55cqh;
-  opacity: 0.55;
-  filter: grayscale(0.5);
+  opacity: 0.6;
+}
+
+/* D-pad cursor */
+.ms-tile.is-cursor {
+  z-index: 1;
+  outline: 2px solid var(--lcd-0);
+  outline-offset: -2px;
+  animation: msCursor 0.8s steps(1) infinite;
 }
 
 /* Aiming the sonar: highlight the 3x3 it will scan */
@@ -486,369 +1108,188 @@
 }
 
 .ms-tile.in-aim {
-  outline: 2px solid var(--mint);
+  outline: 2px dotted var(--lcd-0);
   outline-offset: -2px;
-  filter: brightness(1.25);
+  background: var(--lcd-3);
+  animation: none;
 }
 
-/* ---------- Panel: status + controls (fixed: 44 + 8 + 44 = 96px) ---------- */
-.ms-panel {
-  grid-area: panel;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.ms-status,
-.ms-controls {
-  height: 44px;
-  display: flex;
-  gap: 8px;
-}
-
-.ms-moves {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 5px;
-  padding: 0 10px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.25);
-}
-
-.ms-moves-top {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-}
-
-.ms-moves-val {
-  font-family: var(--mono);
-  font-size: 15px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.ms-meter {
-  height: 4px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.08);
-  overflow: hidden;
-}
-
-.ms-meter span {
-  display: block;
-  height: 100%;
-  background: var(--sky);
-  transform-origin: left;
-  transition: transform 0.25s ease;
-}
-
-.ms-moves.is-low .ms-moves-val {
-  color: var(--ember);
-}
-
-.ms-moves.is-low .ms-meter span {
-  background: var(--ember);
-}
-
-/* Shield and Sonar slots: fixed width, same look whether or not one is ready */
-.ms-pu {
-  flex: none;
-  width: 72px;
-  display: grid;
-  grid-template-columns: auto auto;
-  grid-template-rows: auto auto;
-  align-content: center;
-  justify-content: center;
-  column-gap: 5px;
-  row-gap: 2px;
-  margin: 0;
-  padding: 0;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.25);
-  opacity: 0.45;
-  transition: opacity 0.15s, background 0.15s, box-shadow 0.15s;
-}
-
-.ms-pu-icon {
-  grid-row: 1;
-  font-size: 15px;
-  line-height: 1;
-}
-
-.ms-pu-count {
-  grid-row: 1;
-  font-family: var(--mono);
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.ms-pu-name {
-  grid-row: 2;
-  grid-column: 1 / -1;
-  text-align: center;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.ms-pu.is-ready {
-  opacity: 1;
-  border-color: rgba(95, 217, 160, 0.35);
-}
-
-.ms-pu.is-ready .ms-pu-count {
-  color: var(--mint);
-}
-
-button.ms-pu:disabled {
-  cursor: default;
-  opacity: 0.45;
-}
-
-button.ms-pu.is-ready {
-  cursor: pointer;
-}
-
-button.ms-pu.is-ready:hover {
-  background: rgba(95, 217, 160, 0.1);
-}
-
-.ms-pu.is-armed {
-  background: rgba(95, 217, 160, 0.2);
-  box-shadow: 0 0 0 2px var(--mint);
-}
-
-.ms-pu.is-armed .ms-pu-name {
-  color: var(--mint);
-}
-
-/* Dig / Flag toggle and rules button */
-.ms-toggle {
-  flex: 1;
-  display: flex;
-  gap: 3px;
-  padding: 3px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.25);
-}
-
-.ms-toggle button {
-  flex: 1;
-  border: 0;
-  border-radius: 7px;
-  background: transparent;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.ms-toggle button:hover {
-  color: var(--text);
-}
-
-.ms-toggle button.active {
-  background: var(--text);
-  color: var(--ink);
-}
-
-.ms-toggle button.active.flag {
-  background: var(--ember);
-  color: #fff;
-}
-
-.ms-help-btn {
-  flex: none;
-  width: 72px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.25);
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.ms-help-btn:hover {
-  color: var(--text);
-}
-
-/* Result covers the panel exactly, so the card never changes size */
+/* ---------- Result (over the bottom of the board) ---------- */
 .ms-result {
   position: absolute;
-  inset: 0;
-  z-index: 2;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  z-index: 3;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 0 14px;
-  border-radius: 12px;
-  animation: msNoticeIn 0.2s ease-out;
-}
-
-.ms-result.won {
-  background: #0f2a20;
-  border: 1px solid rgba(95, 217, 160, 0.55);
-}
-
-.ms-result.lost {
-  background: #2b1213;
-  border: 1px solid rgba(255, 90, 60, 0.5);
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--lcd-0);
+  color: var(--lcd-3);
+  box-shadow:
+    0 0 0 2px var(--lcd-3),
+    0 0 0 4px var(--lcd-0);
+  animation: msRise 0.3s steps(3) both;
 }
 
 .ms-result-text {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
   min-width: 0;
 }
 
 .ms-result-text strong {
-  font-size: 17px;
-}
-
-.ms-result.won strong {
-  color: var(--mint);
-}
-
-.ms-result.lost strong {
-  color: #ff8f78;
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ms-result-text span {
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--muted);
+  font-family: var(--vt);
+  font-size: 16px;
+  line-height: 1;
+  color: var(--lcd-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* Final score, the biggest thing on the result panel */
+.ms-result .ms-readout-label {
+  color: var(--lcd-2);
+}
+
 .ms-final-score {
   flex: none;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
 }
 
 .ms-final-score-val {
-  font-family: var(--mono);
-  font-size: 28px;
-  font-weight: 700;
+  font-size: 16px;
   line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-
-.ms-result.won .ms-final-score-val {
-  color: var(--mint);
-}
-
-.ms-result.lost .ms-final-score-val {
-  color: var(--text);
 }
 
 .ms-primary-btn {
   flex: none;
-  height: 40px;
-  padding: 0 18px;
+  height: 30px;
+  padding: 0 10px;
   border: 0;
-  border-radius: 10px;
-  background: var(--text);
-  color: var(--ink);
-  font-size: 14px;
-  font-weight: 700;
+  background: var(--lcd-3);
+  color: var(--lcd-0);
+  font-size: 8px;
   cursor: pointer;
+  box-shadow: 3px 3px 0 var(--lcd-1);
 }
 
-.ms-primary-btn:hover {
-  filter: brightness(0.92);
+.ms-primary-btn:active:not(:disabled) {
+  transform: translate(3px, 3px);
+  box-shadow: none;
 }
 
-/* In the side column there's room to stack the result */
-.layout-side .ms-result {
-  flex-direction: column;
-  justify-content: center;
-  align-items: stretch;
-  gap: 8px;
-  text-align: center;
-}
-
-.layout-side .ms-final-score {
-  flex-direction: row;
-  justify-content: center;
-  align-items: baseline;
-  gap: 8px;
-}
-
-.layout-side .ms-result-text {
-  flex: none;
-  gap: 3px;
-}
-
-/* ---------- Hint (fixed: one 16px line) ---------- */
+/* ---------- Hint line (inside the screen) ---------- */
 .ms-hint {
-  grid-area: hint;
-  height: 16px;
+  justify-self: stretch;
+  contain: inline-size;
+  min-width: 0;
+  height: var(--hint-h);
   margin: 0;
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--muted);
+  padding: 0 8px;
+  font-family: var(--vt);
+  font-size: 16px;
+  line-height: var(--hint-h);
+  color: var(--lcd-1);
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+.is-slim .ms-hint {
+  font-size: 14px;
+}
+
 .ms-hint.is-notice {
-  font-weight: 700;
-  animation: msNoticeIn 0.2s ease-out;
+  animation: msNoticeIn 0.2s steps(2);
 }
 
 .ms-hint.good {
-  color: var(--mint);
+  background: var(--lcd-0);
+  color: var(--lcd-3);
 }
 
 .ms-hint.info {
-  color: #9fd0ff;
+  color: var(--lcd-0);
 }
 
-/* Side column: always exactly two lines, so its height never changes */
-.layout-side .ms-hint {
-  height: 32px;
-  white-space: normal;
-  text-align: left;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+/* ---------- Portrait control deck ---------- */
+.ms-deck {
+  height: var(--deck-h);
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-/* Side column is narrow: moves get their own row above the power-ups */
-.layout-side .ms-status {
-  height: auto;
-  flex-wrap: wrap;
-}
-
-.layout-side .ms-moves {
-  flex: 1 0 100%;
-  height: 44px;
-}
-
-.layout-side .ms-pu {
+.ms-toggle {
   flex: 1;
-  height: 44px;
+  height: 40px;
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 20px;
+  background: var(--body-edge);
+  box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.3);
+}
+
+.ms-toggle button {
+  flex: 1;
+  border: 0;
+  border-radius: 17px;
+  background: transparent;
+  color: #3a3740;
+  font-size: 8px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.ms-toggle button.active {
+  background: var(--lcd-0);
+  color: var(--lcd-3);
+  box-shadow: 0 2px 0 #000;
+}
+
+.ms-toggle button.active.flag {
+  background: var(--maroon);
+  color: #f6d3e1;
+  box-shadow: 0 2px 0 var(--maroon-lo);
+}
+
+.ms-round {
+  position: relative;
+  flex: none;
+  width: 42px;
+  height: 42px;
+  font-size: 17px;
+}
+
+.ms-round.is-static {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.ms-round.is-static.is-ready {
+  opacity: 1;
+}
+
+.ms-round.help {
+  font-size: 12px;
 }
 
 /* ---------- Rules dialog ---------- */
@@ -859,32 +1300,39 @@ button.ms-pu.is-ready:hover {
   display: grid;
   place-items: center;
   padding: 16px;
-  background: rgba(5, 9, 19, 0.72);
-  backdrop-filter: blur(4px);
+  background: rgba(10, 8, 16, 0.8);
 }
 
 .ms-help {
-  width: min(440px, 100%);
+  width: min(460px, 100%);
   max-height: calc(100dvh - 32px);
   overflow: auto;
-  padding: 22px;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: var(--panel-2);
-  font-size: 14px;
-  line-height: 1.5;
+  padding: 20px;
+  background: var(--lcd-3);
+  color: var(--lcd-0);
+  font-family: var(--vt);
+  font-size: 20px;
+  line-height: 1.15;
+  box-shadow:
+    0 0 0 4px var(--lcd-0),
+    0 0 0 8px var(--lcd-2),
+    8px 8px 0 8px rgba(0, 0, 0, 0.5);
   user-select: text;
   -webkit-user-select: text;
 }
 
 .ms-help h2 {
-  margin: 0 0 12px;
-  font-size: 20px;
+  margin: 0 0 14px;
+  font-family: var(--pixel);
+  font-size: 13px;
+  font-weight: 400;
 }
 
 .ms-help h3 {
-  margin: 18px 0 2px;
-  font-size: 15px;
+  margin: 18px 0 6px;
+  font-family: var(--pixel);
+  font-size: 9px;
+  font-weight: 400;
 }
 
 .ms-help ul {
@@ -896,10 +1344,35 @@ button.ms-pu.is-ready:hover {
   margin-top: 6px;
 }
 
+.ms-help b {
+  font-weight: 400;
+  background: var(--lcd-0);
+  color: var(--lcd-3);
+  padding: 0 3px;
+}
+
 .ms-help-sub {
   margin: 0 0 8px;
-  color: var(--muted);
-  font-size: 13px;
+  color: var(--lcd-1);
+  font-size: 18px;
+}
+
+.ms-help .ms-help-keys {
+  list-style: none;
+  padding: 0;
+}
+
+.ms-help kbd {
+  display: inline-block;
+  min-width: 18px;
+  padding: 3px 5px;
+  background: var(--lcd-0);
+  color: var(--lcd-3);
+  box-shadow: 2px 2px 0 var(--lcd-1);
+  font-family: var(--pixel);
+  font-size: 7px;
+  text-align: center;
+  vertical-align: 2px;
 }
 
 .ms-help .ms-help-pu {
@@ -915,35 +1388,68 @@ button.ms-pu.is-ready:hover {
 
 .ms-help-pu span {
   font-size: 18px;
-  line-height: 1.3;
+  line-height: 1.2;
+  filter: grayscale(1) contrast(1.4);
+  mix-blend-mode: multiply;
 }
 
 .ms-help .ms-primary-btn {
   width: 100%;
+  height: 40px;
   margin-top: 16px;
+  background: var(--lcd-0);
+  color: var(--lcd-3);
+  font-size: 10px;
+  box-shadow: 4px 4px 0 var(--lcd-1);
 }
 
-/* ---------- Motion ---------- */
-.ms-page.screen-shake .ms-card {
-  animation: msShake 0.35s ease-out;
-}
-
+/* ---------- Motion (stepped, like old hardware) ---------- */
 @keyframes msShake {
-  20%, 60% { transform: translateX(-3px); }
-  40%, 80% { transform: translateX(3px); }
+  25% { transform: translate(-4px, 2px); }
+  50% { transform: translate(4px, -2px); }
+  75% { transform: translate(-2px, 0); }
 }
 
-@keyframes msPulse {
-  50% { filter: brightness(1.8); }
+@keyframes msBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
 }
 
-@keyframes msGlow {
-  50% { box-shadow: 0 0 0 6px rgba(255, 179, 64, 0.25); }
+@keyframes msBreathe {
+  50% { opacity: 0.5; }
+}
+
+@keyframes msCursor {
+  0%, 100% { outline-color: var(--lcd-0); }
+  50% { outline-color: transparent; }
+}
+
+@keyframes msFaceBlink {
+  0%, 100% { background: var(--lcd-2); }
+  50% { background: var(--lcd-3); }
+}
+
+@keyframes msArmed {
+  0%, 100% {
+    box-shadow:
+      0 4px 0 var(--maroon-lo),
+      0 0 0 3px var(--lcd-0);
+  }
+  50% {
+    box-shadow:
+      0 4px 0 var(--maroon-lo),
+      0 0 0 3px var(--lcd-2);
+  }
 }
 
 @keyframes msNoticeIn {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+@keyframes msRise {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
