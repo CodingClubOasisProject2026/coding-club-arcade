@@ -1,5 +1,6 @@
 import { useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
+import { TransitionLink } from '../PageTransition'
 import GameArtwork, { type ArtworkType } from '../games/GameArtwork'
 import GameTransitionLoader from '../loader/GameTransitionLoader'
 
@@ -137,9 +138,9 @@ export default function Hub() {
             Pick a game and make your score count.
           </p>
 
-          <Link to="/leaderboard" className="home-leaderboard-link">
+          <TransitionLink to="/leaderboard" className="home-leaderboard-link">
             View leaderboard <span aria-hidden="true">↗</span>
-          </Link>
+          </TransitionLink>
         </div>
       </section>
 

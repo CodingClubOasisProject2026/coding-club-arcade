@@ -1,5 +1,6 @@
 import { lazy, Suspense, type ReactNode } from 'react'
 import { Link, Route, Routes, useLocation } from 'react-router-dom'
+import { PageTransitionProvider, TransitionLink } from './PageTransition'
 import { logout } from './api'
 import { useAuth } from './auth'
 import AuthProvider from './AuthProvider'
@@ -154,41 +155,43 @@ export default function App() {
 
   return (
     <AuthProvider>
-      <div className="arcade-shell">
-        <header className="arcade-header">
-          <Link to="/" className="arcade-brand">
-            <img src="/logo.jpeg" alt="Coding Club" width="36" height="36" />
-            <span>
-              <strong>CODING CLUB</strong>
-              <small>ARCADE</small>
-            </span>
-          </Link>
-          <nav className="arcade-navigation" aria-label="Main navigation">
-            <Link to="/" className={location.pathname === '/' ? 'is-active' : ''}>
-              Home
+      <PageTransitionProvider>
+        <div className="arcade-shell">
+          <header className="arcade-header">
+            <Link to="/" className="arcade-brand">
+              <img src="/logo.jpeg" alt="Coding Club" width="36" height="36" />
+              <span>
+                <strong>CODING CLUB</strong>
+                <small>ARCADE</small>
+              </span>
             </Link>
-            <Link to="/leaderboard" className={location.pathname === '/leaderboard' ? 'is-active' : ''}>
-              Leaderboard
-            </Link>
-          </nav>
-          <AuthBar />
-        </header>
+            <nav className="arcade-navigation" aria-label="Main navigation">
+              <Link to="/" className={location.pathname === '/' ? 'is-active' : ''}>
+                Home
+              </Link>
+              <TransitionLink to="/leaderboard" className={location.pathname === '/leaderboard' ? 'is-active' : ''}>
+                Leaderboard
+              </TransitionLink>
+            </nav>
+            <AuthBar />
+          </header>
 
-        <Routes>
-          <Route path="/" element={<Hub />} />
-          <Route path="/leaderboard" element={<Loading><Leaderboard /></Loading>} />
-          <Route
-            path="*"
-            element={
-              <section className="arcade-not-found">
-                <h1>404</h1>
-                <p className="muted">Game cabinet not found.</p>
-                <Link to="/">Back to the arcade</Link>
-              </section>
-            }
-          />
-        </Routes>
-      </div>
+          <Routes>
+            <Route path="/" element={<Hub />} />
+            <Route path="/leaderboard" element={<Loading><Leaderboard /></Loading>} />
+            <Route
+              path="*"
+              element={
+                <section className="arcade-not-found">
+                  <h1>404</h1>
+                  <p className="muted">Game cabinet not found.</p>
+                  <Link to="/">Back to the arcade</Link>
+                </section>
+              }
+            />
+          </Routes>
+        </div>
+      </PageTransitionProvider>
     </AuthProvider>
   )
 } 
