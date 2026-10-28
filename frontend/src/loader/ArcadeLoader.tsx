@@ -19,7 +19,7 @@ function LoaderBody({ pct, tip }: { pct: number; tip: string }) {
       <div className="al-floor" aria-hidden="true" />
       <div className="al-core">
         <div className="al-brand">
-          <img src="/logo.jpeg" alt="" width={36} height={36} />
+          <img src="/logo.webp" alt="" width={36} height={36} />
           <span>CODING CLUB</span>
         </div>
         <div className="al-title">ARCADE</div>

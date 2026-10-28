@@ -114,7 +114,7 @@
   background-color: #3b2a1e;
   background-image:
     radial-gradient(ellipse at 50% 45%, rgba(0, 0, 0, 0) 35%, rgba(0, 0, 0, 0.75) 100%),
-    url('/snake-assets/dungeon_wall.png');
+    url('/snake-assets/dungeon_wall.webp');
   background-size: auto, 96px 96px;
   image-rendering: pixelated;
 }
@@ -134,7 +134,7 @@
 
 .dg-links {
   width: 32px;
-  background: url('/snake-assets/chain.png') repeat-y;
+  background: url('/snake-assets/chain.webp') repeat-y;
   background-size: 32px 32px;
   image-rendering: pixelated;
 }
@@ -161,7 +161,7 @@
 .dg-flame {
   width: 48px;
   height: 120px;
-  background: url('/snake-assets/torch_sheet.png') no-repeat;
+  background: url('/snake-assets/torch_sheet.webp') no-repeat;
   background-size: 144px 120px;
   image-rendering: pixelated;
   animation: dg-flicker 0.45s steps(3) infinite;

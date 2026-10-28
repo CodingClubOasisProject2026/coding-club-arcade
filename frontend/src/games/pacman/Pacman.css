@@ -67,7 +67,7 @@
     radial-gradient(ellipse at 50% 60%, transparent 30%, rgba(8, 8, 20, 0.9) 95%),
     repeating-conic-gradient(rgba(255, 255, 255, 0.025) 0 25%, transparent 0 50%) 0 0 / 24px 24px,
     linear-gradient(rgba(20, 20, 43, 0.82), rgba(20, 20, 43, 0.82)),
-    url('/pm-assets/arcade-bg.jpg') center / cover no-repeat;
+    url('/pm-assets/arcade-bg.webp') center / cover no-repeat;
 }
 
 .pm-bg::after {

@@ -43,7 +43,7 @@ const SPARKS: [number, number, string][] = [
 function Sprite({ name }: { name: string }) {
   return (
     <img
-      src={`${SPRITE_DIR}/${name}.png`}
+      src={`${SPRITE_DIR}/${name}.webp`}
       alt=""
       draggable={false}
       className="snake-sprite"
@@ -156,7 +156,7 @@ export default function Board({ board, snake, apple, appleLocked = false, keyCel
           key={key}
           className="snake-cell"
           style={{
-            backgroundImage: `url(${SPRITE_DIR}/${tile}.png)`,
+            backgroundImage: `url(${SPRITE_DIR}/${tile}.webp)`,
             backgroundSize: '100% 100%',
             ...pixelated,
           }}
@@ -180,7 +180,7 @@ export default function Board({ board, snake, apple, appleLocked = false, keyCel
     <div
       className="snake-board-frame"
       style={{
-        backgroundImage: `url(${SPRITE_DIR}/border_stone.png)`,
+        backgroundImage: `url(${SPRITE_DIR}/border_stone.webp)`,
         ...pixelated,
       }}
     >

@@ -159,7 +159,7 @@ export default function App() {
         <div className="arcade-shell">
           <header className="arcade-header">
             <Link to="/" className="arcade-brand">
-              <img src="/logo.jpeg" alt="Coding Club" width="36" height="36" />
+              <img src="/logo.webp" alt="Coding Club" width="36" height="36" />
               <span>
                 <strong>CODING CLUB</strong>
                 <small>ARCADE</small>

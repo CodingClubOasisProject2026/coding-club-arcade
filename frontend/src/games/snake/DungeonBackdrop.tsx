@@ -10,7 +10,7 @@ const CHAINS = [
 ]
 
 const Img = ({ name, w, h }: { name: string; w: number; h: number }) => (
-  <img src={`${D}/${name}.png`} alt="" width={w} height={h} draggable={false} />
+  <img src={`${D}/${name}.webp`} alt="" width={w} height={h} draggable={false} />
 )
 
 export default function DungeonBackdrop() {

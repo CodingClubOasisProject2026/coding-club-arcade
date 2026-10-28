@@ -50,7 +50,7 @@ html, body {
 body {
   background:
     radial-gradient(ellipse at 50% 38%, rgba(15, 20, 38, 0.48) 0%, rgba(6, 8, 16, 0.92) 100%),
-    url("./tetris-bg.png") center center / cover no-repeat fixed #060812;
+    url("./tetris-bg.webp") center center / cover no-repeat fixed #060812;
   position: relative;
 }
 
@@ -654,7 +654,7 @@ kbd {
    ========================================================= */
 .board-cell.filled.bomb {
   position: relative;
-  background: url("./bomb.png") center center / contain no-repeat transparent !important;
+  background: url("./bomb.webp") center center / contain no-repeat transparent !important;
   border: none !important;
   border-radius: 0 !important;
   box-shadow: none !important;
@@ -666,7 +666,7 @@ kbd {
 
 .preview-cell.filled.bomb {
   position: relative;
-  background: url("./bomb.png") center center / contain no-repeat transparent !important;
+  background: url("./bomb.webp") center center / contain no-repeat transparent !important;
   border: none !important;
   border-radius: 0 !important;
   box-shadow: none !important;
@@ -691,7 +691,7 @@ kbd {
   position: relative;
   border: none !important;
   border-radius: 0 !important;
-  background: url("./bomb.png") center center / contain no-repeat transparent !important;
+  background: url("./bomb.webp") center center / contain no-repeat transparent !important;
   box-shadow: none !important;
   opacity: 0.45;
   filter: drop-shadow(0 0 6px rgba(244, 63, 94, 0.8));

@@ -26,7 +26,7 @@
   font-family: 'Press Start 2P', monospace;
   background-image: 
     linear-gradient(rgba(16, 16, 16, 0.75), rgba(16, 16, 16, 0.75)), 
-    url('/flappy-bg2.jpg'); 
+    url('/flappy-bg2.webp'); 
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
