@@ -1,50 +1,87 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import GameArtwork, { type ArtworkType } from '../games/GameArtwork'
+import tetrisBackground from '../games/tetris/tetris-bg.webp'
+import tetrisBomb from '../games/tetris/bomb.webp'
 import './game-transition-loader.css'
 
-const DURATION = 3400
-const KEYFRAMES = [
-  [0, 0],
-  [0.15, 12],
-  [0.3, 28],
-  [0.45, 41],
-  [0.55, 55],
-  [0.65, 68],
-  [0.78, 80],
-  [0.9, 93],
-  [1, 100],
-]
+// Stop waiting on images and fonts after this long; the game still works without them.
+const ASSET_TIMEOUT_MS = 8000
+// How long the bar sits at 100% before switching, so the fill is visible.
+const COMPLETE_HOLD_MS = 150
+const TETRIS_PAGE = '/src/games/tetris/index.html'
 
-function preloadGame(path: string) {
-  switch (path) {
-    case '/minesweeper':
-      return import('../games/minesweeper/Minesweeper')
-    case '/wordle':
-      return import('../games/wordle/WordlePage.jsx')
-    case '/snake':
-      return import('../games/snake/Snake')
-    case '/tetris':
-      return Promise.resolve()
-    case '/pacman':
-      return import('../games/pacman/Pacman')
-    case '/flappy':
-      return import('../games/flappy_bird/flappy')
-    default:
-      return Promise.reject(new Error(`Unknown game route: ${path}`))
-  }
+const SNAKE_SPRITES = [
+  'apple', 'barrel', 'border_stone', 'chain', 'chain_ring', 'crate', 'dungeon_wall',
+  'tile_a', 'tile_b', 'torch_sheet',
+  'head_up', 'head_down', 'head_left', 'head_right',
+  'tail_up', 'tail_down', 'tail_left', 'tail_right',
+  'body_h', 'body_v', 'body_down_left', 'body_left_up', 'body_right_down', 'body_up_right',
+].map((name) => `/snake-assets/${name}.webp`)
+
+function loadImage(src: string) {
+  return new Promise<void>((resolve) => {
+    const image = new Image()
+    image.onload = () => void image.decode().catch(() => {}).finally(resolve)
+    image.onerror = () => resolve()
+    image.src = src
+  })
 }
 
-function getProgress(progress: number) {
-  for (let index = 1; index < KEYFRAMES.length; index += 1) {
-    const [endTime, endValue] = KEYFRAMES[index]
-    if (progress <= endTime) {
-      const [startTime, startValue] = KEYFRAMES[index - 1]
-      const fraction = (progress - startTime) / (endTime - startTime)
-      return Math.round(startValue + (endValue - startValue) * fraction)
-    }
+// Each game's CSS declares its own web fonts, so load them once that CSS is in.
+const GAME_FONTS: Record<string, string[]> = {
+  '/minesweeper': ['Press Start 2P'],
+  '/wordle': ['Press Start 2P', 'IBM Plex Mono'],
+  '/snake': ['Press Start 2P'],
+  '/tetris': [],
+  '/pacman': ['Press Start 2P', 'Pixelify Sans'],
+  '/flappy': ['Press Start 2P'],
+}
+
+function loadFonts(path: string, code: Promise<unknown>) {
+  if (!('fonts' in document)) return Promise.resolve()
+  return code
+    .then(() =>
+      Promise.all(
+        (GAME_FONTS[path] ?? []).map((family) => document.fonts.load(`16px "${family}"`, 'AZaz09')),
+      ),
+    )
+    .then(() => undefined, () => undefined)
+}
+
+// Tetris runs in an iframe, so warm the iframe page and the files it references.
+async function loadTetrisPage() {
+  const html = await fetch(TETRIS_PAGE).then((response) => response.text())
+  const page = new DOMParser().parseFromString(html, 'text/html')
+  const files = [...page.querySelectorAll('script[src], link[rel="stylesheet"][href], link[rel="modulepreload"][href]')]
+    .map((element) => element.getAttribute('src') ?? element.getAttribute('href'))
+    .filter((url): url is string => Boolean(url))
+  await Promise.all(files.map((url) => fetch(new URL(url, location.origin + TETRIS_PAGE)).then((r) => r.blob())))
+}
+
+// The game's code (with its CSS) must load before navigating. Images and fonts
+// are best-effort: they're awaited, but never block past ASSET_TIMEOUT_MS.
+function gameTasks(path: string): { code: Promise<unknown>; assets: Promise<void>[] } {
+  const withFonts = (code: Promise<unknown>, images: string[] = []) => ({
+    code,
+    assets: [loadFonts(path, code), ...images.map(loadImage)],
+  })
+  switch (path) {
+    case '/minesweeper':
+      return withFonts(import('../games/minesweeper/Minesweeper'))
+    case '/wordle':
+      return withFonts(import('../games/wordle/WordlePage.jsx'))
+    case '/snake':
+      return withFonts(import('../games/snake/Snake'), SNAKE_SPRITES)
+    case '/tetris':
+      return withFonts(loadTetrisPage(), [tetrisBackground, tetrisBomb])
+    case '/pacman':
+      return withFonts(import('../games/pacman/Pacman'), ['/pm-assets/arcade-bg.webp'])
+    case '/flappy':
+      return withFonts(import('../games/flappy_bird/flappy'), ['/flappy-bg2.webp'])
+    default:
+      return { code: Promise.reject(new Error(`Unknown game route: ${path}`)), assets: [] }
   }
-  return 100
 }
 
 type Props = {
@@ -68,37 +105,55 @@ export default function GameTransitionLoader({
     const started = performance.now()
     let frame = 0
     let cancelled = false
-    let timer = 0
-    const minimumDuration = new Promise<void>((resolve) => {
-      timer = window.setTimeout(resolve, DURATION)
+    let holdTimer = 0
+    let assetTimer = 0
+    let done = 0
+    let finished = false
+
+    const { code, assets } = gameTasks(destination)
+    const total = assets.length + 1
+    const count = <T,>(task: Promise<T>) =>
+      task.finally(() => {
+        done += 1
+      })
+
+    const assetsReady = Promise.race([
+      Promise.all(assets.map(count)),
+      new Promise<void>((resolve) => {
+        assetTimer = window.setTimeout(resolve, ASSET_TIMEOUT_MS)
+      }),
+    ])
+
+    const go = () => {
+      if (cancelled) return
+      finished = true
+      setProgress(100)
+      holdTimer = window.setTimeout(() => {
+        if (!cancelled) navigate(destination, { state: { fromGameTransition: true } })
+      }, COMPLETE_HOLD_MS)
+    }
+
+    void Promise.all([count(code), assetsReady]).then(go, (error: unknown) => {
+      // Let the game page show its own error instead of hanging here.
+      console.error(`Unable to preload game at ${destination}`, error)
+      go()
     })
 
-    void Promise.all([preloadGame(destination), minimumDuration]).then(
-      () => {
-        if (!cancelled) {
-          navigate(destination, { state: { fromGameTransition: true } })
-        }
-      },
-      (error: unknown) => {
-        console.error(`Unable to preload game at ${destination}`, error)
-        void minimumDuration.then(() => {
-          if (!cancelled) {
-            navigate(destination, { state: { fromGameTransition: true } })
-          }
-        })
-      },
-    )
-
+    // The bar follows finished tasks, plus a slow creep so it never looks stuck
+    // while one large file downloads. It only reaches 100% once everything is ready.
     const updateProgress = (now: number) => {
-      const elapsed = Math.min((now - started) / DURATION, 1)
-      setProgress(getProgress(elapsed))
-      if (elapsed < 1) frame = requestAnimationFrame(updateProgress)
+      if (cancelled || finished) return
+      const creep = 90 * (1 - Math.exp(-(now - started) / 1500))
+      const real = (done / total) * 95
+      setProgress((previous) => Math.max(previous, Math.round(Math.min(95, Math.max(real, creep)))))
+      frame = requestAnimationFrame(updateProgress)
     }
 
     frame = requestAnimationFrame(updateProgress)
     return () => {
       cancelled = true
-      window.clearTimeout(timer)
+      window.clearTimeout(holdTimer)
+      window.clearTimeout(assetTimer)
       cancelAnimationFrame(frame)
     }
   }, [destination, navigate])
