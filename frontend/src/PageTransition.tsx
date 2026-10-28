@@ -12,6 +12,7 @@ import {
 } from 'react'
 import { Link, useNavigate, type To } from 'react-router-dom'
 import './page-transition.css'
+import { CDN } from './cdn'
 
 // Keep these in sync with the durations in page-transition.css.
 const IN_MS = 180  // fade in
@@ -80,7 +81,7 @@ function ScoresLoader() {
 
       <div className="lt-top" aria-hidden="true">
         <span className="lt-brand">
-          <img src="/logo.jpeg" alt="" width={24} height={24} />
+          <img src={CDN.logo} alt="" width={24} height={24} />
           CODING CLUB
         </span>
         <span>CREDIT 01</span>

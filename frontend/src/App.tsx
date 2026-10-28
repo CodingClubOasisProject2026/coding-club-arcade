@@ -8,6 +8,7 @@ import GoogleSignIn from './GoogleSignIn'
 import TetrisPage from './games/tetris/TetrisPage'
 import ArcadeLoader from './loader/ArcadeLoader'
 import Hub from './pages/Hub'
+import { CDN } from './cdn'
 
 // Games load on demand; the arcade loader shows while a game's code downloads.
 const Minesweeper = lazy(() => import('./games/minesweeper/Minesweeper'))
@@ -159,7 +160,7 @@ export default function App() {
         <div className="arcade-shell">
           <header className="arcade-header">
             <Link to="/" className="arcade-brand">
-              <img src="/logo.webp" alt="Coding Club" width="36" height="36" />
+              <img src={CDN.logo} alt="Coding Club" width="36" height="36" />
               <span>
                 <strong>CODING CLUB</strong>
                 <small>ARCADE</small>
