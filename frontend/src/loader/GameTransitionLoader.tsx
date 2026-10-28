@@ -1,4 +1,13 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from 'react'
 import { useNavigate } from 'react-router-dom'
 import GameArtwork, { type ArtworkType } from '../games/GameArtwork'
 import { CDN, SNAKE_SPRITES } from '../cdn'
@@ -6,8 +15,12 @@ import './game-transition-loader.css'
 
 // Stop waiting on images and fonts after this long; the game still works without them.
 const ASSET_TIMEOUT_MS = 8000
-// How long the bar sits at 100% before switching, so the fill is visible.
-const COMPLETE_HOLD_MS = 150
+// Minimum time (in ms) the loader is displayed so the transition is smooth and not snappy.
+const MIN_TRANSITION_MS = 1500
+// How long the bar sits at 100% in green READY state before power-off.
+const COMPLETE_HOLD_MS = 320
+// How long the CRT power-off squash animation takes.
+const CRT_OFF_MS = 550
 const TETRIS_PAGE = '/src/games/tetris/index.html'
 
 function loadImage(src: string) {
@@ -44,7 +57,7 @@ function loadFonts(path: string, code: Promise<unknown>) {
 async function loadTetrisPage() {
   const html = await fetch(TETRIS_PAGE).then((response) => response.text())
   const page = new DOMParser().parseFromString(html, 'text/html')
-  const files = [...page.querySelectorAll('script[src], link[rel="stylesheet"][href], link[rel="modulepreload"][href]')]
+  const files = Array.from(page.querySelectorAll('script[src], link[rel="stylesheet"][href], link[rel="modulepreload"][href]'))
     .map((element) => element.getAttribute('src') ?? element.getAttribute('href'))
     .filter((url): url is string => Boolean(url))
   await Promise.all(files.map((url) => fetch(new URL(url, location.origin + TETRIS_PAGE)).then((r) => r.blob())))
@@ -75,11 +88,88 @@ function gameTasks(path: string): { code: Promise<unknown>; assets: Promise<void
   }
 }
 
+export type TransitionGame = {
+  name: string
+  path: string
+  art: ArtworkType
+  color: string
+}
+
+type GameTransitionContextType = {
+  transitionToGame: (game: TransitionGame) => void
+  isTransitioning: boolean
+}
+
+const GameTransitionContext = createContext<GameTransitionContextType>({
+  transitionToGame: () => {},
+  isTransitioning: false,
+})
+
+export const useGameTransition = () => useContext(GameTransitionContext)
+
+export function GameTransitionProvider({ children }: { children: ReactNode }) {
+  const navigate = useNavigate()
+  const [activeGame, setActiveGame] = useState<TransitionGame | null>(null)
+  const [phase, setPhase] = useState<'loading' | 'off'>('loading')
+  const busy = useRef(false)
+  const timers = useRef<number[]>([])
+
+  useEffect(() => () => timers.current.forEach(window.clearTimeout), [])
+
+  const transitionToGame = useCallback(
+    (game: TransitionGame) => {
+      if (busy.current) return
+
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        navigate(game.path, { state: { fromGameTransition: true } })
+        return
+      }
+
+      busy.current = true
+      setPhase('loading')
+      setActiveGame(game)
+    },
+    [navigate],
+  )
+
+  const handleReadyToNavigate = useCallback(() => {
+    if (!activeGame) return
+    navigate(activeGame.path, { state: { fromGameTransition: true } })
+    setPhase('off')
+
+    const timer = window.setTimeout(() => {
+      setActiveGame(null)
+      busy.current = false
+    }, CRT_OFF_MS + 60)
+    timers.current.push(timer)
+  }, [activeGame, navigate])
+
+  return (
+    <GameTransitionContext.Provider
+      value={{ transitionToGame, isTransitioning: activeGame !== null }}
+    >
+      {children}
+      {activeGame && (
+        <GameTransitionLoader
+          name={activeGame.name}
+          artwork={activeGame.art}
+          color={activeGame.color}
+          destination={activeGame.path}
+          phase={phase}
+          onReadyToNavigate={handleReadyToNavigate}
+        />
+      )}
+    </GameTransitionContext.Provider>
+  )
+}
+
 type Props = {
   name: string
   artwork: ArtworkType
   color: string
   destination: string
+  phase?: 'loading' | 'off'
+  onReadyToNavigate?: () => void
 }
 
 export default function GameTransitionLoader({
@@ -87,9 +177,12 @@ export default function GameTransitionLoader({
   artwork,
   color,
   destination,
+  phase = 'loading',
+  onReadyToNavigate,
 }: Props) {
   const navigate = useNavigate()
   const [progress, setProgress] = useState(0)
+  const [isDone, setIsDone] = useState(false)
   const style = { '--game': color } as CSSProperties
 
   useEffect(() => {
@@ -99,7 +192,8 @@ export default function GameTransitionLoader({
     let holdTimer = 0
     let assetTimer = 0
     let done = 0
-    let finished = false
+    let tasksReady = false
+    let navigated = false
 
     const { code, assets } = gameTasks(destination)
     const total = assets.length + 1
@@ -115,28 +209,46 @@ export default function GameTransitionLoader({
       }),
     ])
 
-    const go = () => {
+    const markTasksReady = () => {
       if (cancelled) return
-      finished = true
-      setProgress(100)
-      holdTimer = window.setTimeout(() => {
-        if (!cancelled) navigate(destination, { state: { fromGameTransition: true } })
-      }, COMPLETE_HOLD_MS)
+      tasksReady = true
     }
 
-    void Promise.all([count(code), assetsReady]).then(go, (error: unknown) => {
+    void Promise.all([count(code), assetsReady]).then(markTasksReady, (error: unknown) => {
       // Let the game page show its own error instead of hanging here.
       console.error(`Unable to preload game at ${destination}`, error)
-      go()
+      markTasksReady()
     })
 
-    // The bar follows finished tasks, plus a slow creep so it never looks stuck
-    // while one large file downloads. It only reaches 100% once everything is ready.
+    const triggerNavigate = () => {
+      if (cancelled || navigated) return
+      navigated = true
+      if (onReadyToNavigate) {
+        onReadyToNavigate()
+      } else {
+        navigate(destination, { state: { fromGameTransition: true } })
+      }
+    }
+
+    // Progress smoothly animates towards 95% over MIN_TRANSITION_MS (1.5s).
+    // It only reaches 100% when BOTH the minimum 1.5s has elapsed AND tasks are ready.
     const updateProgress = (now: number) => {
-      if (cancelled || finished) return
-      const creep = 90 * (1 - Math.exp(-(now - started) / 1500))
-      const real = (done / total) * 95
-      setProgress((previous) => Math.max(previous, Math.round(Math.min(95, Math.max(real, creep)))))
+      if (cancelled || navigated) return
+      const elapsed = now - started
+
+      if (tasksReady && elapsed >= MIN_TRANSITION_MS) {
+        setProgress(100)
+        setIsDone(true)
+        holdTimer = window.setTimeout(triggerNavigate, COMPLETE_HOLD_MS)
+        return
+      }
+
+      const timeRatio = Math.min(1, elapsed / MIN_TRANSITION_MS)
+      const smoothTime = (1 - Math.pow(1 - timeRatio, 2.2)) * 95
+      const assetTime = (done / total) * 92
+      const targetPct = Math.min(95, Math.max(smoothTime, assetTime))
+
+      setProgress((previous) => Math.max(previous, Math.round(targetPct)))
       frame = requestAnimationFrame(updateProgress)
     }
 
@@ -147,10 +259,17 @@ export default function GameTransitionLoader({
       window.clearTimeout(assetTimer)
       cancelAnimationFrame(frame)
     }
-  }, [destination, navigate])
+  }, [destination, navigate, onReadyToNavigate])
+
+  const isOff = phase === 'off'
+  const classNames = [
+    'game-transition',
+    isDone ? 'is-done' : 'is-loading',
+    isOff ? 'is-off' : '',
+  ].filter(Boolean).join(' ')
 
   return (
-    <main className="game-transition" style={style} role="status" aria-live="polite">
+    <main className={classNames} style={style} role="status" aria-live="polite">
       <div className="game-transition-stage">
         <div className="game-transition-crt">
           <div className="game-transition-screen">
@@ -177,7 +296,9 @@ export default function GameTransitionLoader({
             </div>
 
             <div className="game-transition-loading">
-              <span className="game-transition-label">LOADING<span className="game-transition-dots" /></span>
+              <span className="game-transition-label">
+                {isDone ? 'READY!' : <>LOADING<span className="game-transition-dots" /></>}
+              </span>
               <div
                 className="game-transition-track"
                 role="progressbar"

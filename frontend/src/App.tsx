@@ -7,6 +7,7 @@ import AuthProvider from './AuthProvider'
 import GoogleSignIn from './GoogleSignIn'
 import TetrisPage from './games/tetris/TetrisPage'
 import ArcadeLoader from './loader/ArcadeLoader'
+import { GameTransitionProvider } from './loader/GameTransitionLoader'
 import Hub from './pages/Hub'
 import { CDN } from './cdn'
 
@@ -93,69 +94,58 @@ export default function App() {
   const isTetris = location.pathname.replace(/\/+$/, '') === '/tetris'
   const isFlappy = location.pathname.replace(/\/+$/, '') === '/flappy' // Added Flappy Bird path check
 
+  let content: ReactNode = null
+
   if (isWordle) {
-    return (
-      <AuthProvider>
+    content = (
+      <div className="game-route-wrapper">
         <div className="wordle-route">
           <Routes>
             <Route path="/wordle" element={<Loading hideForGameTransition><WordlePage /></Loading>} />
           </Routes>
         </div>
-      </AuthProvider>
+      </div>
     )
-  }
-
-  if (isMinesweeper) {
-    return (
-      <AuthProvider>
+  } else if (isMinesweeper) {
+    content = (
+      <div className="game-route-wrapper">
         <Routes>
           <Route path="/minesweeper" element={<Loading hideForGameTransition><Minesweeper /></Loading>} />
         </Routes>
-      </AuthProvider>
+      </div>
     )
-  }
-
-  if (isPacman) {
-    return (
-      <AuthProvider>
+  } else if (isPacman) {
+    content = (
+      <div className="game-route-wrapper">
         <Routes>
           <Route path="/pacman" element={<Loading hideForGameTransition><Pacman /></Loading>} />
         </Routes>
-      </AuthProvider>
+      </div>
     )
-  }
-
-  if (isSnake) {
-    return (
-      <AuthProvider>
+  } else if (isSnake) {
+    content = (
+      <div className="game-route-wrapper">
         <Routes>
           <Route path="/snake" element={<Loading hideForGameTransition><Snake /></Loading>} />
         </Routes>
-      </AuthProvider>
+      </div>
     )
-  }
-
-  if (isTetris) {
-    return (
-      <AuthProvider>
+  } else if (isTetris) {
+    content = (
+      <div className="game-route-wrapper">
         <TetrisPage />
-      </AuthProvider>
+      </div>
     )
-  }
-
-  // Added Flappy Bird routing block
-  if (isFlappy) {
-    return (
-      <AuthProvider>
+  } else if (isFlappy) {
+    content = (
+      <div className="game-route-wrapper">
         <Routes>
           <Route path="/flappy" element={<Loading hideForGameTransition><Flappy /></Loading>} />
         </Routes>
-      </AuthProvider>
+      </div>
     )
-  }
-
-  return (
-    <AuthProvider>
+  } else {
+    content = (
       <PageTransitionProvider>
         <div className="arcade-shell">
           <header className="arcade-header">
@@ -193,6 +183,14 @@ export default function App() {
           </Routes>
         </div>
       </PageTransitionProvider>
+    )
+  }
+
+  return (
+    <AuthProvider>
+      <GameTransitionProvider>
+        {content}
+      </GameTransitionProvider>
     </AuthProvider>
   )
 } 

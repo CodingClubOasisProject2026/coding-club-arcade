@@ -1,8 +1,8 @@
-import { useState, type CSSProperties } from 'react'
+import { type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { TransitionLink } from '../PageTransition'
 import GameArtwork, { type ArtworkType } from '../games/GameArtwork'
-import GameTransitionLoader from '../loader/GameTransitionLoader'
+import { useGameTransition } from '../loader/GameTransitionLoader'
 
 type Game = {
   name: string
@@ -103,24 +103,13 @@ function GameContent({ game, index }: { game: Game; index: number }) {
 }
 
 export default function Hub() {
-  const [selectedGame, setSelectedGame] = useState<Game | null>(null)
+  const { transitionToGame } = useGameTransition()
   const available = String(games.filter((game) => game.ready).length).padStart(
     2,
     '0',
   )
 
   const total = String(games.length).padStart(2, '0')
-
-  if (selectedGame) {
-    return (
-      <GameTransitionLoader
-        name={selectedGame.name}
-        artwork={selectedGame.art}
-        color={selectedGame.color}
-        destination={selectedGame.path}
-      />
-    )
-  }
 
   return (
     <main className="home-page">
@@ -178,7 +167,7 @@ export default function Hub() {
                     }
 
                     event.preventDefault()
-                    setSelectedGame(game)
+                    transitionToGame(game)
                   }}
                 >
                   <GameContent game={game} index={index} />

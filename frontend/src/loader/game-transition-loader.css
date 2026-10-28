@@ -4,15 +4,65 @@
   --loader-yellow: #ffe600;
   --loader-green: #00ff6a;
   position: fixed;
-  z-index: 1000;
+  z-index: 9999;
   inset: 0;
   display: grid;
   place-items: center;
-  overflow: auto;
+  overflow: hidden;
   padding: max(24px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(24px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
   background: #08080f;
   color: var(--loader-cyan);
   font-family: var(--pixel), monospace;
+  will-change: transform, filter, opacity;
+}
+
+.game-transition.is-loading {
+  animation: game-transition-fade-in 220ms ease-out both;
+}
+
+/* CRT power-off: squash to a bright line, then to a dot, revealing the game. */
+.game-transition.is-off {
+  animation: game-crt-off 0.55s cubic-bezier(0.7, 0, 0.84, 0) forwards !important;
+  pointer-events: none !important;
+}
+
+@keyframes game-crt-off {
+  0%   { transform: scale(1, 1); filter: brightness(1); opacity: 1; }
+  55%  { transform: scale(1, 0.005); filter: brightness(4); opacity: 1; }
+  85%  { transform: scale(0.15, 0.005); filter: brightness(6); opacity: 1; }
+  100% { transform: scale(0, 0); filter: brightness(8); opacity: 0; }
+}
+
+/* Green success glow when complete (matching the main loader's .is-done) */
+.game-transition.is-done .game-transition-percent {
+  color: var(--loader-green) !important;
+  text-shadow: 0 0 8px var(--loader-green), 0 0 20px var(--loader-green) !important;
+}
+
+.game-transition.is-done .game-transition-label {
+  color: var(--loader-green) !important;
+  text-shadow: 0 0 8px var(--loader-green) !important;
+}
+
+.game-transition.is-done .game-transition-fill {
+  background: var(--loader-green) !important;
+  box-shadow: 0 0 12px var(--loader-green), 0 0 24px rgba(0, 255, 106, 0.6) !important;
+}
+
+.game-transition.is-done .game-transition-track {
+  border-color: var(--loader-green) !important;
+  box-shadow: 0 0 10px var(--loader-green), inset 0 0 8px rgba(0, 255, 106, 0.15) !important;
+}
+
+@keyframes game-transition-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .game-transition-stage {
@@ -307,4 +357,13 @@
   .game-transition *::after {
     animation-duration: 0.01ms !important;
   }
+
+  .game-transition.is-off {
+    animation: game-reduced-off 0.2s ease-out forwards !important;
+  }
+}
+
+@keyframes game-reduced-off {
+  from { opacity: 1; }
+  to   { opacity: 0; }
 }

@@ -133,6 +133,29 @@ button:disabled {
   border: 0;
 }
 
+/* Game page entrance transition */
+.game-route-wrapper {
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  animation: game-page-fade-in 400ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes game-page-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-route-wrapper {
+    animation: none !important;
+  }
+}
+
 /* Header */
 
 .arcade-header {
