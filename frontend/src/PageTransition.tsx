@@ -15,7 +15,7 @@ import './page-transition.css'
 
 // Keep these in sync with the durations in page-transition.css.
 const IN_MS = 180  // fade in
-const HOLD_MS = 1500 // loader screen is fully visible, route changes underneath
+const HOLD_MS = 2000 // loader screen is fully visible, route changes underneath
 const OUT_MS = 220  // fade out
 const LOAD_DELAY = 180 // progress bar starts a moment after mount
 const LOAD_MS = 1000 // progress bar runs 0 -> 100%
