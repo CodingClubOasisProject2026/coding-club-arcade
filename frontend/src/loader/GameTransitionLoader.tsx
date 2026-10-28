@@ -1,8 +1,7 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import GameArtwork, { type ArtworkType } from '../games/GameArtwork'
-import tetrisBackground from '../games/tetris/tetris-bg.webp'
-import tetrisBomb from '../games/tetris/bomb.webp'
+import { CDN, SNAKE_SPRITES } from '../cdn'
 import './game-transition-loader.css'
 
 // Stop waiting on images and fonts after this long; the game still works without them.
@@ -10,14 +9,6 @@ const ASSET_TIMEOUT_MS = 8000
 // How long the bar sits at 100% before switching, so the fill is visible.
 const COMPLETE_HOLD_MS = 150
 const TETRIS_PAGE = '/src/games/tetris/index.html'
-
-const SNAKE_SPRITES = [
-  'apple', 'barrel', 'border_stone', 'chain', 'chain_ring', 'crate', 'dungeon_wall',
-  'tile_a', 'tile_b', 'torch_sheet',
-  'head_up', 'head_down', 'head_left', 'head_right',
-  'tail_up', 'tail_down', 'tail_left', 'tail_right',
-  'body_h', 'body_v', 'body_down_left', 'body_left_up', 'body_right_down', 'body_up_right',
-].map((name) => `/snake-assets/${name}.webp`)
 
 function loadImage(src: string) {
   return new Promise<void>((resolve) => {
@@ -72,13 +63,13 @@ function gameTasks(path: string): { code: Promise<unknown>; assets: Promise<void
     case '/wordle':
       return withFonts(import('../games/wordle/WordlePage.jsx'))
     case '/snake':
-      return withFonts(import('../games/snake/Snake'), SNAKE_SPRITES)
+      return withFonts(import('../games/snake/Snake'), Object.values(SNAKE_SPRITES))
     case '/tetris':
-      return withFonts(loadTetrisPage(), [tetrisBackground, tetrisBomb])
+      return withFonts(loadTetrisPage(), [CDN.tetrisBackground, CDN.tetrisBomb])
     case '/pacman':
-      return withFonts(import('../games/pacman/Pacman'), ['/pm-assets/arcade-bg.webp'])
+      return withFonts(import('../games/pacman/Pacman'), [CDN.pacmanBackground])
     case '/flappy':
-      return withFonts(import('../games/flappy_bird/flappy'), ['/flappy-bg2.webp'])
+      return withFonts(import('../games/flappy_bird/flappy'), [CDN.flappyBackground])
     default:
       return { code: Promise.reject(new Error(`Unknown game route: ${path}`)), assets: [] }
   }
