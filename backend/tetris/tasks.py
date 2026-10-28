@@ -102,6 +102,7 @@ def replay(seed, actions):
 
         if landed:
             grid, lines_cleared = resolve_piece(grid, tetromino)
+            scoring.register_piece_dropped()
             scoring.register_lines_cleared(lines_cleared)
             piece_type, color = randomizer.next_piece()
             tetromino = make_tetromino(piece_type, color, len(grid[0]))

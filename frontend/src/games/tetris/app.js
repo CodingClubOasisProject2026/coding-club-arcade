@@ -7,6 +7,7 @@
   ).replace(/\/$/, "");
   const ROWS = 20;
   const COLUMNS = 10;
+  const POINTS_PER_DROP = 10;
   const PIECE_SHAPES = {
     I: [[1, 1, 1, 1]],
     O: [
@@ -426,6 +427,9 @@
     const piece = game.piece;
     if (!piece) return;
 
+    // Must match ScoringSystem.POINTS_PER_DROP in backend/tetris/scoring.py.
+    game.score += POINTS_PER_DROP;
+
     if (piece.type === "B") {
       // Must match resolve_piece in backend/tetris/tasks.py: clear a 3x3 blast,
       // drop each column, then clear any lines that formed.
@@ -701,9 +705,13 @@
     game.keyHandler = (event) => {
       const actions = {
         ArrowLeft: "left",
+        KeyA: "left",
         ArrowRight: "right",
+        KeyD: "right",
         ArrowUp: "rotate",
+        KeyW: "rotate",
         ArrowDown: "soft_drop",
+        KeyS: "soft_drop",
         Space: "hard_drop",
       };
       if (event.code === "KeyP") {

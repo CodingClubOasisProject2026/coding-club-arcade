@@ -38,6 +38,6 @@ Session submission is scoped to the signed-in user.
 - The hub queues the Tetris `calculate_score` Celery task and returns the updated session. The task replays the actions and saves the score to the session. The UI's score is a local preview; this endpoint does not return a completed task result.
 >>>>>>> Stashed changes
 
-The local preview follows `tetris.scoring.ScoringSystem`: 100, 200, 300, or 400 points for clearing 1–4 lines, multiplied by the consecutive-clear count. A lock without a line clear resets that count. Drops and level do not add score.
+The local preview follows `tetris.scoring.ScoringSystem`: each piece that locks earns 10 points, plus 100, 200, 300, or 400 points for clearing 1–4 lines, multiplied by the consecutive-clear count. A lock without a line clear resets that count. Level does not add score.
 
 Each session is scored once. The first valid submission sets the score; later submissions for that session are ignored.

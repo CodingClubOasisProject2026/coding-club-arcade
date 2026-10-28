@@ -3,9 +3,10 @@ from tetris.pieces import ROWS
 
 
 class ScoringSystem:
-    """Score cleared lines; multiply successive clears and reset on a dry lock."""
+    """Score each locked piece and cleared lines, with consecutive-clear bonuses."""
 
     POINTS_PER_LINE = 100
+    POINTS_PER_DROP = 10
 
     GRAVITY_INTERVAL_MS = 800
 
@@ -13,6 +14,12 @@ class ScoringSystem:
         self.total_score = 0
         self.total_lines_cleared = 0
         self.consecutive_clears = 0
+
+    def register_piece_dropped(self):
+        """Award points once when a piece locks onto the board."""
+        points_earned = self.POINTS_PER_DROP
+        self.total_score += points_earned
+        return self.get_game_state(points_earned)
 
     def register_lines_cleared(self, lines_cleared):
         if not isinstance(lines_cleared, int) or isinstance(lines_cleared, bool):
