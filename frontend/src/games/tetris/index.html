@@ -3,31 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-    <meta name="theme-color" content="#070913" />
+    <meta name="theme-color" content="#101014" />
     <title>Arcade — Tetris</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <!-- 1. TOP RETRO NAVIGATION BAR (Matching Pac-Man & Handheld Theme) -->
+    <!-- Top navigation -->
     <header class="tetris-nav">
       <div class="tetris-nav-left">
         <a href="/" target="_top" class="tetris-back-link" title="Return to Arcade">
           <span class="tetris-back-arrow">◀</span>
           <span>ARCADE</span>
         </a>
-        <div class="tetris-nav-title">TETRIS</div>
       </div>
-
-      <div class="tetris-nav-center">
-        <div class="tetris-high-score-badge">
-          <span class="tetris-hs-label">HIGH</span>
-          <span class="tetris-hs-val" id="nav-best-score">000000</span>
-        </div>
-      </div>
-
-      <div class="tetris-nav-right">
-        <div class="tetris-edition-tag">🕹️ RETRO EDITION</div>
-      </div>
+      <div class="tetris-nav-title">TETRIS</div>
     </header>
 
     <!-- 2. MAIN ARCADE CABINET SHELL -->
@@ -38,7 +27,6 @@
           <!-- Live Score Panel -->
           <div class="panel panel-stats">
             <div class="panel-header">
-              <span class="panel-icon">📊</span>
               <span class="panel-label">METRICS</span>
             </div>
             
@@ -62,7 +50,6 @@
           <!-- Next Piece Preview -->
           <div class="panel panel-preview">
             <div class="panel-header">
-              <span class="panel-icon">🔮</span>
               <span class="panel-label">NEXT PIECE</span>
             </div>
             <div class="preview-chamber">
@@ -80,7 +67,6 @@
                 <span id="game-state-label">READY</span>
               </div>
               <div class="board-timer-badge">
-                <span class="timer-icon">⏱</span>
                 <span id="elapsed">00:00</span>
               </div>
             </div>
@@ -125,7 +111,7 @@
 
             <div class="touch-cluster touch-cluster-center">
               <button type="button" class="touch-btn touch-btn-pause" id="btn-touch-pause" aria-label="Pause or Resume">
-                <span class="touch-icon">⏸</span>
+                <span class="touch-icon">II</span>
               </button>
             </div>
 
@@ -147,7 +133,6 @@
           <!-- Best Score Panel -->
           <div class="panel panel-best">
             <div class="panel-header">
-              <span class="panel-icon">🏆</span>
               <span class="panel-label">RECORD</span>
             </div>
             <div class="score-display-box best-box">
@@ -160,7 +145,6 @@
           <!-- Controls Guide -->
           <div class="panel panel-controls">
             <div class="panel-header">
-              <span class="panel-icon">🎮</span>
               <span class="panel-label">CONTROLS</span>
             </div>
             <div class="control-rows">

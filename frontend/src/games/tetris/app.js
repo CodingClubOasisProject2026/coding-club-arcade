@@ -512,7 +512,7 @@
     const boardElement = getElement("board");
     const callout = getElement("clear-callout");
     callout.className = "clear-callout";
-    callout.textContent = "💥 BOOM!";
+    callout.textContent = "BOOM!";
     void callout.offsetWidth;
     callout.className = "clear-callout visible count-bomb";
     clearTimeout(game.calloutTimer);
