@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { snakeSprite } from '../../cdn'
 
-const SPRITE_DIR = '/snake-assets'
 const BURST_MS = 700
 
 const VEC: Record<string, string> = { '1,0': 'right', '-1,0': 'left', '0,1': 'down', '0,-1': 'up' }
@@ -43,7 +43,7 @@ const SPARKS: [number, number, string][] = [
 function Sprite({ name }: { name: string }) {
   return (
     <img
-      src={`${SPRITE_DIR}/${name}.webp`}
+      src={snakeSprite(name)}
       alt=""
       draggable={false}
       className="snake-sprite"
@@ -156,7 +156,7 @@ export default function Board({ board, snake, apple, appleLocked = false, keyCel
           key={key}
           className="snake-cell"
           style={{
-            backgroundImage: `url(${SPRITE_DIR}/${tile}.webp)`,
+            backgroundImage: `url(${snakeSprite(tile)})`,
             backgroundSize: '100% 100%',
             ...pixelated,
           }}
@@ -180,7 +180,7 @@ export default function Board({ board, snake, apple, appleLocked = false, keyCel
     <div
       className="snake-board-frame"
       style={{
-        backgroundImage: `url(${SPRITE_DIR}/border_stone.webp)`,
+        backgroundImage: `url(${snakeSprite('border_stone')})`,
         ...pixelated,
       }}
     >

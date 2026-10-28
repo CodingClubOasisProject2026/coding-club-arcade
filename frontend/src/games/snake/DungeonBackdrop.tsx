@@ -1,4 +1,4 @@
-const D = '/snake-assets'
+import { snakeSprite } from '../../cdn'
 
 const CHAINS = [
   { side: 'left' as const, at: '3%', len: 120 },
@@ -10,7 +10,7 @@ const CHAINS = [
 ]
 
 const Img = ({ name, w, h }: { name: string; w: number; h: number }) => (
-  <img src={`${D}/${name}.webp`} alt="" width={w} height={h} draggable={false} />
+  <img src={snakeSprite(name)} alt="" width={w} height={h} draggable={false} />
 )
 
 export default function DungeonBackdrop() {

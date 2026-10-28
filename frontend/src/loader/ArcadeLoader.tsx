@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useState } from 'react'
 import { bootActive, holdBoot } from './boot'
+import { CDN } from '../cdn'
 
 // Same tips as the boot screen in index.html.
 const LOADER_TIPS = [
@@ -19,7 +20,7 @@ function LoaderBody({ pct, tip }: { pct: number; tip: string }) {
       <div className="al-floor" aria-hidden="true" />
       <div className="al-core">
         <div className="al-brand">
-          <img src="/logo.webp" alt="" width={36} height={36} />
+          <img src={CDN.logo} alt="" width={36} height={36} />
           <span>CODING CLUB</span>
         </div>
         <div className="al-title">ARCADE</div>
