@@ -921,21 +921,66 @@ kbd {
    6. RESPONSIVE MEDIA QUERIES & TOUCH CONTROLS
    --------------------------------------------------------- */
 
-/* Default: Touch controls hidden on desktop */
+/* Default: Mobile HUD and Touch controls hidden on desktop */
+.tetris-mobile-hud {
+  display: none !important;
+}
+
 .tetris-touch-controls {
   display: none;
 }
 
 /* Tablet & Mobile Layout (width <= 860px) */
 @media (max-width: 860px) {
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    touch-action: none;
+  }
+
+  /* Hide the desktop side wings on mobile */
+  .side-column {
+    display: none !important;
+  }
+
+  .tetris-nav {
+    height: 42px;
+    padding: 0 12px;
+  }
+
+  .tetris-nav-left {
+    left: 12px;
+  }
+
+  .tetris-nav-title {
+    font-size: 14px;
+    letter-spacing: 2px;
+  }
+
+  .tetris-back-link {
+    padding: 5px 10px;
+    font-size: 9px;
+  }
+
   .tetris-shell {
-    padding: 16px 12px 28px;
+    padding: 4px 8px 8px;
+    min-height: calc(100dvh - 42px);
+    height: calc(100dvh - 42px);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-evenly;
+    align-items: center;
+    box-sizing: border-box;
   }
 
   .game-layout {
-    grid-template-columns: minmax(280px, 340px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     justify-content: center;
-    gap: 16px;
+    width: 100%;
+    gap: 4px;
+    margin: 0 auto;
   }
 
   .board-column {
@@ -944,38 +989,216 @@ kbd {
     display: flex;
     flex-direction: column;
     align-items: center;
+    gap: 4px;
   }
 
+  /* Show the integrated mobile HUD directly above the board */
+  .tetris-mobile-hud {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    max-width: min(calc((100dvh - 200px) * 0.5 + 24px), 330px);
+    background: linear-gradient(160deg, rgba(28, 20, 29, 0.95) 0%, rgba(13, 13, 18, 0.98) 100%);
+    border: 1.5px solid rgba(226, 75, 145, 0.45);
+    border-radius: 8px;
+    padding: 5px 10px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.7), 0 0 12px rgba(226, 75, 145, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    gap: 8px;
+    margin-bottom: 2px;
+    box-sizing: border-box;
+  }
+
+  .mobile-hud-card {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Left: Score & Personal Best */
+  .mobile-hud-score {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .mobile-hud-label {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 6px;
+    color: var(--text-faint);
+    letter-spacing: 0.8px;
+    margin-bottom: 2px;
+    line-height: 1;
+  }
+
+  .mobile-hud-val {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 13px;
+    color: var(--amber);
+    text-shadow: 0 0 8px var(--amber-glow);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.5px;
+    line-height: 1.1;
+  }
+
+  .mobile-hud-sub {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 6px;
+    color: var(--cyan);
+    margin-top: 3px;
+    letter-spacing: 0.5px;
+    line-height: 1;
+  }
+
+  .mobile-hud-sub span {
+    color: #e2e8f0;
+  }
+
+  /* Center: Next Piece */
+  .mobile-hud-preview {
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  .mobile-preview-box {
+    background: #0d0c12;
+    border: 1px solid rgba(233, 79, 161, 0.35);
+    border-radius: 4px;
+    padding: 2px;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mobile-preview-grid {
+    width: 44px;
+    height: 36px;
+    display: grid;
+    grid-template-columns: repeat(4, 9px);
+    grid-template-rows: repeat(4, 8px);
+    align-content: center;
+    justify-content: center;
+  }
+
+  .mobile-preview-grid .preview-cell {
+    width: 8px;
+    height: 8px;
+    margin: 0.5px;
+    border-radius: 0;
+  }
+
+  .mobile-preview-grid .preview-cell.filled {
+    border-width: 0.5px;
+    box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.7), inset -1px -1px 0 rgba(0, 0, 0, 0.6);
+  }
+
+  /* Right: Lines, Level, Time */
+  .mobile-hud-stats {
+    flex-shrink: 0;
+    gap: 3px;
+    text-align: right;
+  }
+
+  .mobile-stat-item {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+
+  .mobile-stat-item .mobile-hud-label {
+    margin-bottom: 0;
+  }
+
+  .mobile-stat-val {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 8px;
+    color: var(--cyan);
+    text-shadow: 0 0 6px var(--cyan-glow);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Scalable Board Wrap (fits 100dvh without scrolling) */
   .board-wrap {
     width: 100%;
-    max-width: 340px;
+    max-width: min(calc((100dvh - 200px) * 0.5 + 24px), 330px);
+    padding: 6px;
+    border-radius: 8px;
+    border-width: 1.5px;
+    box-shadow:
+      0 0 0 3px #080a14,
+      0 0 0 4.5px #b93d7c,
+      0 0 24px rgba(226, 75, 145, 0.35),
+      0 12px 30px rgba(0, 0, 0, 0.85);
+  }
+
+  .board-head {
+    height: 20px;
+    padding: 0 2px 4px;
+  }
+
+  .board-status-badge {
+    padding: 2px 6px;
+    font-size: 6.5px;
+  }
+
+  .board-timer-badge {
+    padding: 2px 6px;
+    font-size: 8px;
   }
 
   .board {
+    width: 100%;
+    aspect-ratio: 1 / 2;
+    padding: 4px;
+    gap: 1.5px;
     touch-action: none;
     -webkit-user-select: none;
     user-select: none;
   }
 
-  /* Show tactile on-screen controls directly below the board */
+  .board-overlay {
+    inset: 26px 6px 6px;
+  }
+
+  .overlay-card {
+    padding: 16px 14px;
+    max-width: 230px;
+  }
+
+  .overlay-icon {
+    font-size: 26px;
+    margin-bottom: 8px;
+  }
+
+  .overlay-card h2 {
+    font-size: 9.5px;
+    margin: 0 0 8px;
+  }
+
+  .overlay-card p {
+    font-size: 10px;
+    margin: 0 auto 14px;
+  }
+
+  /* Tactile Arcade Touch Controller directly below the board */
   .tetris-touch-controls {
     display: flex;
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    max-width: 340px;
-    margin-top: 12px;
-    padding: 4px 2px;
+    max-width: min(calc((100dvh - 200px) * 0.5 + 24px), 330px);
+    margin-top: 4px;
+    padding: 2px 0;
     user-select: none;
     -webkit-user-select: none;
     touch-action: none;
-    gap: 8px;
+    gap: 6px;
   }
 
   .touch-cluster {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
   }
 
   .touch-btn {
@@ -997,9 +1220,9 @@ kbd {
 
   /* D-pad directional buttons (◀, ▶) */
   .touch-btn-dir {
-    width: 44px;
-    height: 44px;
-    border-radius: 9px;
+    width: 42px;
+    height: 42px;
+    border-radius: 8px;
     background: linear-gradient(180deg, #382535 0%, #211923 100%);
     border: 1.5px solid #69405b;
     border-bottom: 3.5px solid #170f19;
@@ -1008,15 +1231,15 @@ kbd {
   }
 
   .touch-btn-dir .touch-arrow {
-    font-size: 15px;
+    font-size: 14px;
     line-height: 1;
   }
 
   /* Soft Drop button (▼ DROP) */
   .touch-btn-down {
-    width: 48px;
-    height: 44px;
-    border-radius: 9px;
+    width: 46px;
+    height: 42px;
+    border-radius: 8px;
     background: linear-gradient(180deg, #382535 0%, #211923 100%);
     border: 1.5px solid #69405b;
     border-bottom: 3.5px solid #170f19;
@@ -1026,36 +1249,36 @@ kbd {
   }
 
   .touch-btn-down .touch-arrow {
-    font-size: 13px;
+    font-size: 12px;
     line-height: 1;
   }
 
   .touch-btn-down .touch-label {
     font-family: 'Press Start 2P', monospace;
-    font-size: 5.5px;
+    font-size: 5px;
     color: #94a3b8;
     letter-spacing: -0.5px;
   }
 
   /* Pause button */
   .touch-btn-pause {
-    width: 34px;
-    height: 34px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     background: linear-gradient(180deg, #30202d 0%, #1b151d 100%);
     border: 1px solid #69405b;
     border-bottom: 2.5px solid #0a0d16;
     color: #94a3b8;
-    font-size: 12px;
+    font-size: 11px;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
   }
 
   /* Slam / Hard drop button (⤓ SLAM) */
   .touch-btn-slam {
-    height: 44px;
-    min-width: 50px;
-    padding: 0 8px;
-    border-radius: 10px;
+    height: 42px;
+    min-width: 48px;
+    padding: 0 7px;
+    border-radius: 8px;
     background: linear-gradient(180deg, #f16d57 0%, #b94b45 100%);
     border: 1.5px solid #ffb3a0;
     border-bottom: 3.5px solid #78350f;
@@ -1065,14 +1288,14 @@ kbd {
   }
 
   .touch-btn-slam .touch-arrow {
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 800;
     line-height: 1;
   }
 
   .touch-btn-slam .touch-label {
     font-family: 'Press Start 2P', monospace;
-    font-size: 5.5px;
+    font-size: 5px;
     letter-spacing: -0.5px;
     color: #3b1d03;
     font-weight: 700;
@@ -1080,10 +1303,10 @@ kbd {
 
   /* Rotate button (⟳ ROTATE) */
   .touch-btn-rotate {
-    height: 44px;
-    min-width: 52px;
-    padding: 0 8px;
-    border-radius: 10px;
+    height: 42px;
+    min-width: 50px;
+    padding: 0 7px;
+    border-radius: 8px;
     background: linear-gradient(180deg, #e94fa1 0%, #a92d72 100%);
     border: 1.5px solid #f4a5c2;
     border-bottom: 3.5px solid #5c204c;
@@ -1093,14 +1316,14 @@ kbd {
   }
 
   .touch-btn-rotate .touch-arrow {
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 800;
     line-height: 1;
   }
 
   .touch-btn-rotate .touch-label {
     font-family: 'Press Start 2P', monospace;
-    font-size: 5.5px;
+    font-size: 5px;
     letter-spacing: -0.5px;
     color: #e0e7ff;
     font-weight: 700;
@@ -1129,37 +1352,60 @@ kbd {
   .touch-btn-pause.touch-active {
     border-bottom-width: 1px;
   }
-
-  /* Side panels sit beneath the board on tablet & mobile */
-  .side-column.left-column {
-    order: 2;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-  }
-
-  .side-column.right-column {
-    order: 3;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-  }
 }
 
-/* Narrower screens (phones <= 540px) */
-@media (max-width: 540px) {
-  .tetris-nav {
-    padding: 0 12px;
-    height: 48px;
+/* Extra Compact screens (e.g. <= 380px) */
+@media (max-width: 380px) {
+  .tetris-touch-controls {
+    gap: 3px;
   }
 
-  .tetris-nav-left {
-    left: 12px;
+  .touch-cluster {
+    gap: 3px;
   }
 
-  .side-column.left-column,
-  .side-column.right-column {
-    grid-template-columns: 1fr;
+  .touch-btn-dir {
+    width: 38px;
+    height: 38px;
+  }
+
+  .touch-btn-down {
+    width: 40px;
+    height: 38px;
+  }
+
+  .touch-btn-pause {
+    width: 28px;
+    height: 28px;
+    font-size: 10px;
+  }
+
+  .touch-btn-slam {
+    height: 38px;
+    min-width: 42px;
+    padding: 0 5px;
+  }
+
+  .touch-btn-rotate {
+    height: 38px;
+    min-width: 44px;
+    padding: 0 5px;
+  }
+
+  .mobile-hud-val {
+    font-size: 11px;
+  }
+
+  .mobile-preview-grid {
+    width: 38px;
+    height: 32px;
+    grid-template-columns: repeat(4, 8px);
+    grid-template-rows: repeat(4, 7px);
+  }
+
+  .mobile-preview-grid .preview-cell {
+    width: 7px;
+    height: 7px;
   }
 }
 

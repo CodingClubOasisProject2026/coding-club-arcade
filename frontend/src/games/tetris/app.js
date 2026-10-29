@@ -611,9 +611,20 @@
     const linesStr = String(game.lines).padStart(2, "0");
     const levelStr = String(game.level).padStart(2, "0");
 
-    getElement("score").textContent = scoreStr;
-    getElement("lines").textContent = linesStr;
-    getElement("level").textContent = levelStr;
+    const scoreEl = getElement("score");
+    if (scoreEl) scoreEl.textContent = scoreStr;
+    const mobileScoreEl = getElement("mobile-score");
+    if (mobileScoreEl) mobileScoreEl.textContent = scoreStr;
+
+    const linesEl = getElement("lines");
+    if (linesEl) linesEl.textContent = linesStr;
+    const mobileLinesEl = getElement("mobile-lines");
+    if (mobileLinesEl) mobileLinesEl.textContent = linesStr;
+
+    const levelEl = getElement("level");
+    if (levelEl) levelEl.textContent = levelStr;
+    const mobileLevelEl = getElement("mobile-level");
+    if (mobileLevelEl) mobileLevelEl.textContent = levelStr;
 
     if (game.pendingClearRows?.length) {
       animateClearedRows(board, game.pendingClearRows);
@@ -686,31 +697,40 @@
   }
 
   function renderNextPiece() {
-    const preview = getElement("next-preview");
-    if (!preview) return;
-    preview.replaceChildren();
-    for (let y = 0; y < 4; y++) {
-      for (let x = 0; x < 4; x++) {
-        const cell = document.createElement("div");
-        cell.className = "preview-cell";
-        if (game.nextPiece?.shape[y]?.[x]) {
-          cell.classList.add("filled");
-          if (game.nextPiece.type === "B") cell.classList.add("bomb");
-          cell.style.setProperty(
-            "--piece-color",
-            PIECE_COLORS[game.nextPiece.type],
-          );
+    const previews = [
+      getElement("next-preview"),
+      getElement("mobile-next-preview"),
+    ].filter(Boolean);
+    if (!previews.length) return;
+
+    previews.forEach((preview) => {
+      preview.replaceChildren();
+      for (let y = 0; y < 4; y++) {
+        for (let x = 0; x < 4; x++) {
+          const cell = document.createElement("div");
+          cell.className = "preview-cell";
+          if (game.nextPiece?.shape[y]?.[x]) {
+            cell.classList.add("filled");
+            if (game.nextPiece.type === "B") cell.classList.add("bomb");
+            cell.style.setProperty(
+              "--piece-color",
+              PIECE_COLORS[game.nextPiece.type],
+            );
+          }
+          preview.append(cell);
         }
-        preview.append(cell);
       }
-    }
+    });
   }
 
   function updateElapsedTime() {
     const elapsed = Math.floor((Date.now() - game.startedAt) / 1000);
     const minutes = Math.floor(elapsed / 60);
-    getElement("elapsed").textContent =
-      `${String(minutes).padStart(2, "0")}:${String(elapsed % 60).padStart(2, "0")}`;
+    const timeStr = `${String(minutes).padStart(2, "0")}:${String(elapsed % 60).padStart(2, "0")}`;
+    const el = getElement("elapsed");
+    if (el) el.textContent = timeStr;
+    const mobileEl = getElement("mobile-elapsed");
+    if (mobileEl) mobileEl.textContent = timeStr;
   }
 
   function addKeyboardListener() {
@@ -896,6 +916,8 @@
     if (bestEl) bestEl.textContent = formatted;
     const navBestEl = getElement("nav-best-score");
     if (navBestEl) navBestEl.textContent = formatted;
+    const mobileBestEl = getElement("mobile-best-score");
+    if (mobileBestEl) mobileBestEl.textContent = formatted;
   }
 
   function setupTouchControls() {

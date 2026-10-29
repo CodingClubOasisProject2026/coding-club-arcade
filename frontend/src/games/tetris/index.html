@@ -60,6 +60,37 @@
 
         <!-- CENTER STAGE: THE PLAYFIELD MATRIX -->
         <div class="board-column">
+          <!-- Mobile Stats & Next Piece HUD (Visible on mobile/tablet screens <= 860px) -->
+          <div class="tetris-mobile-hud" aria-label="Game metrics">
+            <div class="mobile-hud-card mobile-hud-score">
+              <span class="mobile-hud-label">SCORE</span>
+              <div id="mobile-score" class="mobile-hud-val">000000</div>
+              <div class="mobile-hud-sub">BEST <span id="mobile-best-score">000000</span></div>
+            </div>
+
+            <div class="mobile-hud-card mobile-hud-preview">
+              <span class="mobile-hud-label">NEXT</span>
+              <div class="mobile-preview-box">
+                <div id="mobile-next-preview" class="preview-grid mobile-preview-grid"></div>
+              </div>
+            </div>
+
+            <div class="mobile-hud-card mobile-hud-stats">
+              <div class="mobile-stat-item">
+                <span class="mobile-hud-label">LINES</span>
+                <strong id="mobile-lines" class="mobile-stat-val">00</strong>
+              </div>
+              <div class="mobile-stat-item">
+                <span class="mobile-hud-label">LEVEL</span>
+                <strong id="mobile-level" class="mobile-stat-val">01</strong>
+              </div>
+              <div class="mobile-stat-item">
+                <span class="mobile-hud-label">TIME</span>
+                <strong id="mobile-elapsed" class="mobile-stat-val">00:00</strong>
+              </div>
+            </div>
+          </div>
+
           <div class="board-wrap">
             <div class="board-head">
               <div class="board-status-badge" id="status-badge">

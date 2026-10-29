@@ -225,12 +225,17 @@ export default function Snake() {
         <HubLink to="/" className="snake-back">
           ← ARCADE
         </HubLink>
-        <div className="snake-stats">
-          <span>SCORE {String(game.score ?? 0).padStart(4, '0')}</span>
-          <span>APPLES {game.apples_eaten ?? 0}</span>
-          {game.apple_locked && <span className="snake-keyhud">LOCKED 🔒</span>}
+        <div className="snake-nav-center">
+          <span className="snake-nav-badge">SNAKE</span>
+        </div>
+        <div className="snake-nav-actions">
+          {signedIn && (
+            <span className="snake-ticket-badge" title="Tickets remaining">
+              🎟 {me.tickets}
+            </span>
+          )}
           {phase === 'playing' && (
-            <button type="button" onClick={togglePause} className="snake-btn-pause">
+            <button type="button" onClick={togglePause} className="snake-btn-pause" aria-label="Pause game">
               PAUSE
             </button>
           )}
@@ -247,7 +252,26 @@ export default function Snake() {
         </div>
       )}
 
+      {/* Retro Arcade HUD */}
+      <div className="snake-hud">
+        <div className="snake-hud-card">
+          <span className="snake-hud-label">SCORE</span>
+          <span className="snake-hud-val score-val">{String(game.score ?? 0).padStart(4, '0')}</span>
+        </div>
+        <div className="snake-hud-card">
+          <span className="snake-hud-label">APPLES</span>
+          <span className="snake-hud-val apples-val">🍎 {game.apples_eaten ?? 0}</span>
+        </div>
+        <div className="snake-hud-card status-card">
+          <span className="snake-hud-label">STATUS</span>
+          <span className={`snake-hud-status ${game.apple_locked ? 'is-locked' : game.key ? 'is-key' : 'is-ready'}`}>
+            {game.apple_locked ? '🔒 LOCKED' : game.key ? '🔑 KEY' : 'READY ✦'}
+          </span>
+        </div>
+      </div>
+
       <div
+        className="snake-board-wrap"
         style={{ position: 'relative', touchAction: 'none' }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -260,25 +284,25 @@ export default function Snake() {
           <div className="snake-overlay">
             <h2 className="snake-overlay-title">{overlay.title}</h2>
             {phase === 'over' && (
-              <p style={{ margin: 0, fontSize: '13px' }}>
+              <p className="snake-overlay-score">
                 FINAL SCORE: {finalScore ?? game.score}
                 {submission === 'verified' && ' · VERIFIED'}
                 {submission === 'rejected' && ' · COULD NOT VERIFY'}
               </p>
             )}
             {phase !== 'paused' && !signedIn ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-                <p style={{ margin: 0, fontSize: '11px', color: '#ffce19', textAlign: 'center' }}>
+              <div className="snake-overlay-auth">
+                <p className="snake-overlay-msg warn">
                   SIGN IN AND ADD A TICKET TO PLAY
                 </p>
                 <GoogleSignIn />
               </div>
             ) : phase !== 'paused' && signedIn && me.tickets <= 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                <p style={{ margin: 0, fontSize: '11px', color: '#ff7b7b', textAlign: 'center' }}>
+              <div className="snake-overlay-auth">
+                <p className="snake-overlay-msg err">
                   NO TICKETS LEFT. PLEASE ADD A TICKET TO PLAY.
                 </p>
-                <button type="button" disabled className="snake-overlay-btn">
+                <button type="button" disabled className="snake-overlay-btn disabled">
                   ADD A TICKET
                 </button>
               </div>
@@ -296,20 +320,30 @@ export default function Snake() {
         )}
       </div>
 
-      <DPad onDirection={changeDirection} />
+      <DPad
+        onDirection={changeDirection}
+        onPause={togglePause}
+        isPlaying={phase === 'playing'}
+        isPaused={phase === 'paused'}
+      />
 
-      <p className="snake-hint">
-        SOME APPLES ARE LOCKED · GRAB THE KEY FIRST · HITTING A LOCKED APPLE ENDS THE RUN
-        <br />
-        ARROWS / WASD MOVE · SPACE OR P PAUSE · SWIPE ON MOBILE
-        {!signedIn ? (
-          <span> · SIGN IN AND ADD A TICKET TO PLAY</span>
-        ) : me.tickets === 0 ? (
-          <span> · NO TICKETS LEFT. PLEASE ADD A TICKET</span>
-        ) : (
-          <span> · 🎟 {me.tickets} ticket{me.tickets === 1 ? '' : 's'}</span>
-        )}
-      </p>
+      <div className="snake-hint-container">
+        <p className="snake-hint snake-hint-desktop">
+          SOME APPLES ARE LOCKED · GRAB THE KEY FIRST · HITTING A LOCKED APPLE ENDS THE RUN
+          <br />
+          ARROWS / WASD MOVE · SPACE OR P PAUSE · SWIPE ON MOBILE
+          {!signedIn ? (
+            <span> · SIGN IN AND ADD A TICKET TO PLAY</span>
+          ) : me.tickets === 0 ? (
+            <span> · NO TICKETS LEFT. PLEASE ADD A TICKET</span>
+          ) : (
+            <span> · 🎟 {me.tickets} ticket{me.tickets === 1 ? '' : 's'}</span>
+          )}
+        </p>
+        <p className="snake-hint snake-hint-mobile">
+          SWIPE OR TAP D-PAD TO MOVE · 🔑 UNLOCKS 🔒 APPLES
+        </p>
+      </div>
     </main>
   )
 }
