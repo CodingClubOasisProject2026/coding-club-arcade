@@ -16,7 +16,7 @@ import './game-transition-loader.css'
 // Stop waiting on images and fonts after this long; the game still works without them.
 const ASSET_TIMEOUT_MS = 8000
 // Minimum time (in ms) the loader is displayed so the transition is smooth and not snappy.
-const MIN_TRANSITION_MS = 1500
+const MIN_TRANSITION_MS = 1000
 // How long the bar sits at 100% in green READY state before power-off.
 const COMPLETE_HOLD_MS = 320
 // How long the CRT power-off squash animation takes.
@@ -230,8 +230,8 @@ export default function GameTransitionLoader({
       }
     }
 
-    // Progress smoothly animates towards 95% over MIN_TRANSITION_MS (1.5s).
-    // It only reaches 100% when BOTH the minimum 1.5s has elapsed AND tasks are ready.
+    // Progress smoothly animates towards 95% over MIN_TRANSITION_MS (1s).
+    // It only reaches 100% when BOTH the minimum 1s has elapsed AND tasks are ready.
     const updateProgress = (now: number) => {
       if (cancelled || navigated) return
       const elapsed = now - started
