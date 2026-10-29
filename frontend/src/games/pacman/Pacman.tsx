@@ -293,7 +293,7 @@ export default function Pacman() {
       {notice && (
         <div className="pm-notice" role="status">
           <span>{notice}</span>
-          {!signedIn && <GoogleSignIn />}
+          {!signedIn && <GoogleSignIn label="SIGN IN" />}
         </div>
       )}
 
@@ -369,7 +369,7 @@ export default function Pacman() {
                           </p>
                           {!signedIn ? (
                             <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-                              <GoogleSignIn />
+                              <GoogleSignIn label="SIGN IN WITH GOOGLE" />
                             </div>
                           ) : me.tickets <= 0 ? (
                             <button
@@ -414,7 +414,7 @@ export default function Pacman() {
                           {!signedIn ? (
                             <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
                               <p style={{ margin: 0, fontSize: '0.85rem' }}>Sign in and add a ticket to play.</p>
-                              <GoogleSignIn />
+                              <GoogleSignIn label="SIGN IN WITH GOOGLE" />
                             </div>
                           ) : me.tickets <= 0 ? (
                             <button

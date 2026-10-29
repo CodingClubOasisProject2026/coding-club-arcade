@@ -703,6 +703,53 @@
   animation-duration: 0.3s;
 }
 
+/* ───────────── High-visibility Google Sign-in button ───────────── */
+.pm-page .google-signin {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 9px 16px;
+  border: 3px solid var(--pm-ink) !important;
+  border-radius: 4px;
+  background: #ffffff !important;
+  color: var(--pm-ink) !important;
+  font: 400 9px/1.2 var(--pm-pixel) !important;
+  letter-spacing: 0.5px;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 var(--pm-ink) !important;
+  white-space: nowrap;
+  transition: transform 0.08s ease, box-shadow 0.08s ease, background-color 0.1s ease;
+}
+
+.pm-page .google-signin:hover {
+  background: #f1f5f9 !important;
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 var(--pm-ink) !important;
+}
+
+.pm-page .google-signin:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--pm-ink) !important;
+}
+
+.pm-notice .google-signin {
+  min-height: 34px;
+  padding: 6px 12px;
+  font-size: 8px !important;
+  box-shadow: 2px 2px 0 var(--pm-ink) !important;
+}
+
+@media (max-width: 420px) {
+  .pm-page .google-signin {
+    padding: 8px 12px;
+    font-size: 7.5px !important;
+    gap: 8px;
+  }
+}
+
 /* Pac-Man chasing dots, ghost behind. */
 .pm-chase {
   display: flex;
