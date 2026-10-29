@@ -82,6 +82,7 @@ INSTALLED_APPS = [
     'wordle',
     'flappy_bird',
     'rest_framework',
+    'cachalot',
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
