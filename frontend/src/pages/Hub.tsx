@@ -196,6 +196,9 @@ export default function Hub() {
           <HubLink to="/privacy" label="PRIVACY POLICY" style={{ color: 'inherit', textDecoration: 'none', borderBottom: '1px dashed currentColor' }}>
             Privacy Policy
           </HubLink>
+          <HubLink to="/terms" label="TERMS OF SERVICE" style={{ color: 'inherit', textDecoration: 'none', borderBottom: '1px dashed currentColor' }}>
+            Terms of Service
+          </HubLink>
           <span>ONE MORE ROUND?</span>
         </div>
       </footer>
