@@ -31,7 +31,7 @@ DEBUG = getenv('DEBUG', 'true') == 'true'
 
 ALLOWED_HOSTS = [host.strip() for host in getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if host.strip()]
 
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_PROXY_SSL_HEADER = None if DEBUG else ('HTTP_X_FORWARDED_PROTO', 'https')
 
 COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_SECURE = COOKIE_SECURE
