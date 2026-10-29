@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import GoogleSignIn from '../../GoogleSignIn';
+import { HubLink } from '../../loader/HubTransition';
 import {
     HUB_URL,
     RulesContent,
@@ -107,14 +109,14 @@ function DemoBoard() {
     );
 }
 
-export default function Landing({ me, onPlay, busy = false, error = '' }) {
+export default function Landing({ me, onPlay, busy = false, error = '', onAuthRefresh }) {
     const [helpOpen, setHelpOpen] = useState(false);
     const canPlay = Boolean(me?.authenticated && me.tickets > 0);
 
     return (
         <main className="app-shell landing">
             <header className="landing-top">
-                <a className="hub-link" href={HUB_URL}>← Arcade hub</a>
+                <HubLink className="hub-link" to="/">← Arcade hub</HubLink>
                 <button className="help-button" type="button" aria-label="How to play" onClick={() => setHelpOpen(true)}>?</button>
             </header>
 
@@ -142,16 +144,24 @@ export default function Landing({ me, onPlay, busy = false, error = '' }) {
                             </p>
                         )}
                         {me?.authenticated && me.tickets <= 0 && (
-                            <p className="landing-error" role="status">No tickets left. Ask an arcade admin to add tickets to your account.</p>
+                            <p className="landing-error" role="status">No tickets left. Please add a ticket to play.</p>
                         )}
                         {me && !me.authenticated && (
-                            <p className="landing-error" role="status">Sign in through the arcade hub before playing.</p>
+                            <p className="landing-error" role="status">Sign in and add a ticket to play.</p>
                         )}
                         {error && <p className="landing-error" role="alert">{error}</p>}
 
-                        {canPlay && (
+                        {canPlay ? (
                             <button className="modal-primary landing-play lp-play" type="button" autoFocus disabled={busy} onClick={onPlay}>
                                 {busy ? 'Starting…' : 'Play'} <span aria-hidden="true">{busy ? '' : '↗'}</span>
+                            </button>
+                        ) : !me?.authenticated ? (
+                            <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.5rem' }}>
+                                <GoogleSignIn />
+                            </div>
+                        ) : (
+                            <button className="modal-primary landing-play lp-play" type="button" disabled style={{ opacity: 0.6, cursor: 'not-allowed' }}>
+                                Add a ticket
                             </button>
                         )}
                     </div>

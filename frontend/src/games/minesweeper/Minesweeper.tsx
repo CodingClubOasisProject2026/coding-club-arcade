@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { HubLink } from '../../loader/HubTransition'
 import { ApiError } from '../../api'
 import { useAuth } from '../../auth'
 import GoogleSignIn from '../../GoogleSignIn'
@@ -14,7 +14,6 @@ import {
   applyResult,
   blankGame,
   localExpire,
-  localMove,
   neighbors,
 } from './engine'
 import './Minesweeper.css'
@@ -439,8 +438,6 @@ export default function Minesweeper() {
   // Ranked games need a signed-in player with a ticket.
   const ranked = signedIn && me.tickets > 0
   const outOfTickets = signedIn && me.tickets === 0
-  // Once we know who's playing, a player who can't play ranked starts in practice.
-  const practiceOnly = !!me && !ranked
 
   const currentConfig = useMemo(() => {
     return DIFFICULTIES.find((d) => d.key === difficulty) ?? DIFFICULTIES[0]
@@ -494,9 +491,9 @@ export default function Minesweeper() {
   const sonarArmed = sonarMode && canSonar
 
   // A blank board. 'pending' boards have no session yet (the ticket is spent on
-  // the first reveal); 'local' boards are practice games that never hit the API.
+  // the first reveal).
   const blankBoard = useCallback(
-    (kind: 'pending' | 'local'): GameState => blankGame(currentConfig, `${kind}-${Date.now()}`),
+    (kind: 'pending'): GameState => blankGame(currentConfig, `${kind}-${Date.now()}`),
     [currentConfig],
   )
 
@@ -527,16 +524,7 @@ export default function Minesweeper() {
     start()
   }, [invalidateSavedGame, start])
 
-  // An untouched board follows the player's tickets: practice when they can't
-  // play ranked (no ticket is asked for), ranked again once they can.
-  useEffect(() => {
-    setGame((g) => {
-      if (!g || g.move_count > 0 || g.startedAt) return g
-      if (practiceOnly && g.id.startsWith('pending-')) return { ...g, id: g.id.replace('pending-', 'local-') }
-      if (!practiceOnly && g.id.startsWith('local-')) return { ...g, id: g.id.replace('local-', 'pending-') }
-      return g
-    })
-  }, [practiceOnly, game?.id])
+
 
   // Short pop-up for power-up events.
   const showNotice = useCallback((text: string, tone: 'good' | 'info' = 'good') => {
@@ -549,8 +537,8 @@ export default function Minesweeper() {
     return () => clearTimeout(t)
   }, [notice])
 
-  // Spends a ticket and creates the server game. Falls back to practice mode.
-  const createSession = useCallback(async (): Promise<GameState> => {
+  // Spends a ticket and creates the server game.
+  const createSession = useCallback(async (): Promise<GameState | null> => {
     setBusy(true)
     try {
       const g = await newGame(difficulty)
@@ -560,14 +548,18 @@ export default function Minesweeper() {
         // ignore
       }
       return g
-    } catch {
-      // Signed out, out of tickets, or offline: play a practice game.
-      return blankBoard('local')
+    } catch (err: unknown) {
+      if (err instanceof ApiError && err.status === 400) {
+        showNotice('No tickets left. Please add a ticket to play.', 'info')
+      } else {
+        showNotice('Sign in and add a ticket to play.', 'info')
+      }
+      return null
     } finally {
       setBusy(false)
       refresh()
     }
-  }, [blankBoard, difficulty, refresh])
+  }, [difficulty, refresh, showNotice])
 
   // Show a blank board on mount and whenever the difficulty changes.
   // (Calling start() from the pill's onClick would use the previous difficulty,
@@ -751,6 +743,15 @@ export default function Minesweeper() {
   const move = useCallback(
     async (type: MoveType, index: number) => {
       if (!game || game.status !== 'in_progress' || pending.current) return
+      if (!ranked) {
+        showNotice(
+          outOfTickets
+            ? 'No tickets left. Please add a ticket to play.'
+            : 'Sign in and add a ticket to play.',
+          'info',
+        )
+        return
+      }
       const isPending = game.id.startsWith('pending-')
       // Nothing to flag or chord before the first reveal.
       if (isPending && type !== 'reveal') return
@@ -763,22 +764,14 @@ export default function Minesweeper() {
       // First reveal on a fresh board: this is where the ticket is spent.
       let current = game
       if (isPending) {
-        sessionStartedRef.current = true
-        current = await createSession()
-        setGame(current)
-      }
-
-      // Practice game: play it locally with the same rules as the server.
-      if (current.id.startsWith('local-')) {
-        try {
-          const outcome = localMove(current, type, index)
-          if (!outcome) return
-          setGame(outcome.game)
-          announce(type, index, outcome.game.flagged, outcome.events)
-        } finally {
+        const sessionGame = await createSession()
+        if (!sessionGame) {
           pending.current = false
+          return
         }
-        return
+        sessionStartedRef.current = true
+        current = sessionGame
+        setGame(current)
       }
 
       // Ranked game: the server plays the move.
@@ -798,7 +791,7 @@ export default function Minesweeper() {
         pending.current = false
       }
     },
-    [game, createSession, announce],
+    [game, ranked, outOfTickets, showNotice, createSession, announce],
   )
 
   const view = useMemo(() => {
@@ -903,9 +896,7 @@ export default function Minesweeper() {
   const portraitConsole = viewport.w < WINGS_MIN_VIEWPORT
   const wingW = portraitConsole ? 0 : WING_W
   const cardInset = CARD_PAD + CARD_BORDER
-  // Only while playing practice because of tickets. It can only appear or go
-  // away when a new board starts, never in the middle of a game.
-  const showTicketBanner = outOfTickets && !!game && game.id.startsWith('local-')
+  const showTicketBanner = !signedIn || outOfTickets
 
   const chromeX = 2 * (SHELL_PAD_X + wingW + BEZEL_X)
   const chromeY = SHELL_PAD_Y + BEZEL_Y
@@ -970,14 +961,11 @@ export default function Minesweeper() {
     return new Set([aim, ...neighbors(aim, cols, rows)])
   }, [sonarArmed, aim, cols, rows])
 
-  // Known before the first dig, so the hint (not a pop-up) can say it.
-  const isPractice = game ? game.id.startsWith('local-') || (game.id.startsWith('pending-') && !ranked) : !ranked
-
   let hint: string
   if (over) hint = 'Press R or the face to play again.'
   else if (sonarArmed) hint = 'Sonar: pick a tile to reveal mines in the 3×3 around it. Esc cancels.'
-  else if (!started && isPractice)
-    hint = signedIn ? 'No tickets left, so this is a practice game. Dig to start.' : 'Practice game. Sign in to save scores. Dig to start.'
+  else if (!started && !ranked)
+    hint = signedIn ? 'No tickets left. Please add a ticket to play.' : 'Sign in and add a ticket to play.'
   else if (!started) hint = 'Dig any tile to start. The clock starts on your first dig.'
   else if (flagMode) hint = 'Flag mode: tap tiles to flag them. Flags are free.'
   else hint = 'Right-click or long-press to flag. Click a number to clear around it.'
@@ -1004,9 +992,9 @@ export default function Minesweeper() {
     <div className={`ms-page ${compact ? 'is-compact' : ''} ${isShaking ? 'screen-shake' : ''}`}>
       <header className="ms-nav">
         <div className="ms-nav-left">
-          <Link to="/" className="ms-back-link" aria-label="Back to arcade">
+          <HubLink to="/" className="ms-back-link" aria-label="Back to arcade">
             ← <span className="ms-back-text">Arcade</span>
-          </Link>
+          </HubLink>
           <span className="ms-title">Minesweeper</span>
         </div>
 
@@ -1036,14 +1024,14 @@ export default function Minesweeper() {
               className={`ms-tickets ${outOfTickets ? 'is-empty' : ''}`}
               title={
                 outOfTickets
-                  ? 'No tickets left. You can still play practice games, but scores are not saved.'
-                  : 'Tickets left. Each ranked game uses one.'
+                  ? 'No tickets left. Please add a ticket to play.'
+                  : 'Tickets left. Each game uses one.'
               }
             >
               🎟️ {outOfTickets && !compact ? 'No tickets left' : me.tickets}
             </span>
           ) : (
-            me && <GoogleSignIn label={compact ? '' : 'Sign in'} />
+            me && <GoogleSignIn label={compact ? '' : 'Sign in & add ticket'} />
           )}
           <button
             type="button"
@@ -1061,10 +1049,19 @@ export default function Minesweeper() {
         <div className="ms-ticket-banner" role="status">
           <span aria-hidden="true">🎟️</span>
           <span className="ms-ticket-banner-text">
-            <b>No tickets left.</b>{' '}
-            {compact
-              ? 'Practice mode: scores aren’t saved.'
-              : 'You’re in practice mode, so scores aren’t saved. Ask a club admin for more tickets.'}
+            {!signedIn ? (
+              <>
+                <b>Sign in and add a ticket to play.</b>{' '}
+                {compact ? '' : 'You need to sign in and have at least one ticket to play Minesweeper.'}
+              </>
+            ) : (
+              <>
+                <b>No tickets left.</b>{' '}
+                {compact
+                  ? 'Please add a ticket to play.'
+                  : 'You need at least one ticket to play Minesweeper. Ask a club admin to add a ticket.'}
+              </>
+            )}
           </span>
         </div>
       )}
@@ -1092,8 +1089,6 @@ export default function Minesweeper() {
             {/* Screen bezel */}
             <div className="gb-bezel">
               <div className={`ms-card ${portraitConsole ? 'is-portrait' : ''}`} style={{ width: cardWidth }}>
-                {/* Sits on the screen's top edge, so it never moves anything */}
-                {isPractice && !showTicketBanner && <span className="ms-practice-tag">Practice · not ranked</span>}
                 {/* Mines left, restart, time left */}
                 <div className="ms-hud">
                   <div className="ms-readout">
@@ -1320,7 +1315,6 @@ export default function Minesweeper() {
                         <span>
                           {elapsed}s · {game.moves_used} moves
                           {typeof game.score === 'number' ? ` · Score ${game.score}` : ''}
-                          {isPractice ? ' · not saved' : ''}
                         </span>
                       </div>
                       <button type="button" className="ms-primary-btn" onClick={restart} disabled={busy}>

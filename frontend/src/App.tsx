@@ -1,5 +1,5 @@
 import { lazy, Suspense, type ReactNode } from 'react'
-import { Link, Route, Routes, useLocation } from 'react-router-dom'
+import { Route, Routes, useLocation } from 'react-router-dom'
 import { PageTransitionProvider, TransitionLink } from './PageTransition'
 import { logout } from './api'
 import { useAuth } from './auth'
@@ -8,6 +8,7 @@ import GoogleSignIn from './GoogleSignIn'
 import TetrisPage from './games/tetris/TetrisPage'
 import ArcadeLoader from './loader/ArcadeLoader'
 import { GameTransitionProvider } from './loader/GameTransitionLoader'
+import { HubTransitionProvider, HubLink } from './loader/HubTransition'
 import Hub from './pages/Hub'
 import { CDN } from './cdn'
 
@@ -149,17 +150,17 @@ export default function App() {
       <PageTransitionProvider>
         <div className="arcade-shell">
           <header className="arcade-header">
-            <Link to="/" className="arcade-brand">
+            <HubLink to="/" className="arcade-brand">
               <img src={CDN.logo} alt="Coding Club" width="36" height="36" />
               <span>
                 <strong>CODING CLUB</strong>
                 <small>ARCADE</small>
               </span>
-            </Link>
+            </HubLink>
             <nav className="arcade-navigation" aria-label="Main navigation">
-              <Link to="/" className={location.pathname === '/' ? 'is-active' : ''}>
+              <HubLink to="/" className={location.pathname === '/' ? 'is-active' : ''}>
                 Home
-              </Link>
+              </HubLink>
               <TransitionLink to="/leaderboard" className={location.pathname === '/leaderboard' ? 'is-active' : ''}>
                 Leaderboard
               </TransitionLink>
@@ -176,7 +177,7 @@ export default function App() {
                 <section className="arcade-not-found">
                   <h1>404</h1>
                   <p className="muted">Game cabinet not found.</p>
-                  <Link to="/">Back to the arcade</Link>
+                  <HubLink to="/">Back to the arcade</HubLink>
                 </section>
               }
             />
@@ -188,9 +189,11 @@ export default function App() {
 
   return (
     <AuthProvider>
-      <GameTransitionProvider>
-        {content}
-      </GameTransitionProvider>
+      <HubTransitionProvider>
+        <GameTransitionProvider>
+          {content}
+        </GameTransitionProvider>
+      </HubTransitionProvider>
     </AuthProvider>
   )
 } 

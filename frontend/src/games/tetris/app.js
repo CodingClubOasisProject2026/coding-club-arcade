@@ -48,11 +48,6 @@
   };
   const getElement = (id) => document.getElementById(id);
 
-  function createPracticeSeed() {
-    const words = crypto.getRandomValues(new Uint32Array(2));
-    return (BigInt(words[0]) << 32n) | BigInt(words[1]);
-  }
-
   // ─── Score-based speed config ────────────────────────────────────────────────
   // Speed increases every time score crosses a multiple of this value:
   const SCORE_SPEED_THRESHOLD = 500;
@@ -307,8 +302,26 @@
       game.session = session;
       initializeGame(session.seed);
     } catch (error) {
-      console.info("Starting Tetris in practice mode:", error.message);
-      initializeGame(createPracticeSeed());
+      console.warn("Could not start Tetris session:", error.message);
+      setGameStatus("idle", "READY");
+
+      if (error.status === 400) {
+        showOverlay(
+          "ADD A TICKET",
+          "No tickets left. Please add a ticket to your account to play Tetris.",
+          "ADD A TICKET",
+          () => returnToHub(),
+          true,
+        );
+      } else {
+        showOverlay(
+          "SIGN IN & ADD A TICKET",
+          "Sign in and add a ticket to your account to play Tetris.",
+          "SIGN IN & ADD A TICKET",
+          () => returnToHub(),
+          false,
+        );
+      }
     }
   }
 
@@ -784,11 +797,11 @@
     renderGame();
 
     if (!game.session?.id) {
-      setGameStatus("practice-complete", "PRACTICE");
+      setGameStatus("idle", "READY");
       showOverlay(
-        "Practice complete",
-        `Score: ${game.score}. This practice run was not submitted for validation.`,
-        "PLAY AGAIN",
+        "Session ended",
+        "This run was not attached to an active ticket session.",
+        "START GAME",
         startGame,
       );
       return;
@@ -1069,9 +1082,59 @@
   }
 
   const initialBest = Number(localStorage.getItem("arcade-tetris-best")) || 0;
+  function returnToHub() {
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: "arcade-navigate-hub" }, "*");
+    } else {
+      try {
+        window.top.location.href = "/";
+      } catch {
+        window.location.href = "/";
+      }
+    }
+  }
+
+  const backLink = document.querySelector(".tetris-back-link");
+  if (backLink) {
+    backLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      returnToHub();
+    });
+  }
+
   updateBestScore(initialBest);
   getElement("start-button").onclick = startGame;
   setupTouchControls();
+
+  requestApi("/me/")
+    .then((me) => {
+      if (!me?.authenticated) {
+        showOverlay(
+          "SIGN IN & ADD A TICKET",
+          "Sign in and add a ticket to your account to play Tetris.",
+          "SIGN IN & ADD A TICKET",
+          () => returnToHub(),
+          false,
+        );
+      } else if (me.tickets <= 0) {
+        showOverlay(
+          "ADD A TICKET",
+          "No tickets left. Please add a ticket to your account to play Tetris.",
+          "ADD A TICKET",
+          () => returnToHub(),
+          true,
+        );
+      }
+    })
+    .catch(() => {
+      showOverlay(
+        "SIGN IN & ADD A TICKET",
+        "Sign in and add a ticket to your account to play Tetris.",
+        "SIGN IN & ADD A TICKET",
+        () => returnToHub(),
+        false,
+      );
+    });
 
   document.addEventListener("visibilitychange", () => {
     // Pause when hidden so background time does not advance the local board.

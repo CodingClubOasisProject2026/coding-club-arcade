@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './wordle.css';
 import { HUB_URL, MAX_ATTEMPTS, MISS_PENALTY_SECONDS, START_SECONDS, RulesContent } from './WordleRules';
 import Landing from './WordleLanding';
+import { useHubTransition } from '../../loader/HubTransition';
 import { api, csrfToken, hubGameId, startHubSession } from '../../api';
 import { useAuth } from '../../auth';
 
@@ -216,6 +217,7 @@ function Wordle({ launch, onReplay, onHome }) {
   const { sessionId, seed } = launch;
   const pageToken = useRef(crypto.randomUUID()).current;
   const validLaunch = isValidLaunch(sessionId, seed);
+  const { transitionToHub } = useHubTransition();
 
   const [snapshot, setSnapshot] = useState(null);
   const [draft, setDraft] = useState('');
@@ -520,10 +522,12 @@ function Wordle({ launch, onReplay, onHome }) {
   };
 
   const handleHubClick = (event) => {
+    event.preventDefault();
     if (gameLive) {
-      event.preventDefault();
       setLeaveTarget('hub');
       setLeaveOpen(true);
+    } else {
+      transitionToHub();
     }
   };
 
@@ -544,7 +548,7 @@ function Wordle({ launch, onReplay, onHome }) {
       return;
     }
     leavingRef.current = true;
-    window.location.assign(HUB_URL);
+    transitionToHub();
   };
 
   // Ends the attempt right away on the page, then tells the server (best effort).
@@ -736,11 +740,11 @@ function Wordle({ launch, onReplay, onHome }) {
       {loadFailed && (
         <div className="overlay">
           <section className="modal" role="dialog" aria-modal="true" aria-labelledby="fail-title">
-            <h2 id="fail-title">Couldn't start the game</h2>
-            <p className="modal-sub">{error}</p>
+            <h2 id="fail-title">Sign in and add a ticket to play</h2>
+            <p className="modal-sub">{error || 'You need an active session and a ticket to play.'}</p>
             <div className="modal-actions modal-actions-row">
-              <button className="modal-primary" type="button" autoFocus onClick={() => setRetryCount((count) => count + 1)}>Try again</button>
-              <a className="modal-secondary" href={HUB_URL}>Arcade hub</a>
+              <button className="modal-primary" type="button" onClick={() => transitionToHub()}>Sign in & add ticket</button>
+              <button className="modal-secondary" type="button" onClick={() => setRetryCount((count) => count + 1)}>Try again</button>
             </div>
           </section>
         </div>
@@ -807,7 +811,7 @@ function Wordle({ launch, onReplay, onHome }) {
               <button className="modal-primary" type="button" autoFocus disabled={replayBusy} onClick={handlePlayAgain}>
                 {replayBusy ? 'Starting…' : 'Play again'}
               </button>
-              <a className="modal-primary modal-secondary" href={HUB_URL}>Arcade hub</a>
+              <button className="modal-primary modal-secondary" type="button" onClick={() => transitionToHub()}>Arcade hub</button>
             </div>
           </section>
         </div>
@@ -854,7 +858,11 @@ export default function WordlePage() {
       setLaunch(next);
       setScreen('game');
     } catch (cause) {
-      setStartError(cause.message);
+      if (cause?.status === 400) {
+        setStartError('No tickets left. Please add a ticket to play.');
+      } else {
+        setStartError('Sign in and add a ticket to play.');
+      }
     } finally {
       setStarting(false);
     }
@@ -864,11 +872,18 @@ export default function WordlePage() {
   // piece of state (board, clock, pop-ups) starts clean and late replies from the old game are ignored.
   // Errors are thrown to the Play again button, which shows them.
   const replay = useCallback(async () => {
-    const next = await createWordleSession();
-    await refresh();
-    writeStorage(startedKey(next.sessionId), '1');
-    setLaunchUrl(next);
-    setLaunch(next);
+    try {
+      const next = await createWordleSession();
+      await refresh();
+      writeStorage(startedKey(next.sessionId), '1');
+      setLaunchUrl(next);
+      setLaunch(next);
+    } catch (cause) {
+      if (cause?.status === 400) {
+        throw new Error('No tickets left. Please add a ticket to play.');
+      }
+      throw new Error('Sign in and add a ticket to play.');
+    }
   }, [refresh]);
 
   // Home returns to the landing page. The next Play requests a fresh hub session.
@@ -880,7 +895,7 @@ export default function WordlePage() {
   }, []);
 
   if (screen === 'landing' || me?.authenticated !== true) {
-    return <Landing me={me} onPlay={play} busy={starting} error={startError} />;
+    return <Landing me={me} onPlay={play} busy={starting} error={startError} onAuthRefresh={refresh} />;
   }
   return <Wordle key={launch.sessionId} launch={launch} onReplay={replay} onHome={goHome} />;
 }

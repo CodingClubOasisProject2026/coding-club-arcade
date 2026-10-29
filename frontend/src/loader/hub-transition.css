@@ -1,0 +1,138 @@
+/* == Arcade Hub Return Transition =============================================== */
+
+.hub-transition-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at 50% 50%, #12122b 0%, #070710 75%);
+  pointer-events: all;
+  cursor: progress;
+}
+
+.hub-transition-overlay.is-in {
+  animation: hub-fade-in 200ms ease-out forwards;
+}
+
+.hub-transition-overlay.is-out {
+  animation: hub-fade-out 220ms ease-in forwards;
+}
+
+@keyframes hub-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(1.02);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes hub-fade-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
+/* CRT scanlines effect */
+.hub-transition-scanlines {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    rgba(18, 16, 38, 0) 50%,
+    rgba(0, 0, 0, 0.35) 50%
+  );
+  background-size: 100% 4px;
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+.hub-transition-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, transparent 40%, rgba(0, 0, 0, 0.7) 100%);
+  pointer-events: none;
+}
+
+/* Content Box */
+.hub-transition-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+  font-family: var(--pixel, 'Press Start 2P', monospace);
+}
+
+.hub-transition-emblem {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #14142d;
+  border: 2px solid #38bdf8;
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.4), inset 0 0 10px rgba(56, 189, 248, 0.2);
+  animation: hub-emblem-pulse 1.2s ease-in-out infinite alternate;
+}
+
+.hub-transition-emblem img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 6px #38bdf8);
+}
+
+@keyframes hub-emblem-pulse {
+  from {
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.3), inset 0 0 6px rgba(56, 189, 248, 0.15);
+    border-color: #38bdf8;
+  }
+  to {
+    box-shadow: 0 0 28px rgba(245, 194, 24, 0.6), inset 0 0 14px rgba(245, 194, 24, 0.3);
+    border-color: #f5c218;
+  }
+}
+
+.hub-transition-title {
+  margin: 0;
+  font-size: 14px;
+  color: #fff;
+  letter-spacing: 0.12em;
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+}
+
+.hub-transition-status {
+  margin: 0;
+  font-size: 10px;
+  color: #facc15;
+  letter-spacing: 0.15em;
+  text-shadow: 0 0 6px rgba(250, 204, 21, 0.6);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hub-transition-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 10px;
+  background: #facc15;
+  animation: hub-blink 600ms steps(2) infinite;
+}
+
+@keyframes hub-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}

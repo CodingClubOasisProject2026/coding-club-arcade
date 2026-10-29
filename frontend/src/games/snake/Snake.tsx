@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { HubLink } from '../../loader/HubTransition'
 import { ApiError } from '../../api'
 import { useAuth } from '../../auth'
 import GoogleSignIn from '../../GoogleSignIn'
@@ -37,15 +37,11 @@ const KEY_TO_DIR: Record<string, SnakeDirection> = {
   D: 'RIGHT',
 }
 
-type Submission = 'idle' | 'practice' | 'verified' | 'rejected' | 'error'
-
-function randomSeed() {
-  const words = crypto.getRandomValues(new Uint32Array(2))
-  return (BigInt(words[0]) << 32n) | BigInt(words[1])
-}
+type Submission = 'idle' | 'verified' | 'rejected' | 'error'
 
 export default function Snake() {
   const { me, refresh } = useAuth()
+  const signedIn = me?.authenticated === true
   const [game, setGame] = useState<GameState>(createPreviewGame)
   const [phase, setPhase] = useState<'idle' | 'playing' | 'paused' | 'over'>('idle')
   const [error, setError] = useState<string | null>(null)
@@ -70,39 +66,43 @@ export default function Snake() {
 
   const startNewGame = useCallback(async () => {
     if (busy) return
-    setBusy(true)
     setError(null)
     setNotice(null)
+
+    if (!signedIn) {
+      setNotice('SIGN IN AND ADD A TICKET TO PLAY.')
+      return
+    }
+    if (me.tickets <= 0) {
+      setNotice('NO TICKETS LEFT. PLEASE ADD A TICKET TO PLAY.')
+      return
+    }
+
+    setBusy(true)
     setFinalScore(null)
     setSubmission('idle')
-    let seed: string | number | bigint
     try {
       const session = await startRun()
       sessionRef.current = session.id
-      seed = session.seed
+      seedRef.current = session.seed
+      startedAtRef.current = Date.now()
+      gameRef.current = createGame(session.seed)
+      actionsRef.current = []
+      queueRef.current = []
+      paint()
+      setPhase('playing')
     } catch (err: unknown) {
-      // No ranked run available: play a local practice game that is never submitted.
       sessionRef.current = null
-      seed = randomSeed()
-      if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
-        setNotice('PRACTICE MODE. SIGN IN TO POST SCORES.')
-      } else if (err instanceof ApiError && err.status === 400) {
-        setNotice('NO TICKETS LEFT. PLAYING IN PRACTICE MODE.')
+      if (err instanceof ApiError && err.status === 400) {
+        setNotice('NO TICKETS LEFT. PLEASE ADD A TICKET TO PLAY.')
       } else {
-        setNotice('COULD NOT REACH THE ARCADE. PLAYING IN PRACTICE MODE.')
+        setNotice('SIGN IN AND ADD A TICKET TO PLAY.')
       }
     } finally {
       setBusy(false)
       refresh()
     }
-    seedRef.current = seed
-    startedAtRef.current = Date.now()
-    gameRef.current = createGame(seed)
-    actionsRef.current = []
-    queueRef.current = []
-    paint()
-    setPhase('playing')
-  }, [busy, paint, refresh])
+  }, [busy, me, paint, refresh, signedIn])
 
   const togglePause = useCallback(() => {
     setPhase((p) => (p === 'playing' ? 'paused' : p === 'paused' ? 'playing' : p))
@@ -126,7 +126,6 @@ export default function Snake() {
     const sessionId = sessionRef.current
     const g = gameRef.current
     if (!sessionId) {
-      setSubmission('practice')
       return
     }
     sessionRef.current = null
@@ -223,9 +222,9 @@ export default function Snake() {
       <DungeonBackdrop />
 
       <header className="snake-nav">
-        <Link to="/" className="snake-back">
+        <HubLink to="/" className="snake-back">
           ← ARCADE
-        </Link>
+        </HubLink>
         <div className="snake-stats">
           <span>SCORE {String(game.score ?? 0).padStart(4, '0')}</span>
           <span>APPLES {game.apples_eaten ?? 0}</span>
@@ -263,19 +262,36 @@ export default function Snake() {
             {phase === 'over' && (
               <p style={{ margin: 0, fontSize: '13px' }}>
                 FINAL SCORE: {finalScore ?? game.score}
-                {submission === 'practice' && ' · PRACTICE, NOT SUBMITTED'}
                 {submission === 'verified' && ' · VERIFIED'}
                 {submission === 'rejected' && ' · COULD NOT VERIFY'}
               </p>
             )}
-            <button
-              type="button"
-              disabled={busy}
-              onClick={phase === 'paused' ? togglePause : startNewGame}
-              className="snake-overlay-btn"
-            >
-              {busy ? 'STARTING...' : overlay.label}
-            </button>
+            {phase !== 'paused' && !signedIn ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+                <p style={{ margin: 0, fontSize: '11px', color: '#ffce19', textAlign: 'center' }}>
+                  SIGN IN AND ADD A TICKET TO PLAY
+                </p>
+                <GoogleSignIn />
+              </div>
+            ) : phase !== 'paused' && signedIn && me.tickets <= 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                <p style={{ margin: 0, fontSize: '11px', color: '#ff7b7b', textAlign: 'center' }}>
+                  NO TICKETS LEFT. PLEASE ADD A TICKET TO PLAY.
+                </p>
+                <button type="button" disabled className="snake-overlay-btn">
+                  ADD A TICKET
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={phase === 'paused' ? togglePause : startNewGame}
+                className="snake-overlay-btn"
+              >
+                {busy ? 'STARTING...' : overlay.label}
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -286,7 +302,13 @@ export default function Snake() {
         SOME APPLES ARE LOCKED · GRAB THE KEY FIRST · HITTING A LOCKED APPLE ENDS THE RUN
         <br />
         ARROWS / WASD MOVE · SPACE OR P PAUSE · SWIPE ON MOBILE
-        {me?.authenticated && <span> · 🎟 {me.tickets} ticket{me.tickets === 1 ? '' : 's'}</span>}
+        {!signedIn ? (
+          <span> · SIGN IN AND ADD A TICKET TO PLAY</span>
+        ) : me.tickets === 0 ? (
+          <span> · NO TICKETS LEFT. PLEASE ADD A TICKET</span>
+        ) : (
+          <span> · 🎟 {me.tickets} ticket{me.tickets === 1 ? '' : 's'}</span>
+        )}
       </p>
     </main>
   )

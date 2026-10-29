@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { HubLink } from '../loader/HubTransition'
 import { type LeaderboardRow, fetchLeaderboard } from '../api'
 
 export default function Leaderboard() {
@@ -109,7 +109,7 @@ export default function Leaderboard() {
           <span className="rank-empty-number" aria-hidden="true">01</span>
           <h2>The first spot is yours to take.</h2>
           <p>Finish a game to get the competition started.</p>
-          <Link to="/">Choose a game <span aria-hidden="true">↗</span></Link>
+          <HubLink to="/">Choose a game <span aria-hidden="true">↗</span></HubLink>
         </section>
       )}
 
@@ -181,7 +181,7 @@ export default function Leaderboard() {
 
           <div className="rank-bottom">
             <p>Think you can beat that?</p>
-            <Link to="/">Back to the arcade <span aria-hidden="true">↗</span></Link>
+            <HubLink to="/">Back to the arcade <span aria-hidden="true">↗</span></HubLink>
           </div>
         </div>
       )}

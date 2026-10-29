@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { HubLink } from '../../loader/HubTransition'
 import { ApiError } from '../../api'
 import { useAuth } from '../../auth'
 import GoogleSignIn from '../../GoogleSignIn'
@@ -18,7 +18,7 @@ import './Pacman.css'
 
 type Phase = 'menu' | 'starting' | 'playing' | 'paused' | 'over'
 type Hud = { score: number; lives: number; level: number }
-type Submission = { state: 'idle' | 'practice' | 'sending' | 'error' } | { state: 'done'; result: RunStatus }
+type Submission = { state: 'idle' | 'sending' | 'error' } | { state: 'done'; result: RunStatus }
 
 const STEP_MS = 1000 / TICKS_PER_SECOND
 const SCALE = 2
@@ -31,11 +31,6 @@ const POLL_MS = 1000
 const POLL_TRIES = 20
 const BEST_KEY = 'pacman-high-score'
 const pad = (n: number) => String(n).padStart(6, '0')
-
-function randomSeed() {
-  const words = crypto.getRandomValues(new Uint32Array(2))
-  return ((BigInt(words[0]) << 32n) | BigInt(words[1])).toString()
-}
 
 export default function Pacman() {
   const { me, refresh } = useAuth()
@@ -73,7 +68,6 @@ export default function Pacman() {
     const state = gameRef.current
     const sessionId = sessionRef.current
     if (!sessionId) {
-      setSubmission({ state: 'practice' })
       return
     }
     const log: ActionLog = {
@@ -146,33 +140,41 @@ export default function Pacman() {
 
   const start = useCallback(async () => {
     if (phaseRef.current === 'starting' || phaseRef.current === 'playing') return
-    setGamePhase('starting')
     setNotice(null)
+
+    if (!signedIn) {
+      setNotice('Sign in and add a ticket to play.')
+      return
+    }
+    if (me.tickets <= 0) {
+      setNotice('No tickets left. Please add a ticket to play.')
+      return
+    }
+
+    setGamePhase('starting')
     setSubmission({ state: 'idle' })
     let seed: string
     try {
       const session = await startRun()
       sessionRef.current = session.id
       seed = String(session.seed)
+      gameRef.current = createGame(seed)
+      inputsRef.current = []
+      pendingDir.current = null
+      setHud({ score: 0, lives: 3, level: 1 })
+      setGamePhase('playing')
     } catch (e) {
       sessionRef.current = null
-      seed = randomSeed()
-      if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
-        setNotice('Practice mode. Sign in to post scores.')
-      } else if (e instanceof ApiError && e.status === 400) {
-        setNotice('No tickets left. Playing in practice mode.')
+      if (e instanceof ApiError && e.status === 400) {
+        setNotice('No tickets left. Please add a ticket to play.')
       } else {
-        setNotice('Could not reach the arcade. Playing in practice mode.')
+        setNotice('Sign in and add a ticket to play.')
       }
+      setGamePhase(phaseRef.current === 'over' ? 'over' : 'menu')
     } finally {
       refresh()
     }
-    gameRef.current = createGame(seed)
-    inputsRef.current = []
-    pendingDir.current = null
-    setHud({ score: 0, lives: 3, level: 1 })
-    setGamePhase('playing')
-  }, [refresh, setGamePhase])
+  }, [me, refresh, setGamePhase, signedIn])
 
   const steer = useCallback((dir: Dir) => {
     pendingDir.current = dir
@@ -236,7 +238,7 @@ export default function Pacman() {
   const stateLabel = {
     menu: 'READY',
     starting: 'CONNECTING',
-    playing: sessionRef.current ? 'RANKED RUN' : 'PRACTICE',
+    playing: 'RANKED RUN',
     paused: 'PAUSED',
     over: 'GAME OVER',
   }[phase]
@@ -258,11 +260,15 @@ export default function Pacman() {
       <div className="pm-bg" aria-hidden="true" />
 
       <header className="pm-topbar">
-        <Link to="/" className="pm-back" aria-label="Back to arcade">
+        <HubLink to="/" className="pm-back" aria-label="Back to arcade">
           ◀ <span className="pm-back-label">ARCADE</span>
-        </Link>
-        <span className={`pm-mode${signedIn ? ' is-ranked' : ''}`}>
-          {signedIn ? `🎟 ${me.tickets} TICKET${me.tickets === 1 ? '' : 'S'}` : 'PRACTICE MODE'}
+        </HubLink>
+        <span className={`pm-mode${signedIn && me.tickets > 0 ? ' is-ranked' : ''}`}>
+          {signedIn && me.tickets > 0
+            ? `🎟 ${me.tickets} TICKET${me.tickets === 1 ? '' : 'S'}`
+            : !signedIn
+            ? 'SIGN IN & ADD TICKET'
+            : 'ADD A TICKET'}
         </span>
       </header>
 
@@ -355,18 +361,35 @@ export default function Pacman() {
                           </div>
                           <h2>A wild BLINKY appeared!</h2>
                           <p>
-                            {signedIn
-                              ? 'Ranked run. Starting uses 1 ticket.'
-                              : 'Practice run. Sign in to post scores.'}
+                            {!signedIn
+                              ? 'Sign in and add a ticket to play.'
+                              : me.tickets <= 0
+                              ? 'No tickets left. Please add a ticket to play.'
+                              : 'Ranked run. Starting uses 1 ticket.'}
                           </p>
-                          <button
-                            type="button"
-                            className="pm-btn"
-                            onClick={() => void start()}
-                            disabled={phase === 'starting'}
-                          >
-                            {phase === 'starting' ? 'STARTING…' : 'START GAME'}
-                          </button>
+                          {!signedIn ? (
+                            <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                              <GoogleSignIn />
+                            </div>
+                          ) : me.tickets <= 0 ? (
+                            <button
+                              type="button"
+                              className="pm-btn"
+                              disabled
+                              style={{ opacity: 0.6, cursor: 'not-allowed' }}
+                            >
+                              ADD A TICKET
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="pm-btn"
+                              onClick={() => void start()}
+                              disabled={phase === 'starting'}
+                            >
+                              {phase === 'starting' ? 'STARTING…' : 'START GAME'}
+                            </button>
+                          )}
                         </>
                       )}
                       {phase === 'paused' && (
@@ -388,9 +411,29 @@ export default function Pacman() {
                             {isNewBest && <span className="pm-new-best">★ NEW BEST ★</span>}
                           </div>
                           <SubmissionStatus submission={submission} />
-                          <button type="button" className="pm-btn" onClick={() => void start()}>
-                            PLAY AGAIN
-                          </button>
+                          {!signedIn ? (
+                            <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                              <p style={{ margin: 0, fontSize: '0.85rem' }}>Sign in and add a ticket to play.</p>
+                              <GoogleSignIn />
+                            </div>
+                          ) : me.tickets <= 0 ? (
+                            <button
+                              type="button"
+                              className="pm-btn"
+                              disabled
+                              style={{ opacity: 0.6, cursor: 'not-allowed' }}
+                            >
+                              ADD A TICKET
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="pm-btn"
+                              onClick={() => void start()}
+                            >
+                              PLAY AGAIN
+                            </button>
+                          )}
                         </>
                       )}
                     </div>
@@ -450,7 +493,6 @@ export default function Pacman() {
 }
 
 function SubmissionStatus({ submission }: { submission: Submission }) {
-  if (submission.state === 'practice') return <p className="pm-status">Practice run. Not submitted.</p>
   if (submission.state === 'sending') return <p className="pm-status pm-pending">Verifying score…</p>
   if (submission.state === 'error') return <p className="pm-status pm-bad">Could not submit this run.</p>
   if (submission.state !== 'done') return null

@@ -16,7 +16,7 @@ import './game-transition-loader.css'
 // Stop waiting on images and fonts after this long; the game still works without them.
 const ASSET_TIMEOUT_MS = 8000
 // Minimum time (in ms) the loader is displayed so the transition is smooth and not snappy.
-const MIN_TRANSITION_MS = 1000
+const MIN_TRANSITION_MS = 1500
 // How long the bar sits at 100% in green READY state before power-off.
 const COMPLETE_HOLD_MS = 320
 // How long the CRT power-off squash animation takes.

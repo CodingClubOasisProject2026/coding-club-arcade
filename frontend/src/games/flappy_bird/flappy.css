@@ -679,6 +679,26 @@
   font-size: 8px;
 }
 
+.fb-auth-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.fb-auth-prompt {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(8px, 1.8vw, 11px);
+  line-height: 1.8;
+  text-shadow: 1px 1px 0 #316c82;
+}
+
+.fb-auth-prompt.fb-no-tickets {
+  color: #ffb4b4;
+}
+
 /* =========================
    GAME-OVER TITLE
 ========================= */

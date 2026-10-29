@@ -1,7 +1,8 @@
-
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { HubLink } from '../../loader/HubTransition';
 import { ApiError } from '../../api';
+import { useAuth } from '../../auth';
+import GoogleSignIn from '../../GoogleSignIn';
 import { startRun, submitRun, submitRunKeepalive } from './api';
 import {
   SCALE,
@@ -21,12 +22,7 @@ import './flappy.css';
 
 type Phase = 'menu' | 'starting' | 'playing' | 'over';
 
-type Submission = 'idle' | 'practice' | 'sending' | 'submitted' | 'error';
-
-function randomSeed() {
-  const words = crypto.getRandomValues(new Uint32Array(2));
-  return (BigInt(words[0]) << 32n) | BigInt(words[1]);
-}
+type Submission = 'idle' | 'sending' | 'submitted' | 'error';
 
 type ViewState = {
   pipes: { x: number; gap_top: number }[];
@@ -45,6 +41,8 @@ function viewState(game: GameState): ViewState {
 }
 
 export default function Flappy() {
+  const { me, refresh } = useAuth();
+  const signedIn = me?.authenticated === true;
   const gameRef = useRef<GameState>(createGame(123));
   const [phase, setPhase] = useState<Phase>('menu');
   const [score, setScore] = useState(0);
@@ -75,7 +73,6 @@ export default function Flappy() {
     const sessionId = sessionRef.current;
 
     if (!sessionId) {
-      setSubmission('practice');
       return;
     }
 
@@ -176,33 +173,42 @@ export default function Flappy() {
   const start = useCallback(async () => {
     if (phase === 'starting' || phase === 'playing') return;
 
+    setNotice(null);
+
+    if (!signedIn) {
+      setNotice('SIGN IN AND ADD A TICKET TO PLAY.');
+      return;
+    }
+    if (me.tickets <= 0) {
+      setNotice('NO TICKETS LEFT. PLEASE ADD A TICKET TO PLAY.');
+      return;
+    }
+
     setPhase('starting');
     setSubmission('idle');
-    setNotice(null);
     sessionRef.current = null;
 
     try {
       const session = await startRun();
       sessionRef.current = session.id;
       gameRef.current = createGame(session.seed);
+      actionsRef.current = [];
+      pendingFlap.current = true;
+      setView(viewState(gameRef.current));
+      setScore(0);
+      setPhase('playing');
     } catch (error) {
-      // Allow local play if the server cannot start a session.
-      gameRef.current = createGame(randomSeed());
+      sessionRef.current = null;
       if (error instanceof ApiError && error.status === 400) {
-        setNotice('NO TICKETS LEFT. PLAYING IN PRACTICE MODE.');
-      } else if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
-        setNotice('SIGN IN TO POST SCORES. PLAYING IN PRACTICE MODE.');
+        setNotice('NO TICKETS LEFT. PLEASE ADD A TICKET TO PLAY.');
       } else {
-        setNotice('COULD NOT REACH THE ARCADE. PLAYING IN PRACTICE MODE.');
+        setNotice('SIGN IN AND ADD A TICKET TO PLAY.');
       }
+      setPhase(phase === 'over' ? 'over' : 'menu');
+    } finally {
+      refresh();
     }
-
-    actionsRef.current = [];
-    pendingFlap.current = true;
-    setView(viewState(gameRef.current));
-    setScore(0);
-    setPhase('playing');
-  }, [phase]);
+  }, [me, phase, refresh, signedIn]);
 
  // Keyboard controls.
   useEffect(() => {
@@ -255,20 +261,22 @@ export default function Flappy() {
   return (
     <main className="fb-page">
       <header className="fb-topbar">
-        <Link to="/" className="fb-back">
+        <HubLink to="/" className="fb-back">
           <span aria-hidden="true">←</span> Back
-        </Link>
+        </HubLink>
 
         <h1 className="fb-title">Flappy Bird</h1>
 
         <div className="fb-header-best">
+          {signedIn && me.tickets > 0 && <span>🎟 {me.tickets} · </span>}
           BEST <span>{highScore}</span>
         </div>
       </header>
 
       {notice && (
         <div className="fb-notice" role="status">
-          {notice}
+          <span>{notice}</span>
+          {!signedIn && <GoogleSignIn />}
         </div>
       )}
 
@@ -408,9 +416,26 @@ export default function Flappy() {
                   </div>
 
                   <div className="fb-game-over-actions">
-                    <button className="fb-start-btn" onClick={() => void start()}>
-                      PLAY AGAIN
-                    </button>
+                    {!signedIn ? (
+                      <div className="fb-auth-box">
+                        <p className="fb-auth-prompt">Sign in and add a ticket to play.</p>
+                        <GoogleSignIn />
+                      </div>
+                    ) : me.tickets <= 0 ? (
+                      <div className="fb-auth-box">
+                        <p className="fb-auth-prompt fb-no-tickets">No tickets left. Please add a ticket to play.</p>
+                        <button type="button" className="fb-start-btn" disabled>
+                          ADD A TICKET
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        className="fb-start-btn"
+                        onClick={() => void start()}
+                      >
+                        PLAY AGAIN
+                      </button>
+                    )}
 
                     <div className="fb-submission-status" aria-live="polite">
                       {submission === 'sending' && (
@@ -423,10 +448,6 @@ export default function Flappy() {
 
                       {submission === 'error' && (
                         <p>Could not submit this run.</p>
-                      )}
-
-                      {submission === 'practice' && (
-                        <p>Practice run. Not submitted.</p>
                       )}
                     </div>
                   </div>
@@ -444,13 +465,27 @@ export default function Flappy() {
                     Tap or Space to flap and avoid pipes.
                   </p>
 
-                  <button
-                    className="fb-start-btn"
-                    onClick={() => void start()}
-                    disabled={phase === 'starting'}
-                  >
-                    {phase === 'starting' ? 'STARTING...' : 'START GAME'}
-                  </button>
+                  {!signedIn ? (
+                    <div className="fb-auth-box">
+                      <p className="fb-auth-prompt">Sign in and add a ticket to play.</p>
+                      <GoogleSignIn />
+                    </div>
+                  ) : me.tickets <= 0 ? (
+                    <div className="fb-auth-box">
+                      <p className="fb-auth-prompt fb-no-tickets">No tickets left. Please add a ticket to play.</p>
+                      <button type="button" className="fb-start-btn" disabled>
+                        ADD A TICKET
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      className="fb-start-btn"
+                      onClick={() => void start()}
+                      disabled={phase === 'starting'}
+                    >
+                      {phase === 'starting' ? 'STARTING...' : 'START GAME'}
+                    </button>
+                  )}
 
                   <p className="fb-best-hint">BEST: {highScore}</p>
                 </div>
