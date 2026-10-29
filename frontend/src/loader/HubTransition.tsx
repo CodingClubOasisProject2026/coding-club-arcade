@@ -20,7 +20,7 @@ const OUT_MS = 220
 type Phase = 'idle' | 'in' | 'out'
 
 type HubTransitionContextType = {
-  transitionToHub: (to?: To) => void
+  transitionToHub: (to?: To, label?: string) => void
   isTransitioning: boolean
 }
 
@@ -34,21 +34,26 @@ export const useHubTransition = () => useContext(HubTransitionContext)
 export function HubTransitionProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
   const [phase, setPhase] = useState<Phase>('idle')
+  const [statusText, setStatusText] = useState('RETURNING TO HUB')
   const busy = useRef(false)
   const timers = useRef<number[]>([])
 
   useEffect(() => () => timers.current.forEach(window.clearTimeout), [])
 
   const transitionToHub = useCallback(
-    (to: To = '/') => {
+    (to: To = '/', label?: string) => {
       if (busy.current) return
 
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         navigate(to)
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+        document.documentElement.scrollTop = 0
+        document.body.scrollTop = 0
         return
       }
 
       busy.current = true
+      setStatusText(label || (to === '/' ? 'RETURNING TO HUB' : 'LOADING...'))
       setPhase('in')
 
       const at = (fn: () => void, ms: number) => {
@@ -57,6 +62,9 @@ export function HubTransitionProvider({ children }: { children: ReactNode }) {
 
       at(() => {
         navigate(to)
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+        document.documentElement.scrollTop = 0
+        document.body.scrollTop = 0
         setPhase('out')
       }, IN_MS + HOLD_MS)
 
@@ -88,7 +96,7 @@ export function HubTransitionProvider({ children }: { children: ReactNode }) {
             </div>
             <h2 className="hub-transition-title">CODING CLUB ARCADE</h2>
             <p className="hub-transition-status">
-              RETURNING TO HUB
+              {statusText}
               <span className="hub-transition-cursor" aria-hidden="true" />
             </p>
           </div>
@@ -100,9 +108,10 @@ export function HubTransitionProvider({ children }: { children: ReactNode }) {
 
 export function HubLink({
   to = '/',
+  label,
   onClick,
   ...props
-}: ComponentProps<typeof Link>) {
+}: ComponentProps<typeof Link> & { label?: string }) {
   const { transitionToHub } = useHubTransition()
 
   return (
@@ -122,7 +131,7 @@ export function HubLink({
           return
         }
         event.preventDefault()
-        transitionToHub(to)
+        transitionToHub(to, label)
       }}
     />
   )

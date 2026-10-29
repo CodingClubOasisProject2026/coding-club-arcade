@@ -19,6 +19,7 @@ const WordlePage = lazy(() => import('./games/wordle/WordlePage.jsx'))
 const Snake = lazy(() => import('./games/snake/Snake'))
 const Flappy = lazy(() => import('./games/flappy_bird/flappy'))
 const Leaderboard = lazy(() => import('./pages/leaderboard'))
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'))
 
 function Loading({
   children,
@@ -171,6 +172,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Hub />} />
             <Route path="/leaderboard" element={<Loading><Leaderboard /></Loading>} />
+            <Route path="/privacy" element={<Suspense fallback={null}><PrivacyPolicy /></Suspense>} />
             <Route
               path="*"
               element={

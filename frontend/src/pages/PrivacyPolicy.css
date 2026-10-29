@@ -1,0 +1,326 @@
+@keyframes privacyFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.privacy-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 32px 20px 80px;
+  color: var(--text);
+  font-family: var(--sans);
+  line-height: 1.7;
+  animation: privacyFadeIn 0.2s ease-out;
+}
+
+.privacy-header {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 24px;
+  margin-bottom: 32px;
+}
+
+.privacy-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 14px;
+  font-size: 11px;
+}
+
+.privacy-back-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--accent-bg);
+  border: 1px solid rgba(245, 194, 24, 0.25);
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.privacy-back-link:hover {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.privacy-kicker {
+  font-family: var(--pixel);
+  font-size: 10px;
+  color: var(--cyan);
+  letter-spacing: 0.1em;
+}
+
+.privacy-header h1 {
+  font-family: var(--pixel);
+  font-size: clamp(22px, 4vw, 32px);
+  color: #fff;
+  letter-spacing: 0.04em;
+  margin: 0 0 10px;
+}
+
+.privacy-header h1 span {
+  color: var(--accent);
+}
+
+.privacy-subtitle {
+  font-size: 15px;
+  color: #a0a5cc;
+  margin: 0 0 16px;
+}
+
+.privacy-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.privacy-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--success);
+  background: rgba(74, 222, 128, 0.12);
+  border: 1px solid rgba(74, 222, 128, 0.3);
+  padding: 3px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.03em;
+}
+
+.privacy-date {
+  font-size: 12px;
+  color: #7b81ab;
+}
+
+/* ───────────── Summary Highlight Card ───────────── */
+
+.privacy-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 24px;
+  margin-bottom: 36px;
+}
+
+.privacy-card-highlight {
+  border-color: var(--border-hi);
+  background: linear-gradient(180deg, #121226 0%, #0e0e1c 100%);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.privacy-card-highlight h2 {
+  font-family: var(--pixel);
+  font-size: 14px;
+  color: var(--accent);
+  margin: 0 0 18px;
+  letter-spacing: 0.05em;
+}
+
+.privacy-grid-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.summary-item {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  padding: 14px;
+}
+
+.summary-icon {
+  font-size: 20px;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.summary-item h3 {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  margin: 0 0 6px;
+}
+
+.summary-item p {
+  font-size: 12px;
+  color: #9298bf;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ───────────── Article Content ───────────── */
+
+.privacy-content {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.privacy-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 24px 28px;
+}
+
+.privacy-section h2 {
+  font-size: 17px;
+  font-weight: 600;
+  color: #fff;
+  margin: 0 0 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 10px;
+}
+
+.privacy-section h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--cyan);
+  margin: 16px 0 8px;
+}
+
+.privacy-section p {
+  margin: 0 0 12px;
+  color: #b5bae0;
+}
+
+.privacy-section p:last-child {
+  margin-bottom: 0;
+}
+
+.privacy-section ul,
+.privacy-section ol {
+  margin: 8px 0 16px 20px;
+  padding: 0;
+  color: #b5bae0;
+}
+
+.privacy-section li {
+  margin-bottom: 8px;
+}
+
+.privacy-section code {
+  font-family: var(--mono);
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 2px 6px;
+  border-radius: 3px;
+  color: var(--accent);
+}
+
+.privacy-subblock {
+  background: rgba(0, 0, 0, 0.2);
+  border-left: 3px solid var(--cyan);
+  padding: 12px 16px;
+  margin: 14px 0;
+  border-radius: 0 6px 6px 0;
+}
+
+/* ───────────── Callout Boxes ───────────── */
+
+.privacy-callout {
+  padding: 14px 18px;
+  border-radius: 6px;
+  margin: 16px 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.callout-success {
+  background: rgba(74, 222, 128, 0.08);
+  border: 1px solid rgba(74, 222, 128, 0.25);
+  color: #bbf7d0;
+}
+
+.callout-success strong {
+  color: var(--success);
+}
+
+.callout-google {
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  color: #bae6fd;
+}
+
+.callout-google a,
+.privacy-section a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.15s;
+}
+
+.callout-google a:hover,
+.privacy-section a:hover {
+  color: #fff;
+}
+
+/* ───────────── Contact Card ───────────── */
+
+.privacy-contact-card {
+  border-color: rgba(245, 194, 24, 0.3);
+  background: linear-gradient(180deg, #141424 0%, #0e0e1c 100%);
+}
+
+.contact-details {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 6px;
+  padding: 16px;
+  margin-top: 12px;
+}
+
+.contact-details p {
+  margin: 0 0 6px;
+  font-size: 13px;
+}
+
+.contact-details p:last-child {
+  margin-bottom: 0;
+}
+
+/* ───────────── Footer Button ───────────── */
+
+.privacy-footer {
+  margin-top: 40px;
+  text-align: center;
+}
+
+.privacy-return-btn {
+  display: inline-block;
+  font-family: var(--pixel);
+  font-size: 11px;
+  color: var(--on-accent);
+  background: var(--accent);
+  padding: 12px 24px;
+  text-decoration: none;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+  transition: all 0.15s ease;
+  box-shadow: 0 4px 12px rgba(245, 194, 24, 0.25);
+}
+
+.privacy-return-btn:hover {
+  background: #ffe066;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(245, 194, 24, 0.35);
+}
+
+@media (max-width: 640px) {
+  .privacy-page {
+    padding: 20px 14px 60px;
+  }
+  .privacy-section {
+    padding: 18px 16px;
+  }
+}

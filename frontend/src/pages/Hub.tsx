@@ -1,6 +1,7 @@
 import { type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { TransitionLink } from '../PageTransition'
+import { HubLink } from '../loader/HubTransition'
 import GameArtwork, { type ArtworkType } from '../games/GameArtwork'
 import { useGameTransition } from '../loader/GameTransitionLoader'
 
@@ -191,7 +192,12 @@ export default function Hub() {
 
       <footer className="home-footer">
         <span>CODING CLUB · BITS PILANI</span>
-        <span>ONE MORE ROUND?</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <HubLink to="/privacy" label="PRIVACY POLICY" style={{ color: 'inherit', textDecoration: 'none', borderBottom: '1px dashed currentColor' }}>
+            Privacy Policy
+          </HubLink>
+          <span>ONE MORE ROUND?</span>
+        </div>
       </footer>
     </main>
   )
