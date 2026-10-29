@@ -1,5 +1,5 @@
 from collections import Counter
-from collections.abc import Iterable, Sequence, Set
+from collections.abc import Iterable, Sequence, Set as AbstractSet
 from dataclasses import dataclass, field, replace
 
 
@@ -21,6 +21,7 @@ class GameState:
     attempts: int = 0
     words_solved: int = 0
     score: int = 0
+    pending_green_points: int = 0
     status: str = IN_PROGRESS
 
 
@@ -59,6 +60,7 @@ def score_guess(guess: str, answer: str) -> list[int]:
 
 POINTS_PER_GREEN = 5
 POINTS_FOR_SOLVING = 30
+POINTS_FOR_CLEARING = 500
 PENALTY_FOR_MISSED_WORD = 20
 
 
@@ -66,7 +68,7 @@ def apply_guess(
     state: GameState,
     guess: str,
     answers: Sequence[str],
-    allowed: Set[str] | None = None,
+    allowed: AbstractSet[str] | None = None,
 ) -> tuple[GameState, list[int]]:
     if state.status != IN_PROGRESS:
         raise InvalidActions(f"game already ended ({state.status})")
@@ -79,30 +81,45 @@ def apply_guess(
     if allowed is not None and g not in allowed:
         raise InvalidActions(f"{g!r} is not in the allowed word list")
 
-    answer = answers[state.word_idx % len(answers)].lower()
+    if state.word_idx >= len(answers):
+        raise InvalidActions("all answer words have been completed")
+
+    answer = answers[state.word_idx].lower()
     mask = score_guess(g, answer)
     attempts = state.attempts + 1
     green_points = mask.count(CORRECT) * POINTS_PER_GREEN
-    solved_points = POINTS_FOR_SOLVING if g == answer else 0
-    missed_penalty = (
-        PENALTY_FOR_MISSED_WORD
-        if g != answer and attempts >= MAX_ATTEMPTS
-        else 0
-    )
-    new_score = max(0, state.score + green_points + solved_points - missed_penalty)
+    pending_green_points = state.pending_green_points + green_points
 
     if g == answer:
+        next_word_idx = state.word_idx + 1
+        cleared = next_word_idx == len(answers)
         new = GameState(
-            word_idx=state.word_idx + 1,
+            word_idx=next_word_idx,
             attempts=0,
             words_solved=state.words_solved + 1,
-            score=new_score,
-            status=IN_PROGRESS,
+            score=(
+                state.score + pending_green_points + POINTS_FOR_SOLVING
+                + (POINTS_FOR_CLEARING if cleared else 0)
+            ),
+            pending_green_points=0,
+            status=CLEARED if cleared else IN_PROGRESS,
         )
     elif attempts >= MAX_ATTEMPTS:
-        new = replace(state, word_idx=state.word_idx + 1, attempts=0, score=new_score)
+        next_word_idx = state.word_idx + 1
+        new = replace(
+            state,
+            word_idx=next_word_idx,
+            attempts=0,
+            score=max(0, state.score - PENALTY_FOR_MISSED_WORD),
+            pending_green_points=0,
+            status=LOST if next_word_idx == len(answers) else IN_PROGRESS,
+        )
     else:
-        new = replace(state, attempts=attempts, score=new_score)
+        new = replace(
+            state,
+            attempts=attempts,
+            pending_green_points=pending_green_points,
+        )
 
     return new, mask
 
@@ -110,7 +127,7 @@ def apply_guess(
 def replay(
     answers: Sequence[str],
     guesses: Iterable[str],
-    allowed: Set[str] | None = None,
+    allowed: AbstractSet[str] | None = None,
 ) -> Result:
     state = GameState()
     masks: list[list[int]] = []

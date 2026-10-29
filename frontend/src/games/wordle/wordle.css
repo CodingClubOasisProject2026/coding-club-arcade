@@ -266,6 +266,12 @@
   color: var(--gold);
 }
 
+.pending-score {
+  color: var(--gold);
+  font-size: 9px;
+  letter-spacing: .04em;
+}
+
 .stats>.stat-solved strong {
   color: #38bdf8;
 }

@@ -51,12 +51,11 @@ import { tetrisAudio } from "./audio.js";
   const getElement = (id) => document.getElementById(id);
 
   // ─── Score-based speed config ────────────────────────────────────────────────
-  // Speed increases every time score crosses a multiple of this value:
-  const SCORE_SPEED_THRESHOLD = 500;
-  // Each step removes this many ms from the drop delay:
-  const SCORE_SPEED_REDUCTION_PER_STEP = 40;
-  // Hard floor for the delay (ms), regardless of level or score:
-  const MIN_GRAVITY_DELAY = 80;
+  // A small speed bonus for score milestones, separate from level progression:
+  const SCORE_SPEED_THRESHOLD = 1000;
+  const SCORE_SPEED_REDUCTION_PER_STEP = 15;
+  // Keep gravity playable even at high levels and scores:
+  const MIN_GRAVITY_DELAY = 100;
   // ─────────────────────────────────────────────────────────────────────────────
 
   const game = {
@@ -86,6 +85,10 @@ import { tetrisAudio } from "./audio.js";
     submitted: false,
     taskId: null,
     keyHandler: null,
+    keyUpHandler: null,
+    horizontalHeldCode: null,
+    horizontalRepeatTimeout: null,
+    horizontalRepeatInterval: null,
   };
 
   class SeededPieceGenerator {
@@ -564,10 +567,11 @@ import { tetrisAudio } from "./audio.js";
   function scheduleGravity() {
     clearTimeout(game.gravityTimer);
     if (game.status === "playing") {
-      // Base delay from level.
-      const levelDelay = Math.max(120, 800 - (game.level - 1) * 55);
-      // Score bonus: shave SCORE_SPEED_REDUCTION_PER_STEP ms for every
-      // SCORE_SPEED_THRESHOLD points the player has accumulated.
+      // Levels 1–3 speed up gently; after level 3, each level removes only 25 ms.
+      const earlyLevelSpeedup = Math.min(game.level - 1, 2) * 40;
+      const laterLevelSpeedup = Math.max(0, game.level - 3) * 25;
+      const levelDelay = Math.max(420, 800 - earlyLevelSpeedup - laterLevelSpeedup);
+      // Score bonus: shave a small amount for each 1,000 points.
       const scoreSteps = Math.floor(game.score / SCORE_SPEED_THRESHOLD);
       const scoreBonus = scoreSteps * SCORE_SPEED_REDUCTION_PER_STEP;
       const delay = Math.max(MIN_GRAVITY_DELAY, levelDelay - scoreBonus);
@@ -750,35 +754,66 @@ import { tetrisAudio } from "./audio.js";
     if (mobileEl) mobileEl.textContent = timeStr;
   }
 
+  function stopHorizontalRepeat() {
+    clearTimeout(game.horizontalRepeatTimeout);
+    clearInterval(game.horizontalRepeatInterval);
+    game.horizontalRepeatTimeout = null;
+    game.horizontalRepeatInterval = null;
+    game.horizontalHeldCode = null;
+  }
+
   function addKeyboardListener() {
     removeKeyboardListener();
+    const actions = {
+      ArrowLeft: "left",
+      KeyA: "left",
+      ArrowRight: "right",
+      KeyD: "right",
+      ArrowUp: "rotate",
+      KeyW: "rotate",
+      ArrowDown: "soft_drop",
+      KeyS: "soft_drop",
+      Space: "hard_drop",
+    };
+    const horizontalCodes = new Set(["ArrowLeft", "KeyA", "ArrowRight", "KeyD"]);
     game.keyHandler = (event) => {
-      const actions = {
-        ArrowLeft: "left",
-        KeyA: "left",
-        ArrowRight: "right",
-        KeyD: "right",
-        ArrowUp: "rotate",
-        KeyW: "rotate",
-        ArrowDown: "soft_drop",
-        KeyS: "soft_drop",
-        Space: "hard_drop",
-      };
+      const action = actions[event.code];
       if (event.code === "KeyP") {
-        pauseGame();
+        if (!event.repeat) pauseGame();
         return;
       }
-      if (actions[event.code]) {
-        event.preventDefault();
-        performAction(actions[event.code]);
+      if (!action) return;
+      event.preventDefault();
+      if (horizontalCodes.has(event.code)) {
+        if (event.repeat) return;
+        stopHorizontalRepeat();
+        game.horizontalHeldCode = event.code;
+        performAction(action);
+        game.horizontalRepeatTimeout = setTimeout(() => {
+          game.horizontalRepeatInterval = setInterval(() => {
+            if (game.status !== "playing") stopHorizontalRepeat();
+            else performAction(action);
+          }, 35);
+        }, 110);
+        return;
       }
+      if (!event.repeat) performAction(action);
+    };
+    game.keyUpHandler = (event) => {
+      if (event.code === game.horizontalHeldCode) stopHorizontalRepeat();
     };
     window.addEventListener("keydown", game.keyHandler);
+    window.addEventListener("keyup", game.keyUpHandler);
+    window.addEventListener("blur", stopHorizontalRepeat);
   }
 
   function removeKeyboardListener() {
+    stopHorizontalRepeat();
     if (game.keyHandler) window.removeEventListener("keydown", game.keyHandler);
+    if (game.keyUpHandler) window.removeEventListener("keyup", game.keyUpHandler);
+    window.removeEventListener("blur", stopHorizontalRepeat);
     game.keyHandler = null;
+    game.keyUpHandler = null;
   }
 
   function stopTimers() {

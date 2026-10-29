@@ -17,8 +17,8 @@ const RULE_FACTS = [
     { big: String(MAX_ATTEMPTS), text: 'tries per word, then the next word.' },
 ];
 const RULE_ROWS = [
-    { label: 'Every green tile', points: POINTS_PER_GREEN, seconds: SECONDS_PER_GREEN },
-    { label: 'Solving a word', note: 'on top', points: SOLVE_POINTS, seconds: SOLVE_SECONDS },
+    { label: 'Every green tile', note: 'points bank on solve', points: POINTS_PER_GREEN, seconds: SECONDS_PER_GREEN },
+    { label: 'Solving a word', note: 'plus banked greens', points: SOLVE_POINTS, seconds: SOLVE_SECONDS },
 ];
 const PENALTIES = [
     `Use all ${MAX_ATTEMPTS} guesses without solving a word: −${MISS_PENALTY_POINTS} points and −${MISS_PENALTY_SECONDS}s, then the next word.`,

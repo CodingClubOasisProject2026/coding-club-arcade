@@ -8,15 +8,16 @@ from django.http import HttpResponse
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.views.generic import TemplateView
-from hub.models import GameChoices, Session as HubSession
 from rest_framework import serializers
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from config.celery import app
+from hub.models import GameChoices, Session as HubSession
+
 from . import words
-from .engine import IN_PROGRESS, LOST, InvalidActions, apply_guess, replay
+from .engine import CLEARED, IN_PROGRESS, LOST, POINTS_FOR_CLEARING, InvalidActions, apply_guess, replay
 
 START_SECONDS = 120
 MAX_SECONDS = 120
@@ -60,7 +61,8 @@ def _state_lock(session_id):
 
 
 def _snapshot(session_id, answers, guesses, result, time_remaining, last_mask=None,
-              solved=False, missed=False, answer=None, timed_out=False, actions=None):
+              solved=False, missed=False, answer=None, timed_out=False, actions=None,
+              green_points_awarded=0):
     board = []
     attempts_on_word = 0
     for word, mask in zip(guesses, result.masks):
@@ -71,14 +73,18 @@ def _snapshot(session_id, answers, guesses, result, time_remaining, last_mask=No
             attempts_on_word = 0
     state = result.state
     if answer is None and (state.status == LOST or timed_out):
-        answer = answers[state.word_idx % len(answers)]
-    game_status = "time_up" if timed_out else state.status
+        answer = answers[min(state.word_idx, len(answers) - 1)]
+    game_status = state.status if state.status in (LOST, CLEARED) else ("time_up" if timed_out else state.status)
+    completion_bonus = POINTS_FOR_CLEARING if state.status == CLEARED else 0
     return {
         "session_id": str(session_id), "status": "finished" if timed_out or state.status != IN_PROGRESS else "active",
         "game_status": game_status, "word_number": state.word_idx + 1,
         "total_words": len(answers), "words_solved": state.words_solved,
         "attempts": state.attempts, "attempts_left": max(6 - state.attempts, 0),
-        "score": state.score, "time_remaining": time_remaining, "board": board,
+        "score": state.score, "pending_points": state.pending_green_points,
+        "green_points_awarded": green_points_awarded,
+        "completion_bonus_awarded": completion_bonus,
+        "time_remaining": time_remaining, "board": board,
         "mask": last_mask, "solved": solved, "missed": missed, "answer": answer,
         "actions": list(actions or guesses),
     }
@@ -195,9 +201,13 @@ class GuessView(WordleAPIView):
             state.update(guesses=guesses, deadline=now + remaining, timed_out=remaining <= 0)
             cache.set(key, state, CACHE_TTL)
             answer = answers[current.state.word_idx % len(answers)] if missed else None
+            green_points_awarded = (
+                current.state.pending_green_points + mask.count(2) * 5 if solved else 0
+            )
             return Response(_snapshot(data["session_id"], answers, guesses, updated, remaining,
                                       last_mask=mask, solved=solved, missed=missed, answer=answer,
-                                      timed_out=remaining <= 0, actions=guesses))
+                                      timed_out=remaining <= 0, actions=guesses,
+                                      green_points_awarded=green_points_awarded))
 
 
 class FinishView(WordleAPIView):

@@ -65,7 +65,8 @@ function DemoBoard() {
         }));
     });
 
-    const score = greens * POINTS_PER_GREEN + (solved ? SOLVE_POINTS : 0);
+    const pendingScore = solved ? 0 : greens * POINTS_PER_GREEN;
+    const score = solved ? greens * POINTS_PER_GREEN + SOLVE_POINTS : 0;
     const rawTime = START_SECONDS - Math.floor((tick * TICK_MS) / 1000 * 2)
         + greens * SECONDS_PER_GREEN + (solved ? SOLVE_SECONDS : 0);
     // Never show more than the 2:00 the real game starts with, however many bonuses stack up.
@@ -78,6 +79,7 @@ function DemoBoard() {
                 <div>
                     <small>SCORE</small>
                     <strong className={solved ? 'is-hot' : ''}>{String(score).padStart(3, '0')}</strong>
+                    {pendingScore > 0 && <small>+{pendingScore} AT RISK</small>}
                 </div>
                 <div>
                     <small>TIME</small>
@@ -199,12 +201,12 @@ export default function Landing({ me, onPlay, busy = false, error = '', onAuthRe
                     <article className="lp-score-card">
                         <small>01 / EVERY GREEN TILE</small>
                         <div className="lp-score-nums"><strong>+{POINTS_PER_GREEN}</strong><span>pts</span><strong>+{SECONDS_PER_GREEN}s</strong></div>
-                        <p>Land a letter in the right spot and bank points and time.</p>
+                        <p>Earn +{POINTS_PER_GREEN} points per green only when you solve that word. The +{SECONDS_PER_GREEN}s time bonus is immediate.</p>
                     </article>
                     <article className="lp-score-card is-gold">
                         <small>02 / SOLVE THE WORD</small>
                         <div className="lp-score-nums"><strong>+{SOLVE_POINTS}</strong><span>pts</span><strong>+{SOLVE_SECONDS}s</strong></div>
-                        <p>Bonus on top of the greens. Chain solves to climb the board.</p>
+                        <p>Bank the green points from this word, plus the solve bonus. Chain solves to climb the board.</p>
                     </article>
                     <article className="lp-score-card is-danger">
                         <small>03 / USE ALL {MAX_ATTEMPTS} GUESSES</small>

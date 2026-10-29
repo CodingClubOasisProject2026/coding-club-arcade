@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './wordle.css';
-import { HUB_URL, MAX_ATTEMPTS, MISS_PENALTY_SECONDS, START_SECONDS, RulesContent } from './WordleRules';
+import { HUB_URL, MAX_ATTEMPTS, MISS_PENALTY_SECONDS, SOLVE_POINTS, START_SECONDS, RulesContent } from './WordleRules';
 import Landing from './WordleLanding';
 import { useHubTransition } from '../../loader/HubTransition';
 import { api, csrfToken, hubGameId, startHubSession } from '../../api';
@@ -316,8 +316,8 @@ function Wordle({ launch, onReplay, onHome }) {
     if (scoreDelta !== 0) pushPopup('score', signed(scoreDelta), scoreDelta > 0 ? 'score' : 'bad');
     if (timeDelta !== 0) pushPopup('time', `${signed(timeDelta)}s`, timeDelta > 0 ? 'good' : 'bad');
     setTally((current) => ({
-      guessPts: current.guessPts + (data.solved ? 0 : scoreDelta),
-      solvedPts: current.solvedPts + (data.solved ? scoreDelta : 0),
+      guessPts: current.guessPts + (data.green_points_awarded ?? 0),
+      solvedPts: current.solvedPts + (data.solved ? SOLVE_POINTS : 0),
       solvedCount: current.solvedCount + (data.solved ? 1 : 0),
       timeGained: current.timeGained + (timeDelta > 0 ? timeDelta : 0),
       timeLost: current.timeLost + (timeDelta < 0 ? -timeDelta : 0),
@@ -624,6 +624,7 @@ function Wordle({ launch, onReplay, onHome }) {
   const answerRevealLabel = snapshot?.missed ? 'Word missed. The word was' : "Time's Up! The word was";
 
   const score = snapshot?.score ?? 0;
+  const pendingPoints = snapshot?.pending_points ?? 0;
   // Summary slider: the grid of every word from this game, plus the word in progress when the game ended
   // (its answer comes from the server with "time_up").
   const currentRows = snapshot?.board || []; // the server keeps the unfinished word's rows in its time_up reply too
@@ -635,10 +636,12 @@ function Wordle({ launch, onReplay, onHome }) {
   const solvedText = String(solvedCount);
 
   // Score breakdown rows (only non-zero ones). "Other" keeps the rows adding up to the real score.
-  const other = score - tally.solvedPts - tally.guessPts;
+  const completionBonus = snapshot?.completion_bonus_awarded ?? 0;
+  const other = score - tally.solvedPts - tally.guessPts - completionBonus;
   const breakdownRows = [
     tally.solvedCount > 0 || tally.solvedPts !== 0 ? { label: `Solved words (${tally.solvedCount})`, value: tally.solvedPts } : null,
-    tally.guessPts !== 0 ? { label: 'Points from guesses', value: tally.guessPts } : null,
+    tally.guessPts !== 0 ? { label: 'Banked green tiles', value: tally.guessPts } : null,
+    completionBonus > 0 ? { label: '50-word clear bonus', value: completionBonus } : null,
     other !== 0 ? { label: 'Other', value: other } : null,
   ].filter(Boolean);
   const showBreakdown = breakdownRows.length > 0 || tally.timeGained > 0 || tally.timeLost > 0;
@@ -694,7 +697,7 @@ function Wordle({ launch, onReplay, onHome }) {
         <div className="play-layout">
           <section className="stats" aria-label="Game statistics">
             <div className="stat-time"><span>Time</span><strong className={timeLeft <= 15 ? 'time-low' : ''}>{timerText}</strong>{popupsFor('time')}</div>
-            <div className="stat-score"><span>Score</span><strong className="bump" key={score}>{score}</strong>{popupsFor('score')}</div>
+            <div className="stat-score"><span>Score</span><strong className="bump" key={score}>{score}</strong>{pendingPoints > 0 && <small className="pending-score">+{pendingPoints} at risk</small>}{popupsFor('score')}</div>
             <div className="stat-solved"><span>Solved</span><strong className="bump" key={solvedText}>{solvedText}</strong></div>
           </section>
           <div className={`healthbar${timeLeft <= 15 ? ' healthbar-low' : ''}`} role="progressbar" aria-label="Time remaining" aria-valuemin="0" aria-valuemax={barMax} aria-valuenow={timeLeft}>
