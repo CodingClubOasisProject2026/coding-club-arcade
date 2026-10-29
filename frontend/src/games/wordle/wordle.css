@@ -155,7 +155,8 @@
 
 .home-button,
 .end-button,
-.help-button {
+.help-button,
+.sound-button {
   border: 1px solid var(--line-hi);
   border-radius: 0;
   background: transparent;
@@ -175,7 +176,8 @@
   white-space: nowrap;
 }
 
-.help-button {
+.help-button,
+.sound-button {
   width: 32px;
   height: 32px;
   padding: 0;
@@ -187,7 +189,8 @@
 }
 
 .home-button:hover,
-.help-button:hover {
+.help-button:hover,
+.sound-button:hover {
   color: var(--accent);
   border-color: var(--accent);
   background: rgb(245 194 24 / 6%);

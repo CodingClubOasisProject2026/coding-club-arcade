@@ -18,6 +18,8 @@ import {
   createGame,
   stepGame,
 } from './engine';
+import { flappyAudio } from './audio';
+import { SoundIcon } from '../../SoundIcon';
 import './flappy.css';
 
 type Phase = 'menu' | 'starting' | 'playing' | 'over';
@@ -49,6 +51,7 @@ export default function Flappy() {
   const [highScore, setHighScore] = useState(0);
   const [submission, setSubmission] = useState<Submission>('idle');
   const [notice, setNotice] = useState<string | null>(null);
+  const [soundOn, setSoundOn] = useState(() => flappyAudio.enabled);
   // Pipes and bird are rendered from this copy, not from the mutable ref.
   const [view, setView] = useState<ViewState>(() => viewState(createGame(123)));
 
@@ -109,7 +112,11 @@ export default function Flappy() {
   // Main game loop. The simulation runs at a fixed 60 Hz so a 120 Hz display
   // cannot make the bird and pipes move twice as fast.
   useEffect(() => {
-    if (phase !== 'playing') return;
+    if (phase !== 'playing') {
+      flappyAudio.stopBgm();
+      return;
+    }
+    flappyAudio.startBgm();
 
     let raf = 0;
     let active = true;
@@ -129,6 +136,7 @@ export default function Flappy() {
 
         if (pendingFlap.current) {
           flap = true;
+          flappyAudio.playFlap();
 
           actionsRef.current.push({
             tick: state.tick + 1,
@@ -138,7 +146,12 @@ export default function Flappy() {
           pendingFlap.current = false;
         }
 
+        const scoreBefore = state.score;
         stepGame(state, flap);
+        if (state.score > scoreBefore) {
+          flappyAudio.playScore();
+        }
+
         accumulator -= TICK_MS;
         steps += 1;
 
@@ -154,6 +167,9 @@ export default function Flappy() {
 
       if (state.status === 'GAME_OVER') {
         active = false;
+        flappyAudio.stopBgm();
+        flappyAudio.playHit();
+        setTimeout(() => flappyAudio.playFall(), 130);
         setPhase('over');
         void finish('COLLISION');
         return;
@@ -167,6 +183,7 @@ export default function Flappy() {
     return () => {
       active = false;
       cancelAnimationFrame(raf);
+      flappyAudio.stopBgm();
     };
   }, [phase, finish]);
 
@@ -196,6 +213,7 @@ export default function Flappy() {
       pendingFlap.current = true;
       setView(viewState(gameRef.current));
       setScore(0);
+      flappyAudio.playStart();
       setPhase('playing');
     } catch (error) {
       sessionRef.current = null;
@@ -270,6 +288,21 @@ export default function Flappy() {
         <div className="fb-header-best">
           {signedIn && me.tickets > 0 && <span>🎟 {me.tickets} · </span>}
           BEST <span>{highScore}</span>
+          <button
+            type="button"
+            onClick={() => {
+              const next = flappyAudio.toggle();
+              setSoundOn(next);
+              if (next && phase === 'playing') {
+                flappyAudio.startBgm();
+              }
+            }}
+            className="fb-btn-sound"
+            title={soundOn ? 'Mute Sound' : 'Enable Sound'}
+            aria-label={soundOn ? 'Mute Sound' : 'Enable Sound'}
+          >
+            <SoundIcon enabled={soundOn} size={15} />
+          </button>
         </div>
       </header>
 

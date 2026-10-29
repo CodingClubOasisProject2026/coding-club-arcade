@@ -81,6 +81,33 @@
   margin-left: 4px;
 }
 
+.fb-btn-sound {
+  font-family: inherit;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1.5px solid #577b8d;
+  border-radius: 4px;
+  color: #f7d84c;
+  font-size: 11px;
+  line-height: 1;
+  padding: 4px 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 8px;
+  vertical-align: middle;
+  transition: all 0.1s ease;
+}
+
+.fb-btn-sound:hover {
+  background: rgba(247, 216, 76, 0.2);
+  border-color: #f7d84c;
+}
+
+.fb-btn-sound:active {
+  transform: translate(1px, 1px);
+}
+
 /* =========================
    GAME FRAME
 ========================= */

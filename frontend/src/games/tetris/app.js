@@ -1,3 +1,5 @@
+import { tetrisAudio } from "./audio.js";
+
 (() => {
   "use strict";
 
@@ -350,12 +352,14 @@
     game.nextPiece = game.randomizer.next();
     setGameStatus("playing", "IN GAME");
     spawnPiece();
+    tetrisAudio.playStart();
 
     renderGame();
     getElement("overlay").classList.add("hidden");
     addKeyboardListener();
     game.elapsedTimer = setInterval(updateElapsedTime, 1000);
     scheduleGravity();
+    tetrisAudio.startBgm();
   }
 
   function collides(piece, dx = 0, dy = 0, shape = piece.shape) {
@@ -402,26 +406,37 @@
     if (game.status !== "playing" || !game.piece) return;
     recordAction(action);
 
-    if (action === "left" && !collides(game.piece, -1)) game.piece.x--;
-    if (action === "right" && !collides(game.piece, 1)) game.piece.x++;
+    if (action === "left" && !collides(game.piece, -1)) {
+      game.piece.x--;
+      tetrisAudio.playMove();
+    }
+    if (action === "right" && !collides(game.piece, 1)) {
+      game.piece.x++;
+      tetrisAudio.playMove();
+    }
     if (action === "rotate") {
       const rotated = rotateClockwise(game.piece.shape);
       for (const offset of [0, -1, 1, -2, 2]) {
         if (!collides(game.piece, offset, 0, rotated)) {
           game.piece.x += offset;
           game.piece.shape = rotated;
+          tetrisAudio.playRotate();
           break;
         }
       }
     }
     if (action === "soft_drop") {
       if (collides(game.piece, 0, 1)) lockPiece();
-      else game.piece.y++;
+      else {
+        game.piece.y++;
+        tetrisAudio.playDrop();
+      }
     }
     if (action === "hard_drop") {
       let distance = 0;
       while (!collides(game.piece, 0, distance + 1)) distance++;
       game.piece.y += distance;
+      tetrisAudio.playSlam();
       lockPiece();
     }
     renderGame();
@@ -446,6 +461,7 @@
     if (piece.type === "B") {
       // Must match resolve_piece in backend/tetris/tasks.py: clear a 3x3 blast,
       // drop each column, then clear any lines that formed.
+      tetrisAudio.playBomb();
       for (let y = Math.max(0, piece.y - 1); y < Math.min(ROWS, piece.y + 2); y++) {
         for (let x = Math.max(0, piece.x - 1); x < Math.min(COLUMNS, piece.x + 2); x++) {
           game.board[y][x] = null;
@@ -478,6 +494,7 @@
     while (game.board.length < ROWS)
       game.board.unshift(Array(COLUMNS).fill(null));
     if (cleared) {
+      tetrisAudio.playClear(cleared);
       game.lines += cleared;
       game.consecutiveClears += 1;
       // Must match ScoringSystem in backend/tetris/scoring.py.
@@ -773,6 +790,7 @@
 
   function pauseGame() {
     if (game.status !== "playing") return;
+    tetrisAudio.stopBgm();
     setGameStatus("paused", "PAUSED");
     stopTimers();
     removeKeyboardListener();
@@ -782,11 +800,14 @@
       addKeyboardListener();
       scheduleGravity();
       game.elapsedTimer = setInterval(updateElapsedTime, 1000);
+      tetrisAudio.startBgm();
     });
   }
 
   async function finishGame() {
     if (game.status !== "playing") return;
+    tetrisAudio.stopBgm();
+    tetrisAudio.playGameOver();
     setGameStatus("submitting", "RUN COMPLETE");
     stopTimers();
     removeKeyboardListener();
@@ -1162,4 +1183,20 @@
     // Pause when hidden so background time does not advance the local board.
     if (document.hidden && game.status === "playing") pauseGame();
   });
+
+  const soundBtn = getElement("btn-sound-toggle");
+  const soundIcon = getElement("sound-icon");
+  const ICON_ON = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" fill-opacity="0.2"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>`;
+  const ICON_OFF = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" fill-opacity="0.1"/><line x1="22" y1="9" x2="16" y2="15"/><line x1="16" y1="9" x2="22" y2="15"/></svg>`;
+
+  if (soundBtn && soundIcon) {
+    soundIcon.innerHTML = tetrisAudio.enabled ? ICON_ON : ICON_OFF;
+    soundBtn.onclick = () => {
+      const on = tetrisAudio.toggle();
+      soundIcon.innerHTML = on ? ICON_ON : ICON_OFF;
+      if (on && game.status === "playing") {
+        tetrisAudio.startBgm();
+      }
+    };
+  }
 })();

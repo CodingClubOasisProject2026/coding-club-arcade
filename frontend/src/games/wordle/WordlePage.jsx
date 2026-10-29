@@ -5,6 +5,8 @@ import Landing from './WordleLanding';
 import { useHubTransition } from '../../loader/HubTransition';
 import { api, csrfToken, hubGameId, startHubSession } from '../../api';
 import { useAuth } from '../../auth';
+import { wordleAudio } from './audio';
+import { SoundIcon } from '../../SoundIcon';
 
 const WORD_LENGTH = 5;
 
@@ -242,6 +244,7 @@ function Wordle({ launch, onReplay, onHome }) {
   const [popups, setPopups] = useState([]);
   const [shaking, setShaking] = useState(false);
   const [flash, setFlash] = useState(null); // { rows } - the solved word, shown briefly before the board clears
+  const [soundOn, setSoundOn] = useState(() => wordleAudio.enabled);
   const leavingRef = useRef(false);
   const popupId = useRef(0);
   const scoreSubmitted = useRef(false);
@@ -273,6 +276,7 @@ function Wordle({ launch, onReplay, onHome }) {
   }, []);
 
   const triggerShake = useCallback(() => {
+    wordleAudio.playError();
     setShaking(true);
     window.setTimeout(() => setShaking(false), 450);
   }, []);
@@ -406,13 +410,14 @@ function Wordle({ launch, onReplay, onHome }) {
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, [gameLive]);
 
-  // If the game ends while a confirm / help pop-up is open, close it.
+  // Manage subtle ambient lofi background music
   useEffect(() => {
-    if (!gameLive) {
-      setLeaveOpen(false);
-      setEndOpen(false);
-      setHelpOpen(false);
+    if (gameLive) {
+      wordleAudio.startBgm();
+    } else {
+      wordleAudio.stopBgm();
     }
+    return () => wordleAudio.stopBgm();
   }, [gameLive]);
 
   // Give the player a moment to see the last row before the result pop-up.
@@ -463,10 +468,29 @@ function Wordle({ launch, onReplay, onHome }) {
       if (data.solved) {
         const rows = [...previousRows, { word: draft, mask: Array(WORD_LENGTH).fill(2) }];
         setSummary((current) => [...current, { rows, answer: draft, status: 'solved' }]);
-      } else if (data.missed || data.game_status === 'lost') {
-        const answer = String(data.answer || '').toLowerCase();
-        const rows = [...previousRows, { word: draft, mask: answer.length === WORD_LENGTH ? scoreGuess(draft, answer) : [] }];
-        setSummary((current) => [...current, { rows, answer, status: 'missed' }]);
+        [2, 2, 2, 2, 2].forEach((m, idx) => {
+          setTimeout(() => wordleAudio.playTileReveal(m, idx), idx * 100);
+        });
+        setTimeout(() => {
+          if (data.game_status === 'cleared') {
+            wordleAudio.playVictory();
+          } else {
+            wordleAudio.playWordSolved();
+          }
+        }, 5 * 100 + 80);
+      } else {
+        const lastRow = (data.board || []).at(-1);
+        if (lastRow?.mask) {
+          lastRow.mask.forEach((m, idx) => {
+            setTimeout(() => wordleAudio.playTileReveal(m, idx), idx * 100);
+          });
+        }
+        if (data.missed || data.game_status === 'lost') {
+          setTimeout(() => wordleAudio.playGameOver(), 5 * 100 + 100);
+          const answer = String(data.answer || '').toLowerCase();
+          const rows = [...previousRows, { word: draft, mask: answer.length === WORD_LENGTH ? scoreGuess(draft, answer) : [] }];
+          setSummary((current) => [...current, { rows, answer, status: 'missed' }]);
+        }
       }
       if (data.solved) {
         // The server clears the board when a word is solved; keep the winning row visible for a moment.
@@ -488,9 +512,16 @@ function Wordle({ launch, onReplay, onHome }) {
     if (key === '↵' || key === 'Enter') {
       submitGuess();
     } else if (key === '⌫' || key === 'Backspace') {
+      wordleAudio.playDelete();
       setDraft((value) => value.slice(0, -1));
     } else if (/^[a-z]$/i.test(key)) {
-      setDraft((value) => value.length < WORD_LENGTH ? `${value}${key.toLowerCase()}` : value);
+      setDraft((value) => {
+        if (value.length < WORD_LENGTH) {
+          wordleAudio.playKeyPress();
+          return `${value}${key.toLowerCase()}`;
+        }
+        return value;
+      });
     }
   }, [active, sending, submitGuess]);
 
@@ -628,12 +659,29 @@ function Wordle({ launch, onReplay, onHome }) {
             <span className={`brand-tile brand-${index % 3}`} key={`${letter}-${index}`}>{letter}</span>
           ))}
         </div>
-        {gameLive && (
-          <div className="top-actions">
-            <button className="help-button" type="button" aria-label="Show the rules" onClick={() => setHelpOpen(true)}>?</button>
-            <button className="end-button" type="button" onClick={() => setEndOpen(true)}>End game</button>
-          </div>
-        )}
+        <div className="top-actions">
+          <button
+            className="sound-button"
+            type="button"
+            aria-label={soundOn ? 'Mute sound' : 'Enable sound'}
+            title={soundOn ? 'Mute sound' : 'Enable sound'}
+            onClick={() => {
+              const next = wordleAudio.toggle();
+              setSoundOn(next);
+              if (next && gameLive) {
+                wordleAudio.startBgm();
+              }
+            }}
+          >
+            <SoundIcon enabled={soundOn} size={15} />
+          </button>
+          {gameLive && (
+            <>
+              <button className="help-button" type="button" aria-label="Show the rules" onClick={() => setHelpOpen(true)}>?</button>
+              <button className="end-button" type="button" onClick={() => setEndOpen(true)}>End game</button>
+            </>
+          )}
+        </div>
       </header>
 
       {!validLaunch ? (

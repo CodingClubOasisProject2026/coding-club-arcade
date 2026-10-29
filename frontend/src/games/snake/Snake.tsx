@@ -18,6 +18,8 @@ import {
   type SnakeDirection,
   verifyRun,
 } from './engine'
+import { snakeAudio } from './audio'
+import { SoundIcon } from '../../SoundIcon'
 import './Snake.css'
 
 const MAX_QUEUED_TURNS = 2
@@ -49,6 +51,7 @@ export default function Snake() {
   const [finalScore, setFinalScore] = useState<number | null>(null)
   const [submission, setSubmission] = useState<Submission>('idle')
   const [busy, setBusy] = useState(false)
+  const [soundOn, setSoundOn] = useState(() => snakeAudio.enabled)
 
   // The live game is mutated in place by step(); React gets a copy each tick.
   const gameRef = useRef(game)
@@ -90,6 +93,7 @@ export default function Snake() {
       actionsRef.current = []
       queueRef.current = []
       paint()
+      snakeAudio.playStart()
       setPhase('playing')
     } catch (err: unknown) {
       sessionRef.current = null
@@ -116,6 +120,7 @@ export default function Snake() {
       if (dir === last || dir === OPP[last]) return
       if (queue.length >= MAX_QUEUED_TURNS) return
       queue.push(dir)
+      snakeAudio.playTurn()
     },
     [phase]
   )
@@ -149,21 +154,41 @@ export default function Snake() {
 
   // Game loop: runs entirely in the browser, recording each direction change.
   useEffect(() => {
-    if (phase !== 'playing') return
+    if (phase !== 'playing') {
+      snakeAudio.stopBgm()
+      return
+    }
+    snakeAudio.startBgm()
     let timer = 0
     const tick = () => {
       const g = gameRef.current
+      const applesBefore = g.apples_eaten
+      const hadKeyBefore = !!g.key
       advance(g, queueRef.current.shift() ?? g.direction, actionsRef.current)
       paint()
       if (g.status !== 'ACTIVE') {
+        snakeAudio.stopBgm()
+        snakeAudio.playDie()
         setPhase('over')
         finish()
         return
       }
+      if (g.apples_eaten > applesBefore) {
+        if (g.apple_locked) {
+          snakeAudio.playGoldenBite()
+        } else {
+          snakeAudio.playBite()
+        }
+      } else if (hadKeyBefore && !g.key) {
+        snakeAudio.playPowerup('KEY')
+      }
       timer = window.setTimeout(tick, tickDelayMs(g.apples_eaten))
     }
     timer = window.setTimeout(tick, tickDelayMs(gameRef.current.apples_eaten))
-    return () => window.clearTimeout(timer)
+    return () => {
+      window.clearTimeout(timer)
+      snakeAudio.stopBgm()
+    }
   }, [phase, paint, finish])
 
   // Keyboard controls
@@ -234,6 +259,21 @@ export default function Snake() {
               🎟 {me.tickets}
             </span>
           )}
+          <button
+            type="button"
+            onClick={() => {
+              const next = snakeAudio.toggle()
+              setSoundOn(next)
+              if (next && phase === 'playing') {
+                snakeAudio.startBgm()
+              }
+            }}
+            className="snake-btn-sound"
+            title={soundOn ? 'Mute Sound' : 'Enable Sound'}
+            aria-label={soundOn ? 'Mute Sound' : 'Enable Sound'}
+          >
+            <SoundIcon enabled={soundOn} size={15} />
+          </button>
           {phase === 'playing' && (
             <button type="button" onClick={togglePause} className="snake-btn-pause" aria-label="Pause game">
               PAUSE

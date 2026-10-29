@@ -109,6 +109,32 @@
   transition: background 0.1s ease;
 }
 
+.snake-btn-sound {
+  font: inherit;
+  border: 2px solid #000;
+  background: #332418;
+  color: #fbbf24;
+  padding: 4px 6px;
+  font-size: 11px;
+  line-height: 1;
+  box-shadow: 2px 2px 0 #000;
+  cursor: pointer;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.1s ease, transform 0.05s ease;
+}
+
+.snake-btn-sound:hover {
+  background: #4a3420;
+}
+
+.snake-btn-sound:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 #000;
+}
+
 .snake-btn-pause:hover {
   background: #64748b;
 }

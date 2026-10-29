@@ -3,6 +3,7 @@ import { HubLink } from '../../loader/HubTransition'
 import { ApiError } from '../../api'
 import { useAuth } from '../../auth'
 import GoogleSignIn from '../../GoogleSignIn'
+import { SoundIcon } from '../../SoundIcon'
 import { type Difficulty, type EndReason, type GameState, type MoveType, getGame, newGame, playMove } from './api'
 import {
   DIFFICULTIES,
@@ -206,6 +207,10 @@ class MinesweeperAudio {
   private ctx: AudioContext | null = null
   public enabled = true
 
+  private bgmTimer: number | null = null
+  private bgmDrone: OscillatorNode | null = null
+  private bgmGain: GainNode | null = null
+
   constructor() {
     try {
       const saved = localStorage.getItem(SOUND_STORAGE_KEY)
@@ -222,8 +227,97 @@ class MinesweeperAudio {
     } catch {
       // ignore
     }
-    if (this.enabled) this.playClick()
+    if (!this.enabled) {
+      this.stopBgm()
+    } else {
+      this.playClick()
+    }
     return this.enabled
+  }
+
+  startBgm() {
+    if (!this.enabled || this.bgmDrone) return
+    const ctx = this.getContext()
+    if (!ctx) return
+
+    try {
+      this.stopBgm()
+      const now = ctx.currentTime
+
+      // Warm tactical radar sub drone (55 Hz A1)
+      const osc = ctx.createOscillator()
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(55, now)
+
+      const filter = ctx.createBiquadFilter()
+      filter.type = 'lowpass'
+      filter.frequency.setValueAtTime(120, now)
+
+      const gain = ctx.createGain()
+      gain.gain.setValueAtTime(0.0001, now)
+      gain.gain.linearRampToValueAtTime(0.018, now + 0.5)
+
+      osc.connect(filter)
+      filter.connect(gain)
+      gain.connect(ctx.destination)
+
+      osc.start(now)
+      this.bgmDrone = osc
+      this.bgmGain = gain
+
+      // Periodic subtle sonar sweep ping every 4.5 seconds
+      this.bgmTimer = window.setInterval(() => {
+        if (!this.enabled) return
+        try {
+          const t = ctx.currentTime
+          const ping = ctx.createOscillator()
+          const pGain = ctx.createGain()
+          ping.type = 'sine'
+          ping.frequency.setValueAtTime(440, t)
+          ping.frequency.exponentialRampToValueAtTime(880, t + 0.08)
+
+          pGain.gain.setValueAtTime(0.012, t)
+          pGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.6)
+
+          ping.connect(pGain)
+          pGain.connect(ctx.destination)
+
+          ping.start(t)
+          ping.stop(t + 0.6)
+        } catch {
+          // ignore
+        }
+      }, 4500)
+    } catch {
+      // ignore
+    }
+  }
+
+  stopBgm() {
+    if (this.bgmTimer) {
+      clearInterval(this.bgmTimer)
+      this.bgmTimer = null
+    }
+    if (this.bgmGain && this.ctx) {
+      try {
+        const now = this.ctx.currentTime
+        this.bgmGain.gain.setValueAtTime(this.bgmGain.gain.value, now)
+        this.bgmGain.gain.linearRampToValueAtTime(0.0001, now + 0.1)
+      } catch {
+        // ignore
+      }
+    }
+    setTimeout(() => {
+      try {
+        this.bgmDrone?.stop()
+        this.bgmDrone?.disconnect()
+        this.bgmGain?.disconnect()
+      } catch {
+        // ignore
+      }
+      this.bgmDrone = null
+      this.bgmGain = null
+    }, 120)
   }
 
   private getContext(): AudioContext | null {
@@ -663,6 +757,15 @@ export default function Minesweeper() {
   }, [gameId, gameStatus])
 
   useEffect(() => {
+    if (game?.status === 'in_progress') {
+      audio.startBgm()
+    } else {
+      audio.stopBgm()
+    }
+    return () => audio.stopBgm()
+  }, [game?.status])
+
+  useEffect(() => {
     if (game?.status === 'won') {
       audio.playWin()
     } else if (game?.status === 'lost') {
@@ -1036,11 +1139,17 @@ export default function Minesweeper() {
           <button
             type="button"
             className="ms-icon-btn"
-            onClick={() => setSoundOn(audio.toggle())}
+            onClick={() => {
+              const next = audio.toggle()
+              setSoundOn(next)
+              if (next && game?.status === 'in_progress') {
+                audio.startBgm()
+              }
+            }}
             title={soundOn ? 'Mute sound' : 'Turn sound on'}
             aria-label={soundOn ? 'Mute sound' : 'Turn sound on'}
           >
-            {soundOn ? '🔊' : '🔇'}
+            <SoundIcon enabled={soundOn} size={15} />
           </button>
         </div>
       </header>

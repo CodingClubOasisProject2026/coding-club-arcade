@@ -14,6 +14,8 @@ import {
   step,
 } from './engine'
 import { HEIGHT, WIDTH, draw, renderMaze } from './render'
+import { audio } from './audio'
+import { SoundIcon } from '../../SoundIcon'
 import './Pacman.css'
 
 type Phase = 'menu' | 'starting' | 'playing' | 'paused' | 'over'
@@ -41,6 +43,7 @@ export default function Pacman() {
   const [notice, setNotice] = useState<string | null>(null)
   const [submission, setSubmission] = useState<Submission>({ state: 'idle' })
   const [best, setBest] = useState<number>(() => Number(localStorage.getItem(BEST_KEY)) || 0)
+  const [soundOn, setSoundOn] = useState(() => audio.enabled)
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const mazeRef = useRef<HTMLCanvasElement | null>(null)
@@ -98,7 +101,11 @@ export default function Pacman() {
   // Fixed-timestep loop: the engine always advances in whole 60 Hz ticks so the
   // recorded inputs replay identically on the server.
   useEffect(() => {
-    if (phase !== 'playing') return
+    if (phase !== 'playing') {
+      audio.stopBgm()
+      return
+    }
+    audio.startBgm()
     let raf = 0
     let last = performance.now()
     let acc = 0
@@ -107,6 +114,11 @@ export default function Pacman() {
       last = now
       const state = gameRef.current
       while (acc >= STEP_MS && !state.over) {
+        const dotsBefore = state.dotsEaten
+        const frightBefore = state.frightTimer
+        const livesBefore = state.lives
+        const eatenGhostsBefore = state.ghosts.filter((g) => g.state === 'eyes').length
+
         const dir = pendingDir.current
         if (dir && dir !== state.pac.want) {
           inputsRef.current.push([state.tick + 1, dir])
@@ -114,6 +126,20 @@ export default function Pacman() {
         } else {
           step(state, null)
         }
+
+        const eatenGhostsAfter = state.ghosts.filter((g) => g.state === 'eyes').length
+        if (eatenGhostsAfter > eatenGhostsBefore) {
+          audio.playEatGhost()
+        } else if (state.frightTimer > 0 && frightBefore === 0) {
+          audio.playPowerPellet()
+        } else if (state.dotsEaten > dotsBefore) {
+          audio.playChomp()
+        }
+
+        if (state.lives < livesBefore) {
+          audio.playDeath()
+        }
+
         acc -= STEP_MS
       }
       paint()
@@ -128,6 +154,7 @@ export default function Pacman() {
           localStorage.setItem(BEST_KEY, String(state.score))
           return state.score
         })
+        audio.stopBgm()
         setGamePhase('over')
         void finish()
         return
@@ -135,7 +162,10 @@ export default function Pacman() {
       raf = requestAnimationFrame(frame)
     }
     raf = requestAnimationFrame(frame)
-    return () => cancelAnimationFrame(raf)
+    return () => {
+      cancelAnimationFrame(raf)
+      audio.stopBgm()
+    }
   }, [phase, paint, finish, setGamePhase])
 
   const start = useCallback(async () => {
@@ -162,6 +192,7 @@ export default function Pacman() {
       inputsRef.current = []
       pendingDir.current = null
       setHud({ score: 0, lives: 3, level: 1 })
+      audio.playStart()
       setGamePhase('playing')
     } catch (e) {
       sessionRef.current = null
@@ -263,13 +294,30 @@ export default function Pacman() {
         <HubLink to="/" className="pm-back" aria-label="Back to arcade">
           ◀ <span className="pm-back-label">ARCADE</span>
         </HubLink>
-        <span className={`pm-mode${signedIn && me.tickets > 0 ? ' is-ranked' : ''}`}>
-          {signedIn && me.tickets > 0
-            ? `🎟 ${me.tickets} TICKET${me.tickets === 1 ? '' : 'S'}`
-            : !signedIn
-            ? 'SIGN IN & ADD TICKET'
-            : 'ADD A TICKET'}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span className={`pm-mode${signedIn && me.tickets > 0 ? ' is-ranked' : ''}`}>
+            {signedIn && me.tickets > 0
+              ? `🎟 ${me.tickets} TICKET${me.tickets === 1 ? '' : 'S'}`
+              : !signedIn
+              ? 'SIGN IN & ADD TICKET'
+              : 'ADD A TICKET'}
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              const next = audio.toggle()
+              setSoundOn(next)
+              if (next && phase === 'playing') {
+                audio.startBgm()
+              }
+            }}
+            className="pm-btn-sound"
+            title={soundOn ? 'Mute Sound' : 'Enable Sound'}
+            aria-label={soundOn ? 'Mute Sound' : 'Enable Sound'}
+          >
+            <SoundIcon enabled={soundOn} size={15} />
+          </button>
+        </div>
       </header>
 
       <section className="pm-intro">
