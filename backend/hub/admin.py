@@ -14,8 +14,8 @@ class AddTicketsForm(forms.Form):
 
 @admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin):
-    fieldsets = UserAdmin.fieldsets + (("Arcade", {"fields": ("tickets", "hidden")}),)
-    list_display = UserAdmin.list_display + ("tickets", "hidden")
+    fieldsets = UserAdmin.fieldsets + (("Arcade", {"fields": ("tickets", "hidden")}),)  # pyright: ignore[reportOperatorIssue, reportAssignmentType]
+    list_display = UserAdmin.list_display + ("tickets", "hidden")  # pyright: ignore[reportOperatorIssue, reportGeneralTypeIssues]
     actions = ("add_tickets",)
 
     @admin.action(description="Add tickets")
