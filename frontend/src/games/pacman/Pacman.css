@@ -1,7 +1,7 @@
 /* Pixel fonts. Must stay the first rule in the file (or move to index.html as <link>). */
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Pixelify+Sans:wght@400;600;700&display=swap');
 
-/* ───────────── Pac-Man page: 90s arcade × handheld-RPG ─────────────
+/* ───────────── Pecman page: 90s arcade × handheld-RPG ─────────────
    Cream dialogue boxes with double black borders, ▶ menu cursors, an HP bar
    for lives, green LCD readouts and a handheld-style screen bezel.
    The page is one screen tall; the board shrinks to whatever height is left. */
@@ -434,7 +434,7 @@
   font-size: 12px;
 }
 
-/* Pac-Man life icons with a 1px ink outline so they read on cream. */
+/* Pecman life icons with a 1px ink outline so they read on cream. */
 .pm-lives {
   display: inline-flex;
   align-items: center;
@@ -776,7 +776,7 @@
   }
 }
 
-/* Pac-Man chasing dots, ghost behind. */
+/* Pecman chasing dots, ghost behind. */
 .pm-chase {
   display: flex;
   align-items: center;

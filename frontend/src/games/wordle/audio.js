@@ -1,4 +1,4 @@
-// Web Audio API synthesizer for Wordle tactile sound effects.
+// Web Audio API synthesizer for Fastfind tactile sound effects.
 // Completely self-contained with zero external assets.
 
 class WordleAudio {

@@ -1,4 +1,4 @@
-// Generates parity fixtures for the backend's Snake replay tests.
+// Generates parity fixtures for the backend's Slither replay tests.
 // Bots play the TypeScript engine through advance() (the same call the game
 // loop uses); backend/snake/tests.py replays each log in Python and asserts
 // the same result.

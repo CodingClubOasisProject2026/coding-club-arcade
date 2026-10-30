@@ -17,7 +17,7 @@ type Game = {
 
 const games: Game[] = [
   {
-    name: 'Minesweeper',
+    name: 'Defusal',
     path: '/minesweeper',
     description: 'Read the numbers. Clear the board. Avoid the mines.',
     category: 'LOGIC',
@@ -26,7 +26,7 @@ const games: Game[] = [
     art: 'mine',
   },
   {
-    name: 'Wordle',
+    name: 'Fastfind',
     path: '/wordle',
     description: 'Beat the clock. Crack as many words as you can.',
     category: 'WORDS',
@@ -35,7 +35,7 @@ const games: Game[] = [
     art: 'wordle',
   },
   {
-    name: 'Snake',
+    name: 'Slither',
     path: '/snake',
     description: 'Keep growing. Keep moving. Stay out of your own way.',
     category: 'REFLEX',
@@ -44,7 +44,7 @@ const games: Game[] = [
     art: 'snake',
   },
   {
-    name: 'Tetris',
+    name: 'Blockbind',
     path: '/tetris',
     description: 'Make every block count. Leave no gaps behind.',
     category: 'PUZZLE',
@@ -53,7 +53,7 @@ const games: Game[] = [
     art: 'tetris',
   },
   {
-    name: 'Pac-Man',
+    name: 'Pecman',
     path: '/pacman',
     description: 'Clear the maze. Dodge the ghosts. Chase the high score.',
     category: 'CHASE',
@@ -62,7 +62,7 @@ const games: Game[] = [
     art: 'pacman',
   },
   {
-    name: 'Flappy Bird',
+    name: 'Flightsim',
     path: '/flappy',
     description: 'Tap to fly. Thread the pipes. One wrong tilt and it is over.',
     category: 'REFLEX',

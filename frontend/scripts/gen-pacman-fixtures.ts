@@ -1,4 +1,4 @@
-// Generates parity fixtures for the backend's Pac-Man replay tests.
+// Generates parity fixtures for the backend's Pecman replay tests.
 // A simple bot plays the TypeScript engine; backend/pacman/tests.py replays each
 // log in Python and asserts the same score and tick count.
 //

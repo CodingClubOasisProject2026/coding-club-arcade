@@ -30,8 +30,8 @@ The API then uses Django's session cookie. `GET /me/` reports who is signed in a
 - `src/api.ts`: fetch wrapper (cookies + CSRF), `/me/`, logout, hub sessions, leaderboard
 - `src/auth.ts`, `src/AuthProvider.tsx`, `src/GoogleSignIn.tsx`: signed-in state and the Google sign-in button
 - `src/pages/Hub.tsx`: game list and leaderboard
-- `src/games/minesweeper/`: the Minesweeper section (`api.ts` for its endpoints, `Minesweeper.tsx` for the UI)
-- `src/games/wordle/`: the Wordle landing, game UI, rules, and styling. The hub links to `/wordle`; the Play button creates an authenticated hub session, then starts the Wordle API session.
+- `src/games/minesweeper/`: the Defusal section (`api.ts` for its endpoints, `Minesweeper.tsx` for the UI)
+- `src/games/wordle/`: the Fastfind landing, game UI, rules, and styling. The hub links to `/wordle`; the Play button creates an authenticated hub session, then starts the Fastfind API session.
 
 New games go in `src/games/<name>/` with a route in `src/App.tsx`.
 

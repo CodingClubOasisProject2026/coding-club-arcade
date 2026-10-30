@@ -1,4 +1,4 @@
-// Web Audio API synthesizer for retro 8-bit Snake sound effects.
+// Web Audio API synthesizer for retro 8-bit Slither sound effects.
 // Completely self-contained with zero external audio assets.
 
 class SnakeAudio {
@@ -149,7 +149,7 @@ class SnakeAudio {
     })
   }
 
-  /** Snake direction change click */
+  /** Slither direction change click */
   playTurn() {
     const ctx = this.getContext()
     if (!ctx) return

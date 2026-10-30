@@ -1,4 +1,4 @@
-// Deterministic Pac-Man engine. The backend replays recorded inputs through a
+// Deterministic Pecman engine. The backend replays recorded inputs through a
 // line-for-line Python port (backend/pacman/engine.py) to verify scores, so any
 // rule change here must be mirrored there and ENGINE_VERSION bumped.
 //
@@ -372,7 +372,7 @@ function eat(state: GameState) {
   }
 }
 
-/** Returns true if Pac-Man died this check. */
+/** Returns true if Pecman died this check. */
 function collide(state: GameState): boolean {
   const px = tileOf(state.pac.x)
   const py = tileOf(state.pac.y)

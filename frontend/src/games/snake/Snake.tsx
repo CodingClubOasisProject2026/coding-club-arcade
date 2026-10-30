@@ -251,7 +251,7 @@ export default function Snake() {
           ← ARCADE
         </HubLink>
         <div className="snake-nav-center">
-          <span className="snake-nav-badge">SNAKE</span>
+          <span className="snake-nav-badge">SLITHER</span>
         </div>
         <div className="snake-nav-actions">
           {signedIn && (
@@ -282,7 +282,7 @@ export default function Snake() {
         </div>
       </header>
 
-      <h1 className="snake-title">SNAKE</h1>
+      <h1 className="snake-title">SLITHER</h1>
 
       {error && <div className="snake-error">{error}</div>}
       {notice && (

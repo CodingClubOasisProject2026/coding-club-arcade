@@ -1,4 +1,4 @@
-// Web Audio API synthesizer for retro 8-bit Flappy Bird sound effects.
+// Web Audio API synthesizer for retro 8-bit Flightsim sound effects.
 // Completely self-contained with zero external assets.
 
 class FlappyAudio {

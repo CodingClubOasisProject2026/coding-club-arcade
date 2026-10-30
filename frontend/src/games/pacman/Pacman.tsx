@@ -321,11 +321,11 @@ export default function Pacman() {
       </header>
 
       <section className="pm-intro">
-        <h1 className="pm-title">PAC-MAN</h1>
+        <h1 className="pm-title">PECMAN</h1>
         <p className="pm-tagline" aria-hidden="true">★ INSERT COIN ★</p>
       </section>
 
-      <section className="pm-howto" aria-label="How to play Pac-Man">
+      <section className="pm-howto" aria-label="How to play Pecman">
         <div className="pm-howto-goal">
           <h2>How to play</h2>
           <p>Clear every dot. Power pellets let you eat the ghosts.</p>
@@ -345,7 +345,7 @@ export default function Pacman() {
         </div>
       )}
 
-      <main className="pm-layout" aria-label="Pac-Man game">
+      <main className="pm-layout" aria-label="Pecman game">
         {/* Compact stats strip, shown instead of the side panels on narrow screens. */}
         <div className="pm-strip" aria-hidden="true">
           <div><small>SCORE</small><strong>{pad(hud.score)}</strong></div>
@@ -358,7 +358,7 @@ export default function Pacman() {
           {/* Battle-status box: name, level, HP bar, score. */}
           <div className="pm-panel pm-status">
             <div className="pm-status-name">
-              <span>PAC-MAN</span>
+              <span>PECMAN</span>
               <span className="pm-status-lv">:L{hud.level}</span>
             </div>
             <div className="pm-hp" aria-label={`${hud.lives} of ${MAX_LIVES} lives`}>
@@ -393,7 +393,7 @@ export default function Pacman() {
                 onPointerUp={onPointerUp}
                 onPointerCancel={onPointerUp}
               >
-                <canvas ref={canvasRef} width={WIDTH * SCALE} height={HEIGHT * SCALE} aria-label="Pac-Man maze" />
+                <canvas ref={canvasRef} width={WIDTH * SCALE} height={HEIGHT * SCALE} aria-label="Pecman maze" />
 
                 {phase !== 'playing' && (
                   <div className="pm-overlay">
@@ -444,7 +444,7 @@ export default function Pacman() {
                         <>
                           <div className="pm-card-icon" aria-hidden="true">❚❚</div>
                           <h2>Game paused</h2>
-                          <p>PAC-MAN is taking a breather.</p>
+                          <p>PECMAN is taking a breather.</p>
                           <button type="button" className="pm-btn" onClick={() => setGamePhase('playing')}>
                             RESUME
                           </button>
@@ -452,7 +452,7 @@ export default function Pacman() {
                       )}
                       {phase === 'over' && (
                         <>
-                          <h2 className="pm-over">PAC-MAN fainted!</h2>
+                          <h2 className="pm-over">PECMAN fainted!</h2>
                           <div className="pm-final">
                             <small>FINAL SCORE</small>
                             <strong>{pad(hud.score)}</strong>

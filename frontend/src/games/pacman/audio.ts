@@ -1,4 +1,4 @@
-// Web Audio API synthesizer for retro 8-bit Pac-Man sound effects.
+// Web Audio API synthesizer for retro 8-bit Pecman sound effects.
 // Completely self-contained with zero external asset latency or 404 dependencies.
 
 class PacmanAudio {

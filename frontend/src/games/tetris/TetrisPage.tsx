@@ -16,7 +16,7 @@ export default function TetrisPage() {
 
   return (
     <iframe
-      title="Tetris"
+      title="Blockbind"
       src="/src/games/tetris/index.html"
       className="tetris-frame"
     />

@@ -295,7 +295,7 @@ import { tetrisAudio } from "./audio.js";
       const tetris = games?.find(
         (item) => String(item.name).toUpperCase() === "TETRIS",
       );
-      if (!tetris) throw new Error("Tetris is not listed by this server.");
+      if (!tetris) throw new Error("Blockbind is not listed by this server.");
 
       const session = await requestApi(
         `/sessions/start/${tetris.id}/`,
@@ -307,13 +307,13 @@ import { tetrisAudio } from "./audio.js";
       game.session = session;
       initializeGame(session.seed);
     } catch (error) {
-      console.warn("Could not start Tetris session:", error.message);
+      console.warn("Could not start Blockbind session:", error.message);
       setGameStatus("idle", "READY");
 
       if (error.status === 400) {
         showOverlay(
           "ADD A TICKET",
-          "No tickets left. Please add a ticket to your account to play Tetris.",
+          "No tickets left. Please add a ticket to your account to play Blockbind.",
           "ADD A TICKET",
           () => returnToHub(),
           true,
@@ -321,7 +321,7 @@ import { tetrisAudio } from "./audio.js";
       } else {
         showOverlay(
           "SIGN IN & ADD A TICKET",
-          "Sign in and add a ticket to your account to play Tetris.",
+          "Sign in and add a ticket to your account to play Blockbind.",
           "SIGN IN & ADD A TICKET",
           () => returnToHub(),
           false,
@@ -1189,7 +1189,7 @@ import { tetrisAudio } from "./audio.js";
       if (!me?.authenticated) {
         showOverlay(
           "SIGN IN & ADD A TICKET",
-          "Sign in and add a ticket to your account to play Tetris.",
+          "Sign in and add a ticket to your account to play Blockbind.",
           "SIGN IN & ADD A TICKET",
           () => returnToHub(),
           false,
@@ -1197,7 +1197,7 @@ import { tetrisAudio } from "./audio.js";
       } else if (me.tickets <= 0) {
         showOverlay(
           "ADD A TICKET",
-          "No tickets left. Please add a ticket to your account to play Tetris.",
+          "No tickets left. Please add a ticket to your account to play Blockbind.",
           "ADD A TICKET",
           () => returnToHub(),
           true,
@@ -1207,7 +1207,7 @@ import { tetrisAudio } from "./audio.js";
     .catch(() => {
       showOverlay(
         "SIGN IN & ADD A TICKET",
-        "Sign in and add a ticket to your account to play Tetris.",
+        "Sign in and add a ticket to your account to play Blockbind.",
         "SIGN IN & ADD A TICKET",
         () => returnToHub(),
         false,

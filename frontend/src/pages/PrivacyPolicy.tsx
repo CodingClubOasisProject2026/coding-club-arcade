@@ -67,7 +67,7 @@ export default function PrivacyPolicy() {
           </p>
           <p>
             This Privacy Policy explains how we collect, handle, store, and protect your information when you access
-            our games (including Minesweeper, Wordle, Snake, Tetris, Pac-Man, and Flappy Bird), sign in with Google,
+            our games (including Defusal, Fastfind, Slither, Blockbind, Pecman, and Flightsim), sign in with Google,
             and interact with our leaderboards.
           </p>
         </section>

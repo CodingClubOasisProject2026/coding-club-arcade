@@ -14,7 +14,7 @@ import {
     MISS_PENALTY_SECONDS,
 } from './WordleRules';
 
-// The page players land on when they click Wordle in the arcade hub.
+// The page players land on when they click Fastfind in the arcade hub.
 // (All landing styles live in wordle.css.)
 // Same visual language as the hub home page (kicker, pixel heading, square bordered cards, yellow accent),
 // plus a live demo board that plays itself so the page feels alive.
@@ -125,7 +125,7 @@ export default function Landing({ me, onPlay, busy = false, error = '', onAuthRe
             <div className="lp-hero">
                 <section className="landing-intro lp-copy" aria-labelledby="landing-title">
                     <p className="landing-kicker"><i className="lp-dot" aria-hidden="true" />WORDS / PLAY NOW</p>
-                    <h1 id="landing-title">WORDLE<span>.</span></h1>
+                    <h1 id="landing-title">FASTFIND<span>.</span></h1>
                     <p className="landing-lede">
                         Beat the clock.
                         <br />
@@ -171,7 +171,7 @@ export default function Landing({ me, onPlay, busy = false, error = '', onAuthRe
 
                 <section className="landing-card lp-card" aria-label="Live demo">
                     <div className="landing-meta">
-                        <span>WORDLE / WORDS</span>
+                        <span>FASTFIND / WORDS</span>
                     </div>
                     <DemoBoard />
                     <div className="lp-legend" aria-hidden="true">

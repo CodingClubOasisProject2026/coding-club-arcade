@@ -283,7 +283,7 @@ export default function Flappy() {
           <span aria-hidden="true">←</span> Back
         </HubLink>
 
-        <h1 className="fb-title">Flappy Bird</h1>
+        <h1 className="fb-title">Flightsim</h1>
 
         <div className="fb-header-best">
           {signedIn && me.tickets > 0 && <span>🎟 {me.tickets} · </span>}
@@ -313,7 +313,7 @@ export default function Flappy() {
         </div>
       )}
 
-      <section className="fb-game-shell" aria-label="Flappy Bird game">
+      <section className="fb-game-shell" aria-label="Flightsim game">
         <div
           className={`fb-game-container ${
             isPlaying ? 'fb-is-playing' : ''
@@ -529,7 +529,7 @@ export default function Flappy() {
       </section>
 
       <footer className="fb-footer">
-        <span>FLAPPY BIRD</span>
+        <span>FLIGHTSIM</span>
         <span>CLICK OR PRESS R TO FLAP</span>
       </footer>
     </main>

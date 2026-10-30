@@ -91,7 +91,7 @@ async function postWordle(path, payload) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     const detail = data.error?.message || data.guesses?.[0] || data.detail;
-    throw new Error(detail || `Wordle API returned ${response.status}`);
+    throw new Error(detail || `Fastfind API returned ${response.status}`);
   }
   return data;
 }
@@ -129,7 +129,7 @@ function readGrids(sessionId) {
   }
 }
 
-// Marks a guess against the answer (2 = right spot, 1 = wrong spot, 0 = not in word) the way Wordle does.
+// Marks a guess against the answer (2 = right spot, 1 = wrong spot, 0 = not in word) the way Fastfind does.
 // Used for the last row of a missed word, because the server clears the board when it moves on.
 function scoreGuess(guess, answer) {
   const marks = Array(WORD_LENGTH).fill(0);
@@ -233,7 +233,7 @@ function Wordle({ launch, onReplay, onHome }) {
   const [replayBusy, setReplayBusy] = useState(false);
   const [replayError, setReplayError] = useState('');
   const [leaveOpen, setLeaveOpen] = useState(false);
-  const [leaveTarget, setLeaveTarget] = useState('hub'); // where "Leave" goes: the arcade hub or the Wordle landing page
+  const [leaveTarget, setLeaveTarget] = useState('hub'); // where "Leave" goes: the arcade hub or the Fastfind landing page
   const [endOpen, setEndOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
@@ -562,7 +562,7 @@ function Wordle({ launch, onReplay, onHome }) {
     }
   };
 
-  // Back to the Wordle landing page. A live game asks first, because leaving abandons it.
+  // Back to the Fastfind landing page. A live game asks first, because leaving abandons it.
   const handleHomeClick = () => {
     if (gameLive) {
       setLeaveTarget('home');
@@ -657,8 +657,8 @@ function Wordle({ launch, onReplay, onHome }) {
           <a className="hub-link" href={HUB_URL} onClick={handleHubClick}>← Arcade hub</a>
           <button className="home-button" type="button" onClick={handleHomeClick}>⌂ Home</button>
         </div>
-        <div className="brand" aria-label="Wordle">
-          {'WORDLE'.split('').map((letter, index) => (
+        <div className="brand" aria-label="Fastfind">
+          {'FASTFIND'.split('').map((letter, index) => (
             <span className={`brand-tile brand-${index % 3}`} key={`${letter}-${index}`}>{letter}</span>
           ))}
         </div>
@@ -704,7 +704,7 @@ function Wordle({ launch, onReplay, onHome }) {
             <div className="healthbar-fill" style={{ width: `${healthPercent}%` }} />
           </div>
 
-          <section className="game" aria-label="Wordle game">
+          <section className="game" aria-label="Fastfind game">
             <div className="board" aria-live="polite">
               {Array.from({ length: MAX_ATTEMPTS }, (_, rowIndex) => {
                 const row = rows[rowIndex];

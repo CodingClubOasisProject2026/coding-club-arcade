@@ -1098,7 +1098,7 @@ export default function Minesweeper() {
           <HubLink to="/" className="ms-back-link" aria-label="Back to arcade">
             ← <span className="ms-back-text">Arcade</span>
           </HubLink>
-          <span className="ms-title">Minesweeper</span>
+          <span className="ms-title">Defusal</span>
         </div>
 
         <div className="ms-diff" role="radiogroup" aria-label="Difficulty">
@@ -1161,14 +1161,14 @@ export default function Minesweeper() {
             {!signedIn ? (
               <>
                 <b>Sign in and add a ticket to play.</b>{' '}
-                {compact ? '' : 'You need to sign in and have at least one ticket to play Minesweeper.'}
+                {compact ? '' : 'You need to sign in and have at least one ticket to play Defusal.'}
               </>
             ) : (
               <>
                 <b>No tickets left.</b>{' '}
                 {compact
                   ? 'Please add a ticket to play.'
-                  : 'You need at least one ticket to play Minesweeper. Ask a club admin to add a ticket.'}
+                  : 'You need at least one ticket to play Defusal. Ask a club admin to add a ticket.'}
               </>
             )}
           </span>

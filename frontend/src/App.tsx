@@ -95,7 +95,7 @@ export default function App() {
   const isPacman = location.pathname.replace(/\/+$/, '') === '/pacman'
   const isSnake = location.pathname.replace(/\/+$/, '') === '/snake'
   const isTetris = location.pathname.replace(/\/+$/, '') === '/tetris'
-  const isFlappy = location.pathname.replace(/\/+$/, '') === '/flappy' // Added Flappy Bird path check
+  const isFlappy = location.pathname.replace(/\/+$/, '') === '/flappy' // Added Flightsim path check
 
   let content: ReactNode = null
 

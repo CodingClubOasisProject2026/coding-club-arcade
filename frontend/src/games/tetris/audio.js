@@ -1,4 +1,4 @@
-// Web Audio API synthesizer for retro 8-bit Tetris sound effects.
+// Web Audio API synthesizer for retro 8-bit Blockbind sound effects.
 // Completely self-contained with zero external audio assets.
 
 class TetrisAudio {
@@ -209,7 +209,7 @@ class TetrisAudio {
     } else if (lines === 3) {
       notes = [523.25, 659.25, 783.99, 1046.5]; // C5, E5, G5, C6
     } else {
-      // 4 lines = TETRIS! / MEGA
+      // 4 lines = BLOCKBIND! / MEGA
       notes = [523.25, 659.25, 783.99, 1046.5, 1318.51, 1567.98]; // C5, E5, G5, C6, E6, G6
     }
 

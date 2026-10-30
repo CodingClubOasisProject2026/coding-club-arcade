@@ -184,7 +184,7 @@
   20%           { transform: translateX(-50%) scale(0.55); opacity: 0.5; }
 }
 
-/* Pac-Man */
+/* Pecman */
 .al-pac i {
   position: absolute;
   inset: 0;
@@ -227,7 +227,7 @@
     9.5px 9.5px 0 0 var(--al-violet);
 }
 
-/* Snake: three body segments and a head. */
+/* Slither: three body segments and a head. */
 .al-snake i {
   position: absolute;
   left: 0;
@@ -283,7 +283,7 @@
 .al-mine i::before { transform: rotate(45deg); }
 .al-mine i::after  { transform: rotate(-45deg); }
 
-/* Wordle tile. */
+/* Fastfind tile. */
 .al-word i {
   position: absolute;
   inset: 0;

@@ -53,7 +53,7 @@ function loadFonts(path: string, code: Promise<unknown>) {
     .then(() => undefined, () => undefined)
 }
 
-// Tetris runs in an iframe, so warm the iframe page and the files it references.
+// Blockbind runs in an iframe, so warm the iframe page and the files it references.
 async function loadTetrisPage() {
   const html = await fetch(TETRIS_PAGE).then((response) => response.text())
   const page = new DOMParser().parseFromString(html, 'text/html')
