@@ -8,7 +8,7 @@ class ScoringSystem:
     POINTS_PER_LINE = 100
     POINTS_PER_DROP = 10
 
-    GRAVITY_INTERVAL_MS = 800
+    GRAVITY_INTERVAL_MS = 600
 
     def __init__(self):
         self.total_score = 0

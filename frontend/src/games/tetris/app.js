@@ -567,10 +567,10 @@ import { tetrisAudio } from "./audio.js";
   function scheduleGravity() {
     clearTimeout(game.gravityTimer);
     if (game.status === "playing") {
-      // Levels 1–3 speed up gently; after level 3, each level removes only 25 ms.
-      const earlyLevelSpeedup = Math.min(game.level - 1, 2) * 40;
-      const laterLevelSpeedup = Math.max(0, game.level - 3) * 25;
-      const levelDelay = Math.max(420, 800 - earlyLevelSpeedup - laterLevelSpeedup);
+      // Levels 1–3 speed up gently; after level 3, each level removes only 35 ms.
+      const earlyLevelSpeedup = Math.min(game.level - 1, 2) * 60;
+      const laterLevelSpeedup = Math.max(0, game.level - 3) * 35;
+      const levelDelay = Math.max(250, 600 - earlyLevelSpeedup - laterLevelSpeedup);
       // Score bonus: shave a small amount for each 1,000 points.
       const scoreSteps = Math.floor(game.score / SCORE_SPEED_THRESHOLD);
       const scoreBonus = scoreSteps * SCORE_SPEED_REDUCTION_PER_STEP;
