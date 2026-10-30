@@ -7,9 +7,9 @@ export const START_SECONDS = 120;
 export const MISS_PENALTY_SECONDS = 20;
 export const MISS_PENALTY_POINTS = 20;
 export const POINTS_PER_GREEN = 5;
-export const SECONDS_PER_GREEN = 5;
+export const SECONDS_PER_GREEN = 1;
 export const SOLVE_POINTS = 30;
-export const SOLVE_SECONDS = 15;
+export const SOLVE_SECONDS = 8;
 
 const formatClockShort = (total) => `${Math.floor(total / 60)} min`;
 const RULE_FACTS = [
