@@ -31,7 +31,7 @@ class LeaderboardView(ListAPIView):
                 )
             )
         )
-        .exclude(score__isnull=True)
+        .exclude(score__isnull=True, hidden=True)
         .order_by("-score", "username")
     )
 
