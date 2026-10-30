@@ -13,6 +13,9 @@ PIPE_WIDTH = 80 * SCALE
 PIPE_GAP = 180 * SCALE
 PIPE_SPACING = 260 * SCALE
 PIPE_SPEED = 3 * SCALE
+# Pipes speed up a little with each point, up to MAX_PIPE_SPEED.
+PIPE_SPEED_PER_POINT = 40
+MAX_PIPE_SPEED = 6 * SCALE
 GRAVITY = 350
 FLAP_VELOCITY = -7_000
 MAX_FALL_SPEED = 9_000
@@ -62,6 +65,10 @@ def _create_pipe(x, game):
     }
 
 
+def pipe_speed(score):
+    return min(PIPE_SPEED + score * PIPE_SPEED_PER_POINT, MAX_PIPE_SPEED)
+
+
 def step_game(game, flap=False):
     if game["status"] != "ACTIVE":
         raise ValueError("Game is not active")
@@ -72,8 +79,9 @@ def step_game(game, flap=False):
     game["velocity"] = min(game["velocity"] + GRAVITY, MAX_FALL_SPEED)
     game["bird_y"] += game["velocity"]
 
+    speed = pipe_speed(game["score"])
     for pipe in game["pipes"]:
-        pipe["x"] -= PIPE_SPEED
+        pipe["x"] -= speed
         if not pipe["scored"] and pipe["x"] + PIPE_WIDTH < BIRD_X:
             pipe["scored"] = True
             game["score"] += 1

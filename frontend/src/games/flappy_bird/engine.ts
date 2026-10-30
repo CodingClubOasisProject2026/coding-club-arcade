@@ -9,6 +9,9 @@ export const PIPE_WIDTH = 80 * SCALE;
 export const PIPE_GAP = 180 * SCALE;
 export const PIPE_SPACING = 260 * SCALE;
 export const PIPE_SPEED = 3 * SCALE;
+// Pipes speed up a little with each point, up to MAX_PIPE_SPEED.
+export const PIPE_SPEED_PER_POINT = 40;
+export const MAX_PIPE_SPEED = 6 * SCALE;
 export const GRAVITY = 350;
 export const FLAP_VELOCITY = -7000;
 export const MAX_FALL_SPEED = 9000;
@@ -86,6 +89,10 @@ function hitsPipe(bird_y: number, pipe: Pipe): boolean {
   return bird_y - BIRD_RADIUS < pipe.gap_top || bird_y + BIRD_RADIUS > gap_bottom;
 }
 
+export function pipeSpeed(score: number): number {
+  return Math.min(PIPE_SPEED + score * PIPE_SPEED_PER_POINT, MAX_PIPE_SPEED);
+}
+
 export function stepGame(game: GameState, flap: boolean) {
   if (game.status !== "ACTIVE") return game;
 
@@ -94,8 +101,9 @@ export function stepGame(game: GameState, flap: boolean) {
   game.velocity = Math.min(game.velocity + GRAVITY, MAX_FALL_SPEED);
   game.bird_y += game.velocity;
 
+  const speed = pipeSpeed(game.score);
   for (const pipe of game.pipes) {
-    pipe.x -= PIPE_SPEED;
+    pipe.x -= speed;
     if (!pipe.scored && pipe.x + PIPE_WIDTH < BIRD_X) {
       pipe.scored = true;
       game.score += 1;
