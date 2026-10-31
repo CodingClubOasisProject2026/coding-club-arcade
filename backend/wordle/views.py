@@ -23,7 +23,8 @@ START_SECONDS = 120
 MAX_SECONDS = 120
 CACHE_TTL = 15 * 60
 SECONDS_PER_GREEN = 1
-SOLVE_BONUS_SECONDS = 8
+SOLVE_BONUS_SECONDS = 10
+MAX_SOLVE_TIME_BONUS_SECONDS = 20
 MISSED_WORD_PENALTY_SECONDS = 20
 
 
@@ -197,7 +198,15 @@ class GuessView(WordleAPIView):
             updated = replay(answers, guesses, words.get_allowed())
             solved = new_state.words_solved > current.state.words_solved
             missed = not solved and new_state.word_idx > current.state.word_idx
-            remaining = min(MAX_SECONDS, max(0, remaining + mask.count(2) * SECONDS_PER_GREEN + (SOLVE_BONUS_SECONDS if solved else 0) - (MISSED_WORD_PENALTY_SECONDS if missed else 0)))
+            green_seconds_awarded = (
+                len(new_state.boosted_green_letters - current.state.boosted_green_letters)
+                * SECONDS_PER_GREEN
+            )
+            time_bonus = (
+                min(MAX_SOLVE_TIME_BONUS_SECONDS, green_seconds_awarded + SOLVE_BONUS_SECONDS)
+                if solved else green_seconds_awarded
+            )
+            remaining = min(MAX_SECONDS, max(0, remaining + time_bonus - (MISSED_WORD_PENALTY_SECONDS if missed else 0)))
             state.update(guesses=guesses, deadline=now + remaining, timed_out=remaining <= 0)
             cache.set(key, state, CACHE_TTL)
             answer = answers[current.state.word_idx % len(answers)] if missed else None

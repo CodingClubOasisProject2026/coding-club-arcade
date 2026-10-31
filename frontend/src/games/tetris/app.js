@@ -53,9 +53,9 @@ import { tetrisAudio } from "./audio.js";
   // ─── Score-based speed config ────────────────────────────────────────────────
   // A small speed bonus for score milestones, separate from level progression:
   const SCORE_SPEED_THRESHOLD = 1000;
-  const SCORE_SPEED_REDUCTION_PER_STEP = 15;
+  const SCORE_SPEED_REDUCTION_PER_STEP = 30;
   // Keep gravity playable even at high levels and scores:
-  const MIN_GRAVITY_DELAY = 100;
+  const MIN_GRAVITY_DELAY = 180;
   // ─────────────────────────────────────────────────────────────────────────────
 
   const game = {

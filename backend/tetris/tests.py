@@ -91,6 +91,23 @@ def play_bot(seed, max_pieces=60):
         pieces += 1
 
 
+class BombBlastTests(SimpleTestCase):
+    def test_bomb_clears_only_its_local_three_by_three_area(self):
+        grid = create_grid()
+        bomb = make_tetromino("B", (35, 35, 45), len(grid[0]))
+        bomb.x = 5
+        bomb.y = 10
+        grid[9][3] = 1  # Just outside the left edge of the blast.
+        grid[9][4] = 1  # Inside the blast.
+        grid[12][5] = 1  # Below the blast in the same column.
+
+        grid, _ = resolve_piece(grid, bomb)
+
+        self.assertEqual(grid[9][3], 1)
+        self.assertEqual(grid[9][4], 0)
+        self.assertEqual(grid[12][5], 1)
+
+
 class ValidateActionsTests(SimpleTestCase):
     def test_accepts_every_action_code(self):
         validate_actions("TLRCcSH")

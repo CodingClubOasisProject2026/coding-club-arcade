@@ -10,6 +10,7 @@ import {
     SECONDS_PER_GREEN,
     SOLVE_POINTS,
     SOLVE_SECONDS,
+    MAX_SOLVE_TIME_BONUS_SECONDS,
     MISS_PENALTY_POINTS,
     MISS_PENALTY_SECONDS,
 } from './WordleRules';
@@ -48,6 +49,7 @@ function useDemoTick() {
 function DemoBoard() {
     const tick = useDemoTick();
     let greens = 0;
+    const greenLetters = new Set();
     let solved = false;
 
     const rows = Array.from({ length: MAX_ATTEMPTS }, (_, r) => {
@@ -57,6 +59,9 @@ function DemoBoard() {
         const flipped = guess && local >= 7 ? Math.min(local - 6, 5) : 0;
         if (guess) {
             greens += guess.marks.slice(0, flipped).split('').filter((m) => m === 'g').length;
+            for (let column = 0; column < flipped; column += 1) {
+                if (guess.marks[column] === 'g') greenLetters.add(guess.word[column]);
+            }
             if (flipped === 5 && guess.marks === 'ggggg') solved = true;
         }
         return Array.from({ length: 5 }, (_, c) => ({
@@ -67,8 +72,9 @@ function DemoBoard() {
 
     const pendingScore = solved ? 0 : greens * POINTS_PER_GREEN;
     const score = solved ? greens * POINTS_PER_GREEN + SOLVE_POINTS : 0;
+    const greenTime = greenLetters.size * SECONDS_PER_GREEN;
     const rawTime = START_SECONDS - Math.floor((tick * TICK_MS) / 1000 * 2)
-        + greens * SECONDS_PER_GREEN + (solved ? SOLVE_SECONDS : 0);
+        + (solved ? Math.min(MAX_SOLVE_TIME_BONUS_SECONDS, greenTime + SOLVE_SECONDS) : greenTime);
     // Never show more than the 2:00 the real game starts with, however many bonuses stack up.
     const timeLeft = Math.min(START_SECONDS, Math.max(0, rawTime));
     const pct = (timeLeft / START_SECONDS) * 100;
@@ -201,12 +207,12 @@ export default function Landing({ me, onPlay, busy = false, error = '', onAuthRe
                     <article className="lp-score-card">
                         <small>01 / EVERY GREEN TILE</small>
                         <div className="lp-score-nums"><strong>+{POINTS_PER_GREEN}</strong><span>pts</span><strong>+{SECONDS_PER_GREEN}s</strong></div>
-                        <p>Earn +{POINTS_PER_GREEN} points per green only when you solve that word. The +{SECONDS_PER_GREEN}s time bonus is immediate.</p>
+                        <p>Green points bank when you solve. Each distinct green letter earns +{SECONDS_PER_GREEN}s once per run.</p>
                     </article>
                     <article className="lp-score-card is-gold">
                         <small>02 / SOLVE THE WORD</small>
                         <div className="lp-score-nums"><strong>+{SOLVE_POINTS}</strong><span>pts</span><strong>+{SOLVE_SECONDS}s</strong></div>
-                        <p>Bank the green points from this word, plus the solve bonus. Chain solves to climb the board.</p>
+                        <p>Bank this word’s green points. Solving adds +{SOLVE_SECONDS}s plus new green time, capped at +{MAX_SOLVE_TIME_BONUS_SECONDS}s total.</p>
                     </article>
                     <article className="lp-score-card is-danger">
                         <small>03 / USE ALL {MAX_ATTEMPTS} GUESSES</small>

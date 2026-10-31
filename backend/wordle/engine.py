@@ -22,6 +22,7 @@ class GameState:
     words_solved: int = 0
     score: int = 0
     pending_green_points: int = 0
+    boosted_green_letters: frozenset[str] = frozenset()
     status: str = IN_PROGRESS
 
 
@@ -89,6 +90,9 @@ def apply_guess(
     attempts = state.attempts + 1
     green_points = mask.count(CORRECT) * POINTS_PER_GREEN
     pending_green_points = state.pending_green_points + green_points
+    boosted_green_letters = state.boosted_green_letters | frozenset(
+        g[index] for index, mark in enumerate(mask) if mark == CORRECT
+    )
 
     if g == answer:
         next_word_idx = state.word_idx + 1
@@ -102,6 +106,7 @@ def apply_guess(
                 + (POINTS_FOR_CLEARING if cleared else 0)
             ),
             pending_green_points=0,
+            boosted_green_letters=boosted_green_letters,
             status=CLEARED if cleared else IN_PROGRESS,
         )
     elif attempts >= MAX_ATTEMPTS:
@@ -112,6 +117,7 @@ def apply_guess(
             attempts=0,
             score=max(0, state.score - PENALTY_FOR_MISSED_WORD),
             pending_green_points=0,
+            boosted_green_letters=boosted_green_letters,
             status=LOST if next_word_idx == len(answers) else IN_PROGRESS,
         )
     else:
@@ -119,6 +125,7 @@ def apply_guess(
             state,
             attempts=attempts,
             pending_green_points=pending_green_points,
+            boosted_green_letters=boosted_green_letters,
         )
 
     return new, mask
