@@ -5,7 +5,7 @@ from django.db.models import F
 from django.db.models.functions import Least
 from django.shortcuts import render
 
-from .models import CustomUser, Session
+from .models import CustomUser, Game, Session
 
 
 class AddTicketsForm(forms.Form):
@@ -33,6 +33,12 @@ class CustomUserAdmin(UserAdmin):
             "form": form,
             "users": queryset,
         })
+
+
+@admin.register(Game)
+class GameAdmin(admin.ModelAdmin):
+    list_display = ("name", "ratio")
+    list_editable = ("ratio",)
 
 
 admin.site.register(Session)

@@ -19,9 +19,9 @@ RATIOS = {
 class Command(BaseCommand):
     def handle(self, *args, **options):
         for name, _ in GameChoices.choices:
-            Game.objects.update_or_create(
+            Game.objects.get_or_create(
                 name=name,
-                defaults={"ratio": RATIOS[name]},
+                defaults={"ratio": RATIOS[name]},  # pyright: ignore[reportArgumentType]
             )
 
         self.stdout.write(self.style.SUCCESS(f"Seeded all {len(GameChoices.choices)} games!"))
