@@ -8,7 +8,7 @@ export const MISS_PENALTY_SECONDS = 20;
 export const MISS_PENALTY_POINTS = 20;
 export const POINTS_PER_GREEN = 5;
 export const SECONDS_PER_GREEN = 1;
-export const SOLVE_POINTS = 30;
+export const SOLVE_POINTS = 10;
 export const SOLVE_SECONDS = 10;
 export const MAX_SOLVE_TIME_BONUS_SECONDS = 20;
 
