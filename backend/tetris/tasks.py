@@ -55,6 +55,12 @@ def resolve_piece(grid, tetromino):
         for y in range(max(0, tetromino.y - 1), min(len(grid), tetromino.y + 2)):
             for x in range(max(0, tetromino.x - 1), min(len(grid[0]), tetromino.x + 2)):
                 grid[y][x] = 0
+        # Match the browser engine: blocks fall independently within each
+        # column after the blast, before completed rows are cleared.
+        for x in range(len(grid[0])):
+            remaining = [grid[y][x] for y in range(len(grid)) if grid[y][x]]
+            for y in range(len(grid) - 1, -1, -1):
+                grid[y][x] = remaining.pop() if remaining else 0
     else:
         lock_tetromino(grid, tetromino)
     return clear_line(grid)

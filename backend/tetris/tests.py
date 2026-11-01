@@ -86,6 +86,7 @@ def play_bot(seed, max_pieces=60):
         _, rotations, shift = best
         _apply(grid, piece, tick, rotations, shift)
         grid, lines = _drop_and_lock(grid, piece)
+        scoring.register_piece_dropped()
         scoring.register_lines_cleared(lines)
         actions.append("T" * tick + "C" * rotations + ("R" if shift > 0 else "L") * abs(shift) + "H")
         pieces += 1
@@ -100,12 +101,17 @@ class BombBlastTests(SimpleTestCase):
         grid[9][3] = 1  # Just outside the left edge of the blast.
         grid[9][4] = 1  # Inside the blast.
         grid[12][5] = 1  # Below the blast in the same column.
+        grid[5][4] = 1  # Above the blast; it should fall to the bottom of its column.
 
         grid, _ = resolve_piece(grid, bomb)
 
-        self.assertEqual(grid[9][3], 1)
+        self.assertEqual(grid[19][3], 1)
+        self.assertEqual(sum(row[3] for row in grid), 1)
         self.assertEqual(grid[9][4], 0)
-        self.assertEqual(grid[12][5], 1)
+        self.assertEqual(grid[19][5], 1)
+        self.assertEqual(sum(row[5] for row in grid), 1)
+        self.assertEqual(grid[19][4], 1)
+        self.assertEqual(sum(row[4] for row in grid), 1)
 
 
 class ValidateActionsTests(SimpleTestCase):
@@ -141,7 +147,11 @@ class ReplayTests(SimpleTestCase):
                 break
             except ValueError:
                 continue
-        self.assertEqual(scoring.total_score, 0)
+        self.assertEqual(
+            scoring.total_score,
+            length * ScoringSystem.POINTS_PER_DROP,
+        )
+        self.assertEqual(scoring.total_lines_cleared, 0)
         self.assertTrue(game_over)
 
     def test_replay_matches_bot_score_with_line_clears(self):
